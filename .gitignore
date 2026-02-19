@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+*.egg-info/
+
+# Database & data files
+*.db
+*.sqlite
+*.sqlite3
+data/uploads/
+data/xml_output/
+data/*.db
+
+# Node / Frontend
+node_modules/
+.next/
+dist/
+build/
+*.log
+
+# macOS
+.DS_Store
+
+# Temp
+/tmp/
+*.tmp
