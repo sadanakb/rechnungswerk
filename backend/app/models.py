@@ -36,6 +36,18 @@ class Invoice(Base):
     gross_amount = Column(Float)
     tax_rate = Column(Float, default=19.0)  # German VAT: 19% or 7%
     
+    # Payment details (BG-16)
+    iban = Column(String(34))                # BT-84: IBAN
+    bic = Column(String(11))                 # BT-86: BIC/SWIFT
+    payment_account_name = Column(String(70)) # BT-85: Account holder name
+
+    # Routing & Reference
+    buyer_reference = Column(String(200))       # BT-10: Leitweg-ID / purchase order reference
+    seller_endpoint_id = Column(String(200))    # BT-34: Seller electronic address
+    seller_endpoint_scheme = Column(String(10)) # e.g. "EM", "0088", "0204"
+    buyer_endpoint_id = Column(String(200))     # BT-49: Buyer electronic address
+    buyer_endpoint_scheme = Column(String(10))  # e.g. "EM", "0088", "0204"
+
     # Line Items (JSON array)
     line_items = Column(JSON)  # [{"description": "...", "quantity": 1, "price": 100.0}]
     

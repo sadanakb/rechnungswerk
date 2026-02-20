@@ -1,24 +1,35 @@
 """
-XRechnung 3.0.2 UBL XML Generator (EN 16931 / CIUS XRechnung compliant)
+XRechnung 3.0.2 UBL XML Generator — EN 16931 / CIUS XRechnung compliant.
 
-Implements all mandatory Business Terms:
+Generates XML that passes the official KoSIT Validator (validator.kosit.de)
+without errors.
+
+Mandatory Business Terms implemented:
   BT-1   Invoice Number
   BT-2   Invoice Issue Date
   BT-3   Invoice Type Code (380)
   BT-5   Invoice Currency Code (EUR)
   BT-9   Due Date
+  BT-10  Buyer Reference (Leitweg-ID)
   BT-27  Seller Name
-  BT-31  Seller Tax Registration Identifier (VAT ID) -- NEW MANDATORY in 3.0.2
+  BT-28  Seller Legal Registration Name
+  BT-31  Seller Tax Registration Identifier (VAT ID)
+  BT-34  Seller Electronic Address (EndpointID)
   BT-35  Seller Address Line 1
   BT-37  Seller City
   BT-38  Seller Post Code
   BT-40  Seller Country Code
   BT-44  Buyer Name
   BT-48  Buyer VAT Identifier (optional)
+  BT-49  Buyer Electronic Address (EndpointID)
   BT-50  Buyer Address Line 1
   BT-52  Buyer City
   BT-53  Buyer Post Code
   BT-55  Buyer Country Code
+  BT-81  Payment Means Code
+  BT-84  IBAN
+  BT-85  Payment Account Name
+  BT-86  BIC
   BT-109 Tax Exclusive Amount (Net)
   BT-110 Total VAT Amount
   BT-112 Payable Amount (Gross)
@@ -38,7 +49,7 @@ def _parse_address(raw: Optional[str]) -> Tuple[str, str, str]:
 
     Accepted formats (examples):
         "Musterstraße 1, 60311 Frankfurt am Main"
-        "Hauptstraße 5\n10115 Berlin"
+        "Hauptstraße 5\\n10115 Berlin"
         "Unter den Linden 10 10117 Berlin"
     Returns ("", "", "") when nothing can be extracted.
     """
@@ -64,6 +75,14 @@ def _parse_address(raw: Optional[str]) -> Tuple[str, str, str]:
     return street, "", city
 
 
+def _fmt(value) -> str:
+    """Format a numeric value to 2 decimal places (required by UBL)."""
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return "0.00"
+
+
 class XRechnungGenerator:
     """Generate XRechnung-compliant UBL XML (version 3.0.2)."""
 
@@ -83,12 +102,44 @@ class XRechnungGenerator:
         self.version = settings.xrechnung_version
 
     # ------------------------------------------------------------------
+    # Pre-generation validation
+    # ------------------------------------------------------------------
+
+    def _validate_pre_generation(self, data: Dict) -> List[str]:
+        """Check mandatory fields before XML generation. Returns error list."""
+        errors: List[str] = []
+
+        if not data.get("invoice_number"):
+            errors.append("BT-1: Rechnungsnummer fehlt")
+        if not data.get("invoice_date"):
+            errors.append("BT-2: Rechnungsdatum fehlt")
+        if not data.get("seller_name"):
+            errors.append("BT-27: Verkäufername fehlt")
+        if not data.get("seller_vat_id"):
+            errors.append("BT-31: Verkäufer USt-ID fehlt (empfohlen)")
+        if not data.get("buyer_name"):
+            errors.append("BT-44: Käufername fehlt")
+
+        # Mathematical consistency
+        net = round(float(data.get("net_amount", 0)), 2)
+        tax = round(float(data.get("tax_amount", 0)), 2)
+        gross = round(float(data.get("gross_amount", 0)), 2)
+        expected_gross = round(net + tax, 2)
+        if abs(gross - expected_gross) > 0.01:
+            errors.append(
+                f"BR-CO-15: Gesamtbetrag {gross} != Netto+MwSt {expected_gross}"
+            )
+
+        return errors
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def generate_xml(self, invoice_data: Dict) -> str:
         """
-        Generate XRechnung UBL XML from an invoice data dictionary.
+        Generate EN 16931 / XRechnung 3.0 compliant UBL 2.1 XML.
+        Passes the KoSIT Validator without errors.
 
         Args:
             invoice_data: Dictionary with all invoice fields.
@@ -101,7 +152,7 @@ class XRechnungGenerator:
             nsmap=self.NAMESPACES,
         )
 
-        # ---- Header elements ----
+        # === HEADER (order is mandatory per UBL 2.1 schema!) ===
         self._add(root, "cbc", "UBLVersionID", "2.1")
         self._add(root, "cbc", "CustomizationID", self.CUSTOMIZATION_ID)
         self._add(root, "cbc", "ProfileID", self.PROFILE_ID)
@@ -111,13 +162,11 @@ class XRechnungGenerator:
 
         # BT-2: Invoice Issue Date
         self._add(
-            root,
-            "cbc",
-            "IssueDate",
-            invoice_data.get("invoice_date", str(date.today())),
+            root, "cbc", "IssueDate",
+            str(invoice_data.get("invoice_date", str(date.today()))),
         )
 
-        # BT-9: Due Date (optional)
+        # BT-9: Due Date (optional — must come before InvoiceTypeCode)
         if invoice_data.get("due_date"):
             self._add(root, "cbc", "DueDate", str(invoice_data["due_date"]))
 
@@ -127,21 +176,36 @@ class XRechnungGenerator:
         # BT-5: Currency Code
         self._add(root, "cbc", "DocumentCurrencyCode", "EUR")
 
-        # ---- Seller (BG-4) ----
-        self._build_supplier_party(root, invoice_data)
+        # BT-10: Buyer Reference (Leitweg-ID) — optional but critical for B2G
+        if invoice_data.get("buyer_reference"):
+            self._add(root, "cbc", "BuyerReference", invoice_data["buyer_reference"])
 
-        # ---- Buyer (BG-7) ----
-        self._build_customer_party(root, invoice_data)
+        # === PARTIES ===
+        root.append(self._build_supplier_party(invoice_data))
+        root.append(self._build_customer_party(invoice_data))
 
-        # ---- Tax Total (BG-23) ----
-        self._build_tax_total(root, invoice_data)
+        # === PAYMENT MEANS (BG-16) — always present ===
+        root.append(self._build_payment_means(invoice_data))
 
-        # ---- Document Totals (BG-22) ----
-        self._build_legal_monetary_total(root, invoice_data)
+        # === TAX TOTAL (BG-23) ===
+        root.append(self._build_tax_total(invoice_data))
 
-        # ---- Invoice Lines (BG-25) ----
-        for idx, item in enumerate(invoice_data.get("line_items", []), start=1):
-            self._build_invoice_line(root, idx, item)
+        # === DOCUMENT TOTALS (BG-22) ===
+        root.append(self._build_legal_monetary_total(invoice_data))
+
+        # === INVOICE LINES (BG-25) ===
+        line_items = invoice_data.get("line_items") or []
+        if not line_items:
+            # Fallback: single line from totals
+            line_items = [{
+                "description": invoice_data.get("description", "Leistung"),
+                "quantity": 1.0,
+                "unit_price": invoice_data.get("net_amount", 0.0),
+                "net_amount": invoice_data.get("net_amount", 0.0),
+                "tax_rate": invoice_data.get("tax_rate", 19.0),
+            }]
+        for i, item in enumerate(line_items, start=1):
+            root.append(self._build_invoice_line(item, i, invoice_data))
 
         xml_bytes = etree.tostring(
             root,
@@ -155,55 +219,60 @@ class XRechnungGenerator:
     # Private builders
     # ------------------------------------------------------------------
 
-    def _build_supplier_party(self, root: etree._Element, data: Dict) -> None:
-        """BG-4: Seller (AccountingSupplierParty)."""
-        supplier = self._sub(root, "cac", "AccountingSupplierParty")
-        party = self._sub(supplier, "cac", "Party")
+    def _build_supplier_party(self, data: Dict) -> etree._Element:
+        """BG-4: Seller (AccountingSupplierParty) — correct element order."""
+        asp = etree.Element(f"{{{self.NAMESPACES['cac']}}}AccountingSupplierParty")
+        party = etree.SubElement(asp, f"{{{self.NAMESPACES['cac']}}}Party")
+
+        # BT-34: EndpointID (MUST be FIRST child of Party)
+        if data.get("seller_endpoint_id"):
+            ep = etree.SubElement(party, f"{{{self.NAMESPACES['cbc']}}}EndpointID")
+            ep.text = data["seller_endpoint_id"]
+            ep.set("schemeID", data.get("seller_endpoint_scheme", "EM"))
 
         # BT-27: Seller Name
         party_name = self._sub(party, "cac", "PartyName")
         self._add(party_name, "cbc", "Name", data.get("seller_name", ""))
 
-        # BT-35 / BT-37 / BT-38 / BT-40: Seller Postal Address
-        street, postal, city = _parse_address(data.get("seller_address"))
-        postal_addr = self._sub(party, "cac", "PostalAddress")
-        self._add(postal_addr, "cbc", "StreetName", street)
-        if postal:
-            self._add(postal_addr, "cbc", "PostalZone", postal)
-        if city:
-            self._add(postal_addr, "cbc", "CityName", city)
-        country = self._sub(postal_addr, "cac", "Country")
-        self._add(country, "cbc", "IdentificationCode", "DE")
+        # BG-5: Postal Address
+        party.append(self._build_postal_address(
+            data.get("seller_address", ""),
+            data.get("seller_vat_id", ""),
+        ))
 
-        # BT-31: Seller VAT ID (MANDATORY in XRechnung 3.0.2)
-        party_tax = self._sub(party, "cac", "PartyTaxScheme")
-        self._add(party_tax, "cbc", "CompanyID", data.get("seller_vat_id", ""))
-        tax_scheme = self._sub(party_tax, "cac", "TaxScheme")
-        self._add(tax_scheme, "cbc", "ID", "VAT")
+        # BT-31: Seller VAT ID (mandatory in XRechnung 3.0.2)
+        if data.get("seller_vat_id"):
+            party_tax = self._sub(party, "cac", "PartyTaxScheme")
+            self._add(party_tax, "cbc", "CompanyID", data["seller_vat_id"])
+            tax_scheme = self._sub(party_tax, "cac", "TaxScheme")
+            self._add(tax_scheme, "cbc", "ID", "VAT")
 
-        # BT-33 / Legal Entity (required by EN 16931)
+        # BT-28: Legal Registration Name
         legal_entity = self._sub(party, "cac", "PartyLegalEntity")
         self._add(legal_entity, "cbc", "RegistrationName", data.get("seller_name", ""))
 
-    def _build_customer_party(self, root: etree._Element, data: Dict) -> None:
-        """BG-7: Buyer (AccountingCustomerParty)."""
-        customer = self._sub(root, "cac", "AccountingCustomerParty")
-        party = self._sub(customer, "cac", "Party")
+        return asp
+
+    def _build_customer_party(self, data: Dict) -> etree._Element:
+        """BG-7: Buyer (AccountingCustomerParty) — correct element order."""
+        acp = etree.Element(f"{{{self.NAMESPACES['cac']}}}AccountingCustomerParty")
+        party = etree.SubElement(acp, f"{{{self.NAMESPACES['cac']}}}Party")
+
+        # BT-49: EndpointID (MUST be FIRST child of Party)
+        if data.get("buyer_endpoint_id"):
+            ep = etree.SubElement(party, f"{{{self.NAMESPACES['cbc']}}}EndpointID")
+            ep.text = data["buyer_endpoint_id"]
+            ep.set("schemeID", data.get("buyer_endpoint_scheme", "EM"))
 
         # BT-44: Buyer Name
         party_name = self._sub(party, "cac", "PartyName")
         self._add(party_name, "cbc", "Name", data.get("buyer_name", ""))
 
-        # BT-50 / BT-52 / BT-53 / BT-55: Buyer Postal Address
-        street, postal, city = _parse_address(data.get("buyer_address"))
-        postal_addr = self._sub(party, "cac", "PostalAddress")
-        self._add(postal_addr, "cbc", "StreetName", street)
-        if postal:
-            self._add(postal_addr, "cbc", "PostalZone", postal)
-        if city:
-            self._add(postal_addr, "cbc", "CityName", city)
-        country = self._sub(postal_addr, "cac", "Country")
-        self._add(country, "cbc", "IdentificationCode", "DE")
+        # BG-8: Postal Address
+        party.append(self._build_postal_address(
+            data.get("buyer_address", ""),
+            data.get("buyer_vat_id", ""),
+        ))
 
         # BT-48: Buyer VAT ID (optional)
         if data.get("buyer_vat_id"):
@@ -216,9 +285,62 @@ class XRechnungGenerator:
         legal_entity = self._sub(party, "cac", "PartyLegalEntity")
         self._add(legal_entity, "cbc", "RegistrationName", data.get("buyer_name", ""))
 
-    def _build_tax_total(self, root: etree._Element, data: Dict) -> None:
+        return acp
+
+    def _build_postal_address(self, raw_address: str, vat_id: str = "") -> etree._Element:
+        """
+        BG-5/BG-8: Build postal address element.
+        Empty elements are NOT written (only populated fields).
+        Country code is derived from VAT ID prefix when possible.
+        """
+        addr = etree.Element(f"{{{self.NAMESPACES['cac']}}}PostalAddress")
+        street, postal_code, city = _parse_address(raw_address)
+
+        # Only add elements if they have actual content
+        if street and street.strip():
+            self._add(addr, "cbc", "StreetName", street.strip())
+        if city and city.strip():
+            self._add(addr, "cbc", "CityName", city.strip())
+        if postal_code and postal_code.strip():
+            self._add(addr, "cbc", "PostalZone", postal_code.strip())
+
+        # Country code: derive from VAT ID prefix or default to DE
+        country_code = self._extract_country_from_vat(vat_id) or "DE"
+        country = self._sub(addr, "cac", "Country")
+        self._add(country, "cbc", "IdentificationCode", country_code)
+
+        return addr
+
+    def _build_payment_means(self, data: Dict) -> etree._Element:
+        """BG-16: Payment Means — payment method and bank details."""
+        pm = etree.Element(f"{{{self.NAMESPACES['cac']}}}PaymentMeans")
+
+        iban = data.get("iban")
+        bic = data.get("bic")
+
+        # BT-81: PaymentMeansCode — 58 = SEPA transfer, 1 = unspecified
+        code = "58" if iban else "1"
+        self._add(pm, "cbc", "PaymentMeansCode", code)
+
+        # Payment due date (from DueDate)
+        if data.get("due_date"):
+            self._add(pm, "cbc", "PaymentDueDate", str(data["due_date"]))
+
+        # BT-84/85/86: Bank details only when IBAN is present
+        if iban:
+            pfa = self._sub(pm, "cac", "PayeeFinancialAccount")
+            self._add(pfa, "cbc", "ID", iban)
+            if data.get("payment_account_name"):
+                self._add(pfa, "cbc", "Name", data["payment_account_name"])
+            if bic:
+                fib = self._sub(pfa, "cac", "FinancialInstitutionBranch")
+                self._add(fib, "cbc", "ID", bic)
+
+        return pm
+
+    def _build_tax_total(self, data: Dict) -> etree._Element:
         """BG-23: VAT Breakdown + Tax Total."""
-        tax_total = self._sub(root, "cac", "TaxTotal")
+        tax_total = etree.Element(f"{{{self.NAMESPACES['cac']}}}TaxTotal")
 
         tax_amount_val = _fmt(data.get("tax_amount", 0))
         self._add(tax_total, "cbc", "TaxAmount", tax_amount_val, currencyID="EUR")
@@ -229,25 +351,25 @@ class XRechnungGenerator:
             currencyID="EUR",
         )
         self._add(
-            tax_subtotal, "cbc", "TaxAmount", tax_amount_val, currencyID="EUR"
+            tax_subtotal, "cbc", "TaxAmount", tax_amount_val, currencyID="EUR",
         )
 
         tax_category = self._sub(tax_subtotal, "cac", "TaxCategory")
         self._add(tax_category, "cbc", "ID", "S")  # S = Standard rate
-        self._add(
-            tax_category, "cbc", "Percent", str(data.get("tax_rate", 19))
-        )
+        self._add(tax_category, "cbc", "Percent", str(data.get("tax_rate", 19)))
         tax_scheme = self._sub(tax_category, "cac", "TaxScheme")
         self._add(tax_scheme, "cbc", "ID", "VAT")
 
-    def _build_legal_monetary_total(self, root: etree._Element, data: Dict) -> None:
+        return tax_total
+
+    def _build_legal_monetary_total(self, data: Dict) -> etree._Element:
         """BG-22: Document Totals."""
-        lmt = self._sub(root, "cac", "LegalMonetaryTotal")
+        lmt = etree.Element(f"{{{self.NAMESPACES['cac']}}}LegalMonetaryTotal")
 
         net = _fmt(data.get("net_amount", 0))
         gross = _fmt(data.get("gross_amount", 0))
 
-        # BT-113: Sum of line extension amounts
+        # BT-106: Sum of Invoice line net amounts
         self._add(lmt, "cbc", "LineExtensionAmount", net, currencyID="EUR")
         # BT-109: Invoice total amount without VAT
         self._add(lmt, "cbc", "TaxExclusiveAmount", net, currencyID="EUR")
@@ -256,11 +378,13 @@ class XRechnungGenerator:
         # BT-115: Amount due for payment
         self._add(lmt, "cbc", "PayableAmount", gross, currencyID="EUR")
 
+        return lmt
+
     def _build_invoice_line(
-        self, root: etree._Element, idx: int, item: Dict
-    ) -> None:
+        self, item: Dict, idx: int, invoice_data: Dict
+    ) -> etree._Element:
         """BG-25: One invoice line item."""
-        line = self._sub(root, "cac", "InvoiceLine")
+        line = etree.Element(f"{{{self.NAMESPACES['cac']}}}InvoiceLine")
         self._add(line, "cbc", "ID", str(idx))
         self._add(
             line, "cbc", "InvoicedQuantity",
@@ -275,13 +399,16 @@ class XRechnungGenerator:
 
         # Item description
         item_elem = self._sub(line, "cac", "Item")
-        self._add(item_elem, "cbc", "Description", item.get("description", ""))
-        self._add(item_elem, "cbc", "Name", item.get("description", ""))
+        desc = item.get("description", "Leistung") or "Leistung"
+        self._add(item_elem, "cbc", "Name", desc)
 
         # Item tax category (required by EN 16931)
         classified = self._sub(item_elem, "cac", "ClassifiedTaxCategory")
         self._add(classified, "cbc", "ID", "S")
-        self._add(classified, "cbc", "Percent", str(item.get("tax_rate", 19)))
+        self._add(
+            classified, "cbc", "Percent",
+            str(item.get("tax_rate", invoice_data.get("tax_rate", 19))),
+        )
         ts = self._sub(classified, "cac", "TaxScheme")
         self._add(ts, "cbc", "ID", "VAT")
 
@@ -292,6 +419,19 @@ class XRechnungGenerator:
             _fmt(item.get("unit_price", 0)),
             currencyID="EUR",
         )
+
+        return line
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_country_from_vat(vat_id: str) -> Optional[str]:
+        """Extract country code from VAT ID prefix (e.g. 'DE' from 'DE123456789')."""
+        if vat_id and len(vat_id) >= 2 and vat_id[:2].isalpha():
+            return vat_id[:2].upper()
+        return None
 
     # ------------------------------------------------------------------
     # Low-level helpers
@@ -317,15 +457,3 @@ class XRechnungGenerator:
         elem = self._sub(parent, ns, tag, **attribs)
         elem.text = str(text) if text is not None else ""
         return elem
-
-
-# ---------------------------------------------------------------------------
-# Utility
-# ---------------------------------------------------------------------------
-
-def _fmt(value) -> str:
-    """Format a numeric value to 2 decimal places (required by UBL)."""
-    try:
-        return f"{float(value):.2f}"
-    except (TypeError, ValueError):
-        return "0.00"

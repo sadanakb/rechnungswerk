@@ -46,6 +46,16 @@ export interface InvoiceCreate {
   buyer_address: string
   line_items: LineItem[]
   tax_rate: number
+  // Payment details (BG-16)
+  iban?: string
+  bic?: string
+  payment_account_name?: string
+  // Routing & Reference
+  buyer_reference?: string
+  seller_endpoint_id?: string
+  seller_endpoint_scheme?: string
+  buyer_endpoint_id?: string
+  buyer_endpoint_scheme?: string
 }
 
 export interface Invoice {
@@ -59,6 +69,16 @@ export interface Invoice {
   net_amount: number
   tax_amount: number
   gross_amount: number
+  // Payment details (BG-16)
+  iban?: string
+  bic?: string
+  payment_account_name?: string
+  // Routing & Reference
+  buyer_reference?: string
+  seller_endpoint_id?: string
+  seller_endpoint_scheme?: string
+  buyer_endpoint_id?: string
+  buyer_endpoint_scheme?: string
   source_type: string
   ocr_confidence?: number
   validation_status: string

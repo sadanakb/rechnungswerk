@@ -25,9 +25,15 @@ interface EditableFields {
   seller_name: string
   seller_vat_id: string
   seller_address: string
+  seller_endpoint_id: string
   buyer_name: string
   buyer_vat_id: string
   buyer_address: string
+  buyer_reference: string
+  buyer_endpoint_id: string
+  iban: string
+  bic: string
+  payment_account_name: string
   net_amount: string
   tax_amount: string
   gross_amount: string
@@ -43,9 +49,15 @@ function fieldsFromOCR(ocr: OCRResult): EditableFields {
     seller_name: String(f.seller_name ?? ''),
     seller_vat_id: String(f.seller_vat_id ?? ''),
     seller_address: String(f.seller_address ?? ''),
+    seller_endpoint_id: String(f.seller_endpoint_id ?? ''),
     buyer_name: String(f.buyer_name ?? ''),
     buyer_vat_id: String(f.buyer_vat_id ?? ''),
     buyer_address: String(f.buyer_address ?? ''),
+    buyer_reference: String(f.buyer_reference ?? ''),
+    buyer_endpoint_id: String(f.buyer_endpoint_id ?? ''),
+    iban: String(f.iban ?? ''),
+    bic: String(f.bic ?? ''),
+    payment_account_name: String(f.payment_account_name ?? ''),
     net_amount: String(f.net_amount ?? ''),
     tax_amount: String(f.tax_amount ?? ''),
     gross_amount: String(f.gross_amount ?? ''),
@@ -60,9 +72,15 @@ const FIELD_LABELS: Record<keyof EditableFields, string> = {
   seller_name: 'Verkäufer Name (BT-27)',
   seller_vat_id: 'Verkäufer USt-IdNr. (BT-31)',
   seller_address: 'Verkäufer Adresse (BT-35)',
+  seller_endpoint_id: 'Verkäufer E-Mail (BT-34)',
   buyer_name: 'Käufer Name (BT-44)',
   buyer_vat_id: 'Käufer USt-IdNr. (BT-48)',
   buyer_address: 'Käufer Adresse (BT-50)',
+  buyer_reference: 'Leitweg-ID / Referenz (BT-10)',
+  buyer_endpoint_id: 'Käufer E-Mail (BT-49)',
+  iban: 'IBAN (BT-84)',
+  bic: 'BIC/SWIFT (BT-86)',
+  payment_account_name: 'Kontoinhaber (BT-85)',
   net_amount: 'Nettobetrag (BT-109)',
   tax_amount: 'MwSt-Betrag (BT-110)',
   gross_amount: 'Bruttobetrag (BT-112)',
@@ -129,9 +147,15 @@ export default function OCRPage() {
         seller_name: editedFields.seller_name || 'Unbekannt',
         seller_vat_id: editedFields.seller_vat_id || 'DE000000000',
         seller_address: editedFields.seller_address || '',
+        seller_endpoint_id: editedFields.seller_endpoint_id || undefined,
         buyer_name: editedFields.buyer_name || 'Unbekannt',
         buyer_vat_id: editedFields.buyer_vat_id || '',
         buyer_address: editedFields.buyer_address || '',
+        buyer_reference: editedFields.buyer_reference || undefined,
+        buyer_endpoint_id: editedFields.buyer_endpoint_id || undefined,
+        iban: editedFields.iban || undefined,
+        bic: editedFields.bic || undefined,
+        payment_account_name: editedFields.payment_account_name || undefined,
         tax_rate: taxRate,
         line_items: [
           {

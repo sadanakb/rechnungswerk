@@ -103,8 +103,16 @@ async def upload_pdf_for_ocr(
             'due_date': fields.get('due_date'),
             'seller_name': fields.get('seller_name'),
             'seller_vat_id': fields.get('seller_vat_id'),
+            'seller_address': fields.get('seller_address'),
+            'seller_endpoint_id': fields.get('seller_endpoint_id'),
             'buyer_name': fields.get('buyer_name'),
             'buyer_vat_id': fields.get('buyer_vat_id'),
+            'buyer_address': fields.get('buyer_address'),
+            'buyer_reference': fields.get('buyer_reference'),
+            'buyer_endpoint_id': fields.get('buyer_endpoint_id'),
+            'iban': fields.get('iban'),
+            'bic': fields.get('bic'),
+            'payment_account_name': fields.get('payment_account_name'),
             'net_amount': fields.get('net_amount'),
             'tax_amount': fields.get('tax_amount'),
             'gross_amount': fields.get('gross_amount'),
@@ -168,6 +176,15 @@ async def create_invoice(
         gross_amount=gross_amount,
         tax_rate=invoice.tax_rate,
         line_items=[item.dict() for item in invoice.line_items],
+        # EN 16931 compliance fields
+        iban=invoice.iban,
+        bic=invoice.bic,
+        payment_account_name=invoice.payment_account_name,
+        buyer_reference=invoice.buyer_reference,
+        seller_endpoint_id=invoice.seller_endpoint_id,
+        seller_endpoint_scheme=invoice.seller_endpoint_scheme,
+        buyer_endpoint_id=invoice.buyer_endpoint_id,
+        buyer_endpoint_scheme=invoice.buyer_endpoint_scheme,
         source_type="manual",
         validation_status="pending"
     )
@@ -207,7 +224,16 @@ async def generate_xrechnung(
         'tax_amount': invoice.tax_amount,
         'gross_amount': invoice.gross_amount,
         'tax_rate': invoice.tax_rate,
-        'line_items': invoice.line_items or []
+        'line_items': invoice.line_items or [],
+        # EN 16931 compliance fields
+        'iban': invoice.iban,
+        'bic': invoice.bic,
+        'payment_account_name': invoice.payment_account_name,
+        'buyer_reference': invoice.buyer_reference,
+        'seller_endpoint_id': invoice.seller_endpoint_id,
+        'seller_endpoint_scheme': invoice.seller_endpoint_scheme,
+        'buyer_endpoint_id': invoice.buyer_endpoint_id,
+        'buyer_endpoint_scheme': invoice.buyer_endpoint_scheme,
     }
     
     # Generate XML
