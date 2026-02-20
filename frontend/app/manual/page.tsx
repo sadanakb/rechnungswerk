@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Download } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Download, CreditCard, Network } from 'lucide-react'
 import { createInvoice, generateXRechnung, type InvoiceCreate } from '@/lib/api'
 
 type FormData = InvoiceCreate
@@ -28,7 +28,7 @@ export default function ManualPage() {
   const [success, setSuccess] = useState<{ invoiceId: string; downloadUrl: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const { register, control, handleSubmit } = useForm<FormData>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<FormData>({
     defaultValues: {
       invoice_number: '',
       invoice_date: new Date().toISOString().split('T')[0],
@@ -41,6 +41,12 @@ export default function ManualPage() {
       buyer_address: '',
       tax_rate: 19,
       line_items: [{ description: '', quantity: 1, unit_price: 0, net_amount: 0, tax_rate: 19 }],
+      iban: '',
+      bic: '',
+      payment_account_name: '',
+      buyer_reference: '',
+      seller_endpoint_id: '',
+      buyer_endpoint_id: '',
     },
   })
 
@@ -267,6 +273,91 @@ export default function ManualPage() {
                 rows={2}
                 className={inputClass}
                 placeholder="Kundenstraße 5, 10115 Berlin"
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* ---- Zahlungsinformationen ---- */}
+        <Section title="Zahlungsinformationen">
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard size={16} className="text-gray-400" />
+            <p className="text-xs text-gray-400">BG-16 · Bankverbindung für SEPA-Zahlung</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>
+                IBAN <BT>BT-84</BT>
+                <span className="ml-1 text-xs font-normal text-gray-400">(empfohlen)</span>
+              </label>
+              <input
+                {...register('iban')}
+                className={`${inputClass} font-mono`}
+                placeholder="DE89 3704 0044 0532 0130 00"
+              />
+              {errors.iban && <p className="text-red-500 text-xs mt-1">{errors.iban.message}</p>}
+            </div>
+            <div>
+              <label className={labelClass}>
+                BIC/SWIFT <BT>BT-86</BT>
+              </label>
+              <input
+                {...register('bic')}
+                className={`${inputClass} font-mono`}
+                placeholder="COBADEFFXXX"
+              />
+              {errors.bic && <p className="text-red-500 text-xs mt-1">{errors.bic.message}</p>}
+            </div>
+            <div>
+              <label className={labelClass}>Kontoinhaber <BT>BT-85</BT></label>
+              <input
+                {...register('payment_account_name')}
+                className={inputClass}
+                placeholder="Firmenname GmbH"
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* ---- Routing & Referenz ---- */}
+        <Section title="Routing & Referenz">
+          <div className="flex items-center gap-2 mb-3">
+            <Network size={16} className="text-gray-400" />
+            <p className="text-xs text-gray-400">Elektronische Adressen und Referenzen</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>
+                Leitweg-ID / Bestellreferenz <BT>BT-10</BT>
+                <span className="ml-1 text-xs font-normal text-orange-500">(Pflicht bei Behörden)</span>
+              </label>
+              <input
+                {...register('buyer_reference')}
+                className={inputClass}
+                placeholder="991-12345-67"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Pflicht für B2G-Rechnungen (z.B. 991-12345-67)
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>
+                Elektron. Adresse Verkäufer <BT>BT-34</BT>
+              </label>
+              <input
+                {...register('seller_endpoint_id')}
+                className={inputClass}
+                placeholder="rechnung@musterfirma.de"
+              />
+            </div>
+            <div>
+              <label className={labelClass}>
+                Elektron. Adresse Käufer <BT>BT-49</BT>
+              </label>
+              <input
+                {...register('buyer_endpoint_id')}
+                className={inputClass}
+                placeholder="eingangsrechnungen@kunde.de"
               />
             </div>
           </div>
