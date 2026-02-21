@@ -14,6 +14,7 @@ venv/
 data/uploads/
 data/xml_output/
 data/*.db
+data/.api_key
 
 # Node / Frontend
 node_modules/

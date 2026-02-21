@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     kosit_validator_url: str = "http://localhost:8081/validate"
     kosit_health_check_interval: int = 300  # 5 minutes
     
+    # Auth
+    require_api_key: bool = False  # True für Produktion, False für lokale Entwicklung
+
     # Upload Settings
     max_upload_size_mb: int = 10
     allowed_extensions: List[str] = [".pdf", ".xml"]

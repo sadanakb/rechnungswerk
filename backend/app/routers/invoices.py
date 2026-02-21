@@ -2,6 +2,7 @@
 Invoice processing endpoints
 """
 import logging
+import tempfile
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
@@ -12,6 +13,8 @@ from app.schemas import InvoiceCreate, InvoiceResponse, OCRResult
 from app.ocr_pipeline import OCRPipeline
 from app.ollama_extractor import extract_invoice_fields as ollama_extract
 from app.xrechnung_generator import XRechnungGenerator
+from app.auth import verify_api_key
+from app.config import settings
 import uuid
 import os
 import io
@@ -20,7 +23,7 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 ocr_pipeline = OCRPipeline()
 xrechnung_gen = XRechnungGenerator()
 
@@ -30,6 +33,13 @@ XML_DIR = "data/xml_output"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(XML_DIR, exist_ok=True)
 
+# Resolved base paths for path traversal protection (K2)
+_UPLOAD_BASE = os.path.realpath(UPLOAD_DIR)
+_XML_BASE = os.path.realpath(XML_DIR)
+
+# Max upload size in bytes (K3)
+_MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
+
 
 @router.post("/upload-ocr", response_model=OCRResult)
 async def upload_pdf_for_ocr(
@@ -38,30 +48,38 @@ async def upload_pdf_for_ocr(
 ):
     """
     Upload PDF invoice for OCR processing
-    
+
     Steps:
     1. Save uploaded PDF
     2. Extract text using Tesseract OCR
     3. Parse invoice fields using regex
     4. Return extracted data for user review
     """
-    # Validate file type
-    if not file.filename.endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
-    
+    # Validate file type (K3 — None-safe)
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Nur PDF-Dateien erlaubt")
+
     # Generate unique IDs
     upload_id = f"upload-{uuid.uuid4().hex[:8]}"
     invoice_id = f"INV-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
-    
-    # Save uploaded file
+
+    # Save uploaded file with size validation (K3)
     file_path = os.path.join(UPLOAD_DIR, f"{upload_id}.pdf")
     try:
         contents = await file.read()
+        if len(contents) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Datei zu groß (max. {settings.max_upload_size_mb} MB)"
+            )
         with open(file_path, "wb") as f:
             f.write(contents)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
-    
+        logger.error("Datei speichern fehlgeschlagen: %s", e)
+        raise HTTPException(status_code=500, detail="Datei konnte nicht gespeichert werden")
+
     # Log upload
     upload_log = UploadLog(
         upload_id=upload_id,
@@ -73,7 +91,7 @@ async def upload_pdf_for_ocr(
     )
     db.add(upload_log)
     db.commit()
-    
+
     # Extract invoice fields – primary: Ollama Vision; fallback: Tesseract
     try:
         logger.info("Starting OCR extraction for upload_id=%s via Ollama Vision", upload_id)
@@ -94,7 +112,7 @@ async def upload_pdf_for_ocr(
             upload_log.upload_status = "error"
             upload_log.error_message = "No content extracted from PDF"
             db.commit()
-            raise HTTPException(status_code=400, detail="Failed to extract content from PDF")
+            raise HTTPException(status_code=400, detail="PDF-Inhalt konnte nicht extrahiert werden")
 
         # Build backward-compatible suggestions dict
         suggestions = {
@@ -138,7 +156,7 @@ async def upload_pdf_for_ocr(
         upload_log.upload_status = "error"
         upload_log.error_message = str(e)
         db.commit()
-        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="OCR-Verarbeitung fehlgeschlagen")
 
 
 @router.post("/invoices", response_model=InvoiceResponse)
@@ -148,17 +166,17 @@ async def create_invoice(
 ):
     """
     Create invoice manually (without OCR)
-    
+
     User provides all invoice fields via form.
     """
     # Generate invoice ID
     invoice_id = f"INV-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
-    
+
     # Calculate amounts
     net_amount = sum(item.net_amount for item in invoice.line_items)
     tax_amount = net_amount * (invoice.tax_rate / 100)
     gross_amount = net_amount + tax_amount
-    
+
     # Create invoice record
     db_invoice = Invoice(
         invoice_id=invoice_id,
@@ -175,7 +193,7 @@ async def create_invoice(
         tax_amount=tax_amount,
         gross_amount=gross_amount,
         tax_rate=invoice.tax_rate,
-        line_items=[item.dict() for item in invoice.line_items],
+        line_items=[item.model_dump() for item in invoice.line_items],
         # EN 16931 compliance fields
         iban=invoice.iban,
         bic=invoice.bic,
@@ -188,11 +206,11 @@ async def create_invoice(
         source_type="manual",
         validation_status="pending"
     )
-    
+
     db.add(db_invoice)
     db.commit()
     db.refresh(db_invoice)
-    
+
     return db_invoice
 
 
@@ -207,8 +225,8 @@ async def generate_xrechnung(
     # Get invoice
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-    
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
     # Prepare invoice data
     invoice_data = {
         'invoice_number': invoice.invoice_number,
@@ -235,17 +253,17 @@ async def generate_xrechnung(
         'buyer_endpoint_id': invoice.buyer_endpoint_id,
         'buyer_endpoint_scheme': invoice.buyer_endpoint_scheme,
     }
-    
+
     # Generate XML
     try:
         xml_content = xrechnung_gen.generate_xml(invoice_data)
-        
+
         # Save XML file
         xml_filename = f"{invoice_id}_xrechnung.xml"
         xml_path = os.path.join(XML_DIR, xml_filename)
         with open(xml_path, 'w', encoding='utf-8') as f:
             f.write(xml_content)
-        
+
         # Update invoice record
         invoice.xrechnung_xml_path = xml_path
         invoice.validation_status = "xrechnung_generated"
@@ -253,13 +271,13 @@ async def generate_xrechnung(
 
         return {
             "invoice_id": invoice_id,
-            "xml_path": xml_path,
             "download_url": f"/api/invoices/{invoice_id}/download-xrechnung",
-            "message": "XRechnung XML generated successfully"
+            "message": "XRechnung XML erfolgreich generiert"
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"XML generation failed: {str(e)}")
+        logger.error("XML-Generierung fehlgeschlagen für %s: %s", invoice_id, e)
+        raise HTTPException(status_code=500, detail="XML-Generierung fehlgeschlagen")
 
 
 @router.get("/invoices", response_model=List[InvoiceResponse])
@@ -278,7 +296,7 @@ async def get_invoice(invoice_id: str, db: Session = Depends(get_db)):
     """Get single invoice by ID"""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
     return invoice
 
 
@@ -291,21 +309,27 @@ async def download_xrechnung(invoice_id: str, db: Session = Depends(get_db)):
     """
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
     if not invoice.xrechnung_xml_path:
         raise HTTPException(
             status_code=404,
-            detail="XRechnung XML has not been generated yet. "
-                   "Call POST /api/invoices/{invoice_id}/generate-xrechnung first."
+            detail="XRechnung XML wurde noch nicht generiert. "
+                   "Zuerst POST /api/invoices/{invoice_id}/generate-xrechnung aufrufen."
         )
 
-    xml_file_path = invoice.xrechnung_xml_path
-    if not os.path.isfile(xml_file_path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"XML file not found on disk: {xml_file_path}"
+    # K2: Path Traversal Protection — Pfad gegen erlaubtes Verzeichnis validieren
+    xml_file_path = os.path.realpath(invoice.xrechnung_xml_path)
+    if not xml_file_path.startswith(_XML_BASE):
+        logger.warning(
+            "Path traversal attempt blocked: invoice_id=%s, path=%s",
+            invoice_id, invoice.xrechnung_xml_path
         )
+        raise HTTPException(status_code=403, detail="Zugriff verweigert")
+
+    if not os.path.isfile(xml_file_path):
+        logger.error("XML-Datei nicht gefunden: %s", xml_file_path)
+        raise HTTPException(status_code=404, detail="XRechnung XML-Datei nicht gefunden")
 
     with open(xml_file_path, "rb") as f:
         xml_bytes = f.read()

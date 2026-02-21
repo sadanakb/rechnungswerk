@@ -133,14 +133,20 @@ def _extract_pdf_text(pdf_path: str) -> str:
 
 def _pdf_to_base64_png(pdf_path: str, dpi: int = 150) -> str:
     """Convert first PDF page to base64-encoded PNG for vision model."""
+    import tempfile
+    import os
     from pdf2image import convert_from_path
     images = convert_from_path(pdf_path, first_page=1, last_page=1, dpi=dpi)
     if not images:
         raise ValueError("pdf2image returned no pages")
-    img_path = "/tmp/rw_invoice_vision.png"
-    images[0].save(img_path, format="PNG")
-    with open(img_path, "rb") as fh:
-        return base64.b64encode(fh.read()).decode()
+    fd, img_path = tempfile.mkstemp(suffix=".png", prefix="rw_vision_")
+    os.close(fd)
+    try:
+        images[0].save(img_path, format="PNG")
+        with open(img_path, "rb") as fh:
+            return base64.b64encode(fh.read()).decode()
+    finally:
+        os.unlink(img_path)
 
 
 def _parse_json(raw: str) -> dict:
