@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Plus,
 } from 'lucide-react'
-import { listInvoices, generateXRechnung, type Invoice } from '@/lib/api'
+import { listInvoices, generateXRechnung, getErrorMessage, API_BASE, type Invoice } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Status badge config
@@ -81,18 +81,18 @@ function SourceBadge({ source }: { source: string }) {
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatingId, setGeneratingId] = useState<string | null>(null)
-
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
 
   const fetchInvoices = async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await listInvoices()
-      setInvoices(data)
+      setInvoices(data.items)
+      setTotal(data.total)
     } catch {
       setError('Backend nicht erreichbar. Läuft der Server auf Port 8001?')
     } finally {
@@ -110,8 +110,7 @@ export default function InvoicesPage() {
       await generateXRechnung(invoiceId)
       await fetchInvoices()
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } }; message?: string }
-      alert(e.response?.data?.detail ?? 'Fehler bei XML-Generierung')
+      alert(getErrorMessage(err, 'Fehler bei XML-Generierung'))
     } finally {
       setGeneratingId(null)
     }
@@ -128,7 +127,7 @@ export default function InvoicesPage() {
           <div>
             <h1 className="text-xl font-semibold text-gray-900">Rechnungen</h1>
             <p className="text-sm text-gray-400">
-              Modus C · {invoices.length} Rechnung{invoices.length !== 1 ? 'en' : ''}
+              Modus C · {total} Rechnung{total !== 1 ? 'en' : ''}
             </p>
           </div>
         </div>
@@ -299,9 +298,9 @@ export default function InvoicesPage() {
                         )}
 
                         {/* Download XML button */}
-                        {inv.xrechnung_xml_path && (
+                        {inv.xrechnung_available && (
                           <a
-                            href={`${apiBase}/api/invoices/${inv.invoice_id}/download-xrechnung`}
+                            href={`${API_BASE}/api/invoices/${inv.invoice_id}/download-xrechnung`}
                             className="flex items-center gap-1 text-xs text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors font-medium whitespace-nowrap border border-green-200"
                             download
                             title="XRechnung XML herunterladen"

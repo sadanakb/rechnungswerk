@@ -4,14 +4,14 @@ Invoice processing endpoints
 import logging
 import tempfile
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Path, Query, Request, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Invoice, UploadLog
-from app.schemas import InvoiceCreate, InvoiceResponse, OCRResult
+from app.schemas import InvoiceCreate, InvoiceResponse, InvoiceListResponse, OCRResult
 from app.ocr_pipeline import OCRPipeline
 from app.ollama_extractor import extract_invoice_fields as ollama_extract
 from app.xrechnung_generator import XRechnungGenerator
@@ -21,6 +21,7 @@ import uuid
 import os
 import io
 from datetime import datetime, date
+import re
 from typing import List
 
 logger = logging.getLogger(__name__)
@@ -60,8 +61,10 @@ async def upload_pdf_for_ocr(
     3. Parse invoice fields using regex
     4. Return extracted data for user review
     """
-    # Validate file type (K3 — None-safe)
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
+    # Validate file type (K3 — None-safe) + sanitize filename (M4)
+    raw_name = file.filename or ""
+    safe_name = re.sub(r"[^\w.\-]", "_", os.path.basename(raw_name))
+    if not safe_name.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Nur PDF-Dateien erlaubt")
 
     # Generate unique IDs
@@ -88,7 +91,7 @@ async def upload_pdf_for_ocr(
     # Log upload
     upload_log = UploadLog(
         upload_id=upload_id,
-        filename=file.filename,
+        filename=safe_name,
         file_type="pdf",
         file_size=len(contents),
         upload_status="processing",
@@ -223,7 +226,7 @@ async def create_invoice(
 @limiter.limit("20/minute")
 async def generate_xrechnung(
     request: Request,
-    invoice_id: str,
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db)
 ):
     """
@@ -287,19 +290,23 @@ async def generate_xrechnung(
         raise HTTPException(status_code=500, detail="XML-Generierung fehlgeschlagen")
 
 
-@router.get("/invoices", response_model=List[InvoiceResponse])
+@router.get("/invoices", response_model=InvoiceListResponse)
 async def list_invoices(
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(default=0, ge=0, description="Anzahl zu überspringender Einträge"),
+    limit: int = Query(default=50, ge=1, le=200, description="Max. Einträge (1-200)"),
     db: Session = Depends(get_db)
 ):
-    """List all invoices"""
+    """List all invoices with pagination"""
+    total = db.query(Invoice).count()
     invoices = db.query(Invoice).offset(skip).limit(limit).all()
-    return invoices
+    return InvoiceListResponse(items=invoices, total=total, skip=skip, limit=limit)
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
-async def get_invoice(invoice_id: str, db: Session = Depends(get_db)):
+async def get_invoice(
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
+    db: Session = Depends(get_db)
+):
     """Get single invoice by ID"""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
@@ -307,8 +314,41 @@ async def get_invoice(invoice_id: str, db: Session = Depends(get_db)):
     return invoice
 
 
+@router.delete("/invoices/{invoice_id}")
+async def delete_invoice(
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
+    db: Session = Depends(get_db)
+):
+    """Delete invoice and clean up associated files (M5)."""
+    invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Clean up XML file
+    if invoice.xrechnung_xml_path:
+        xml_real = os.path.realpath(invoice.xrechnung_xml_path)
+        if xml_real.startswith(_XML_BASE) and os.path.isfile(xml_real):
+            os.remove(xml_real)
+
+    # Clean up uploaded PDF (look for matching upload log)
+    for log in db.query(UploadLog).filter(UploadLog.invoice_id == invoice_id).all():
+        pdf_path = os.path.join(UPLOAD_DIR, f"{log.upload_id}.pdf")
+        pdf_real = os.path.realpath(pdf_path)
+        if pdf_real.startswith(_UPLOAD_BASE) and os.path.isfile(pdf_real):
+            os.remove(pdf_real)
+        db.delete(log)
+
+    db.delete(invoice)
+    db.commit()
+
+    return {"message": "Rechnung gelöscht", "invoice_id": invoice_id}
+
+
 @router.get("/invoices/{invoice_id}/download-xrechnung")
-async def download_xrechnung(invoice_id: str, db: Session = Depends(get_db)):
+async def download_xrechnung(
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
+    db: Session = Depends(get_db)
+):
     """
     Download XRechnung UBL XML file for an invoice.
 

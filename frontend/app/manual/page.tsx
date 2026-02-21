@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Download, CreditCard, Network } from 'lucide-react'
-import { createInvoice, generateXRechnung, type InvoiceCreate } from '@/lib/api'
+import { createInvoice, generateXRechnung, getErrorMessage, API_BASE, type InvoiceCreate } from '@/lib/api'
 
 type FormData = InvoiceCreate
 
@@ -75,12 +75,11 @@ export default function ManualPage() {
         invoiceId: invoice.invoice_id,
         downloadUrl:
           xmlResult?.download_url
-            ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}${xmlResult.download_url}`
-            : `http://localhost:8001/api/invoices/${invoice.invoice_id}/download-xrechnung`,
+            ? `${API_BASE}${xmlResult.download_url}`
+            : `${API_BASE}/api/invoices/${invoice.invoice_id}/download-xrechnung`,
       })
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } }; message?: string }
-      setError(e.response?.data?.detail ?? `Fehler: ${e.message}`)
+      setError(getErrorMessage(err, 'Rechnung konnte nicht erstellt werden'))
     } finally {
       setLoading(false)
     }

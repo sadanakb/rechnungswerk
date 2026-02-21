@@ -12,7 +12,7 @@ import {
   Edit2,
   Save,
 } from 'lucide-react'
-import { uploadPDFForOCR, createInvoice, generateXRechnung, type OCRResult } from '@/lib/api'
+import { uploadPDFForOCR, createInvoice, generateXRechnung, getErrorMessage, API_BASE, type OCRResult } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,8 +115,7 @@ export default function OCRPage() {
       setOcrResult(data)
       setEditedFields(fieldsFromOCR(data))
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } }; message?: string }
-      setError(e.response?.data?.detail ?? `Fehler: ${e.message}`)
+      setError(getErrorMessage(err, 'OCR-Verarbeitung fehlgeschlagen'))
     } finally {
       setUploading(false)
     }
@@ -172,13 +171,12 @@ export default function OCRPage() {
       const xmlResult = await generateXRechnung(invoice.invoice_id)
 
       const url = xmlResult?.download_url
-        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}${xmlResult.download_url}`
-        : `http://localhost:8001/api/invoices/${invoice.invoice_id}/download-xrechnung`
+        ? `${API_BASE}${xmlResult.download_url}`
+        : `${API_BASE}/api/invoices/${invoice.invoice_id}/download-xrechnung`
 
       setDownloadUrl(url)
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } }; message?: string }
-      setError(e.response?.data?.detail ?? 'Fehler bei XML-Generierung')
+      setError(getErrorMessage(err, 'Fehler bei XML-Generierung'))
     } finally {
       setGeneratingXML(false)
     }

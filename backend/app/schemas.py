@@ -98,13 +98,21 @@ class InvoiceResponse(BaseModel):
     ocr_confidence: Optional[float]
     validation_status: str
 
-    xrechnung_xml_path: Optional[str]
-    zugferd_pdf_path: Optional[str]
+    xrechnung_available: bool = False
+    zugferd_available: bool = False
 
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class InvoiceListResponse(BaseModel):
+    """Paginated invoice list"""
+    items: List[InvoiceResponse]
+    total: int
+    skip: int
+    limit: int
 
 
 class OCRResult(BaseModel):

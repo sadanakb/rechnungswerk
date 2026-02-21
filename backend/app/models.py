@@ -79,6 +79,14 @@ class Invoice(Base):
     upload_logs = relationship("UploadLog", back_populates="invoice")
     validation_results = relationship("ValidationResult", back_populates="invoice")
 
+    @property
+    def xrechnung_available(self) -> bool:
+        return bool(self.xrechnung_xml_path)
+
+    @property
+    def zugferd_available(self) -> bool:
+        return bool(self.zugferd_pdf_path)
+
 
 class UploadLog(Base):
     """Log of all uploads (PDF, XML)"""

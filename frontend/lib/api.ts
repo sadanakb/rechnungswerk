@@ -3,7 +3,7 @@
  */
 import axios from 'axios'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -21,6 +21,17 @@ api.interceptors.response.use(
 )
 
 export { api }
+
+/**
+ * Extract a human-readable error message from an Axios error (M7).
+ */
+export function getErrorMessage(err: unknown, fallback = 'Ein Fehler ist aufgetreten'): string {
+  if (err && typeof err === 'object') {
+    const axiosErr = err as { response?: { data?: { detail?: string } }; message?: string }
+    return axiosErr.response?.data?.detail ?? axiosErr.message ?? fallback
+  }
+  return fallback
+}
 
 // ---------------------------------------------------------------------------
 // TypeScript Types
@@ -82,8 +93,8 @@ export interface Invoice {
   source_type: string
   ocr_confidence?: number
   validation_status: string
-  xrechnung_xml_path?: string
-  zugferd_pdf_path?: string
+  xrechnung_available: boolean
+  zugferd_available: boolean
   created_at: string
 }
 
@@ -108,7 +119,6 @@ export interface HealthData {
 
 export interface GenerateXRechnungResult {
   invoice_id: string
-  xml_path: string
   /** Relative path e.g. /api/invoices/{id}/download-xrechnung */
   download_url: string
   message: string
@@ -140,8 +150,17 @@ export const createInvoice = async (data: InvoiceCreate): Promise<Invoice> => {
   return response.data
 }
 
-export const listInvoices = async (): Promise<Invoice[]> => {
-  const response = await api.get<Invoice[]>('/api/invoices')
+export interface InvoiceListResponse {
+  items: Invoice[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export const listInvoices = async (skip = 0, limit = 50): Promise<InvoiceListResponse> => {
+  const response = await api.get<InvoiceListResponse>('/api/invoices', {
+    params: { skip, limit },
+  })
   return response.data
 }
 
