@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # API Settings
     app_name: str = "RechnungsWerk"
     app_version: str = "1.0.0"
-    debug: bool = True
+    debug: bool = False
     
     # Database
     database_url: str = "sqlite:///./data/rechnungswerk.db"

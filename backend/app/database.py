@@ -1,10 +1,14 @@
 """
 Database connection and session management
 """
+import logging
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
 from app.models import Base
+
+logger = logging.getLogger(__name__)
 
 # Create SQLite engine
 engine = create_engine(
@@ -26,6 +30,10 @@ def get_db():
 
 
 def init_db():
-    """Initialize database (create all tables)"""
+    """Initialize database (create all tables).
+
+    NOTE: Für Produktion sollte Alembic für Migrationen verwendet werden.
+    create_all() ist nur für Entwicklung geeignet.
+    """
     Base.metadata.create_all(bind=engine)
-    print("[Database] Tables created successfully")
+    logger.info("[Database] Tables created successfully")

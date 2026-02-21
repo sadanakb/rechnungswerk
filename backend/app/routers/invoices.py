@@ -4,8 +4,10 @@ Invoice processing endpoints
 import logging
 import tempfile
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Invoice, UploadLog
@@ -22,6 +24,7 @@ from datetime import datetime, date
 from typing import List
 
 logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 ocr_pipeline = OCRPipeline()
@@ -42,7 +45,9 @@ _MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
 
 
 @router.post("/upload-ocr", response_model=OCRResult)
+@limiter.limit("10/minute")
 async def upload_pdf_for_ocr(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -215,7 +220,9 @@ async def create_invoice(
 
 
 @router.post("/invoices/{invoice_id}/generate-xrechnung")
+@limiter.limit("20/minute")
 async def generate_xrechnung(
+    request: Request,
     invoice_id: str,
     db: Session = Depends(get_db)
 ):

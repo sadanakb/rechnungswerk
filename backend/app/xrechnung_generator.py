@@ -132,6 +132,23 @@ class XRechnungGenerator:
 
         return errors
 
+    def _ensure_defaults(self, data: Dict) -> Dict:
+        """Ensure XRechnung 3.0.2 mandatory fields have fallback values."""
+        # BT-10: BuyerReference — Pflicht in XRechnung
+        if not data.get("buyer_reference"):
+            data["buyer_reference"] = "n/a"
+        # BT-34: Seller EndpointID — Pflicht in XRechnung
+        if not data.get("seller_endpoint_id"):
+            data["seller_endpoint_id"] = data.get("seller_vat_id") or "unknown@example.com"
+        if not data.get("seller_endpoint_scheme"):
+            data["seller_endpoint_scheme"] = "EM"
+        # BT-49: Buyer EndpointID — Pflicht in XRechnung
+        if not data.get("buyer_endpoint_id"):
+            data["buyer_endpoint_id"] = data.get("buyer_vat_id") or "unknown@example.com"
+        if not data.get("buyer_endpoint_scheme"):
+            data["buyer_endpoint_scheme"] = "EM"
+        return data
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -146,7 +163,18 @@ class XRechnungGenerator:
 
         Returns:
             Well-formed UTF-8 XML string (xml declaration included).
+
+        Raises:
+            ValueError: When mandatory fields are missing or amounts are inconsistent.
         """
+        # H8: Validate mandatory fields before generation
+        errors = self._validate_pre_generation(invoice_data)
+        if errors:
+            raise ValueError(f"Validierungsfehler: {'; '.join(errors)}")
+
+        # M8/M9: Ensure XRechnung Pflichtfelder have defaults
+        invoice_data = self._ensure_defaults(invoice_data)
+
         root = etree.Element(
             f"{{{self.NAMESPACES['ubl']}}}Invoice",
             nsmap=self.NAMESPACES,
@@ -176,9 +204,8 @@ class XRechnungGenerator:
         # BT-5: Currency Code
         self._add(root, "cbc", "DocumentCurrencyCode", "EUR")
 
-        # BT-10: Buyer Reference (Leitweg-ID) — optional but critical for B2G
-        if invoice_data.get("buyer_reference"):
-            self._add(root, "cbc", "BuyerReference", invoice_data["buyer_reference"])
+        # BT-10: Buyer Reference (Leitweg-ID) — Pflicht in XRechnung 3.0.2
+        self._add(root, "cbc", "BuyerReference", invoice_data["buyer_reference"])
 
         # === PARTIES ===
         root.append(self._build_supplier_party(invoice_data))
@@ -224,11 +251,10 @@ class XRechnungGenerator:
         asp = etree.Element(f"{{{self.NAMESPACES['cac']}}}AccountingSupplierParty")
         party = etree.SubElement(asp, f"{{{self.NAMESPACES['cac']}}}Party")
 
-        # BT-34: EndpointID (MUST be FIRST child of Party)
-        if data.get("seller_endpoint_id"):
-            ep = etree.SubElement(party, f"{{{self.NAMESPACES['cbc']}}}EndpointID")
-            ep.text = data["seller_endpoint_id"]
-            ep.set("schemeID", data.get("seller_endpoint_scheme", "EM"))
+        # BT-34: EndpointID (MUST be FIRST child of Party) — Pflicht in XRechnung 3.0.2
+        ep = etree.SubElement(party, f"{{{self.NAMESPACES['cbc']}}}EndpointID")
+        ep.text = data.get("seller_endpoint_id") or "unknown@example.com"
+        ep.set("schemeID", data.get("seller_endpoint_scheme", "EM"))
 
         # BT-27: Seller Name
         party_name = self._sub(party, "cac", "PartyName")
@@ -258,11 +284,10 @@ class XRechnungGenerator:
         acp = etree.Element(f"{{{self.NAMESPACES['cac']}}}AccountingCustomerParty")
         party = etree.SubElement(acp, f"{{{self.NAMESPACES['cac']}}}Party")
 
-        # BT-49: EndpointID (MUST be FIRST child of Party)
-        if data.get("buyer_endpoint_id"):
-            ep = etree.SubElement(party, f"{{{self.NAMESPACES['cbc']}}}EndpointID")
-            ep.text = data["buyer_endpoint_id"]
-            ep.set("schemeID", data.get("buyer_endpoint_scheme", "EM"))
+        # BT-49: EndpointID (MUST be FIRST child of Party) — Pflicht in XRechnung 3.0.2
+        ep = etree.SubElement(party, f"{{{self.NAMESPACES['cbc']}}}EndpointID")
+        ep.text = data.get("buyer_endpoint_id") or "unknown@example.com"
+        ep.set("schemeID", data.get("buyer_endpoint_scheme", "EM"))
 
         # BT-44: Buyer Name
         party_name = self._sub(party, "cac", "PartyName")
