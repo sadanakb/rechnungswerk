@@ -67,14 +67,42 @@ Du bist ein Experte fuer deutsche Rechnungen und E-Invoicing (XRechnung / ZUGFeR
 Analysiere den folgenden Rechnungstext und extrahiere ALLE Felder praezise.
 Regeln:
 - Datumsformat: YYYY-MM-DD (z.B. 2026-02-23)
-- IBAN: ohne Leerzeichen, Grossbuchstaben
+- IBAN: ohne Leerzeichen, Grossbuchstaben (z.B. DE89370400440532013000)
 - USt-IdNr: z.B. DE123456789
-- Betraege: als Dezimalzahlen (z.B. 1234.56, nicht 1.234,56)
+- Betraege: als Dezimalzahlen mit Punkt (z.B. 1234.56, NICHT 1.234,56)
 - Wenn ein Feld nicht gefunden wird: null verwenden
 - Line Items: Jede Rechnungsposition als separates Objekt im Array
 - Berechne net_amount pro Line Item: quantity * unit_price
 
-Rechnungstext:
+Beispiel-Extraktion (zeigt das erwartete Format):
+
+EINGABE-TEXT:
+Musterfirma GmbH | Musterstraße 1 | 60311 Frankfurt | USt-IdNr: DE123456789
+Rechnung Nr. RE-2026-042 vom 15.02.2026 | Faellig: 01.03.2026
+An: Beispiel AG, Hauptstraße 5, 10115 Berlin, DE987654321
+Pos. 1: Beratungsleistung Februar, 8 Std. à 150,00 EUR = 1.200,00 EUR
+Pos. 2: Reisekosten pauschal = 95,00 EUR
+Netto: 1.295,00 EUR | 19% MwSt: 246,05 EUR | Brutto: 1.541,05 EUR
+Zahlung: IBAN DE89370400440532013000 | BIC COBADEFFXXX | Kontoinhaber: Musterfirma GmbH
+
+AUSGABE-JSON:
+{{"invoice_number": "RE-2026-042", "invoice_date": "2026-02-15", "due_date": "2026-03-01",
+  "seller_name": "Musterfirma GmbH", "seller_vat_id": "DE123456789",
+  "seller_address": "Musterstra\u00dfe 1, 60311 Frankfurt",
+  "seller_endpoint_id": null,
+  "buyer_name": "Beispiel AG", "buyer_vat_id": "DE987654321",
+  "buyer_address": "Hauptstra\u00dfe 5, 10115 Berlin",
+  "buyer_reference": null, "buyer_endpoint_id": null,
+  "iban": "DE89370400440532013000", "bic": "COBADEFFXXX",
+  "payment_account_name": "Musterfirma GmbH",
+  "net_amount": 1295.00, "tax_rate": 19.0, "tax_amount": 246.05, "gross_amount": 1541.05,
+  "currency": "EUR",
+  "line_items": [
+    {{"description": "Beratungsleistung Februar", "quantity": 8.0, "unit_price": 150.00, "net_amount": 1200.00, "tax_rate": 19.0}},
+    {{"description": "Reisekosten pauschal", "quantity": 1.0, "unit_price": 95.00, "net_amount": 95.00, "tax_rate": 19.0}}
+  ]}}
+
+Jetzt extrahiere aus dem folgenden Rechnungstext:
 ---
 {text}
 ---
