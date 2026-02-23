@@ -201,8 +201,9 @@ class XRechnungGenerator:
         # BT-3: Invoice Type Code (380 = Commercial Invoice)
         self._add(root, "cbc", "InvoiceTypeCode", "380")
 
-        # BT-5: Currency Code
-        self._add(root, "cbc", "DocumentCurrencyCode", "EUR")
+        # BT-5: Currency Code (parametrisiert fuer Multi-Waehrungs-Support)
+        currency = invoice_data.get("currency", "EUR")
+        self._add(root, "cbc", "DocumentCurrencyCode", currency)
 
         # BT-10: Buyer Reference (Leitweg-ID) — Pflicht in XRechnung 3.0.2
         self._add(root, "cbc", "BuyerReference", invoice_data["buyer_reference"])
@@ -215,10 +216,10 @@ class XRechnungGenerator:
         root.append(self._build_payment_means(invoice_data))
 
         # === TAX TOTAL (BG-23) ===
-        root.append(self._build_tax_total(invoice_data))
+        root.append(self._build_tax_total(invoice_data, currency))
 
         # === DOCUMENT TOTALS (BG-22) ===
-        root.append(self._build_legal_monetary_total(invoice_data))
+        root.append(self._build_legal_monetary_total(invoice_data, currency))
 
         # === INVOICE LINES (BG-25) ===
         line_items = invoice_data.get("line_items") or []
@@ -232,7 +233,7 @@ class XRechnungGenerator:
                 "tax_rate": invoice_data.get("tax_rate", 19.0),
             }]
         for i, item in enumerate(line_items, start=1):
-            root.append(self._build_invoice_line(item, i, invoice_data))
+            root.append(self._build_invoice_line(item, i, invoice_data, currency))
 
         xml_bytes = etree.tostring(
             root,
@@ -363,31 +364,32 @@ class XRechnungGenerator:
 
         return pm
 
-    def _build_tax_total(self, data: Dict) -> etree._Element:
+    def _build_tax_total(self, data: Dict, currency: str = "EUR") -> etree._Element:
         """BG-23: VAT Breakdown + Tax Total."""
         tax_total = etree.Element(f"{{{self.NAMESPACES['cac']}}}TaxTotal")
 
         tax_amount_val = _fmt(data.get("tax_amount", 0))
-        self._add(tax_total, "cbc", "TaxAmount", tax_amount_val, currencyID="EUR")
+        self._add(tax_total, "cbc", "TaxAmount", tax_amount_val, currencyID=currency)
 
         tax_subtotal = self._sub(tax_total, "cac", "TaxSubtotal")
         self._add(
             tax_subtotal, "cbc", "TaxableAmount", _fmt(data.get("net_amount", 0)),
-            currencyID="EUR",
+            currencyID=currency,
         )
         self._add(
-            tax_subtotal, "cbc", "TaxAmount", tax_amount_val, currencyID="EUR",
+            tax_subtotal, "cbc", "TaxAmount", tax_amount_val, currencyID=currency,
         )
 
         tax_category = self._sub(tax_subtotal, "cac", "TaxCategory")
         self._add(tax_category, "cbc", "ID", "S")  # S = Standard rate
-        self._add(tax_category, "cbc", "Percent", str(data.get("tax_rate", 19)))
+        _rate = float(data.get("tax_rate", 19))
+        self._add(tax_category, "cbc", "Percent", str(int(_rate)) if _rate == int(_rate) else str(_rate))
         tax_scheme = self._sub(tax_category, "cac", "TaxScheme")
         self._add(tax_scheme, "cbc", "ID", "VAT")
 
         return tax_total
 
-    def _build_legal_monetary_total(self, data: Dict) -> etree._Element:
+    def _build_legal_monetary_total(self, data: Dict, currency: str = "EUR") -> etree._Element:
         """BG-22: Document Totals."""
         lmt = etree.Element(f"{{{self.NAMESPACES['cac']}}}LegalMonetaryTotal")
 
@@ -395,18 +397,18 @@ class XRechnungGenerator:
         gross = _fmt(data.get("gross_amount", 0))
 
         # BT-106: Sum of Invoice line net amounts
-        self._add(lmt, "cbc", "LineExtensionAmount", net, currencyID="EUR")
+        self._add(lmt, "cbc", "LineExtensionAmount", net, currencyID=currency)
         # BT-109: Invoice total amount without VAT
-        self._add(lmt, "cbc", "TaxExclusiveAmount", net, currencyID="EUR")
+        self._add(lmt, "cbc", "TaxExclusiveAmount", net, currencyID=currency)
         # BT-112: Invoice total amount with VAT
-        self._add(lmt, "cbc", "TaxInclusiveAmount", gross, currencyID="EUR")
+        self._add(lmt, "cbc", "TaxInclusiveAmount", gross, currencyID=currency)
         # BT-115: Amount due for payment
-        self._add(lmt, "cbc", "PayableAmount", gross, currencyID="EUR")
+        self._add(lmt, "cbc", "PayableAmount", gross, currencyID=currency)
 
         return lmt
 
     def _build_invoice_line(
-        self, item: Dict, idx: int, invoice_data: Dict
+        self, item: Dict, idx: int, invoice_data: Dict, currency: str = "EUR"
     ) -> etree._Element:
         """BG-25: One invoice line item."""
         line = etree.Element(f"{{{self.NAMESPACES['cac']}}}InvoiceLine")
@@ -419,7 +421,7 @@ class XRechnungGenerator:
         self._add(
             line, "cbc", "LineExtensionAmount",
             _fmt(item.get("net_amount", 0)),
-            currencyID="EUR",
+            currencyID=currency,
         )
 
         # Item description
@@ -430,9 +432,10 @@ class XRechnungGenerator:
         # Item tax category (required by EN 16931)
         classified = self._sub(item_elem, "cac", "ClassifiedTaxCategory")
         self._add(classified, "cbc", "ID", "S")
+        _item_rate = float(item.get("tax_rate", invoice_data.get("tax_rate", 19)))
         self._add(
             classified, "cbc", "Percent",
-            str(item.get("tax_rate", invoice_data.get("tax_rate", 19))),
+            str(int(_item_rate)) if _item_rate == int(_item_rate) else str(_item_rate),
         )
         ts = self._sub(classified, "cac", "TaxScheme")
         self._add(ts, "cbc", "ID", "VAT")
@@ -442,7 +445,7 @@ class XRechnungGenerator:
         self._add(
             price, "cbc", "PriceAmount",
             _fmt(item.get("unit_price", 0)),
-            currencyID="EUR",
+            currencyID=currency,
         )
 
         return line

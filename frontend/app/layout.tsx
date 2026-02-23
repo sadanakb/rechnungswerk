@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import Link from 'next/link'
 import './globals.css'
+import { ThemeProvider } from '@/components/design-system/theme-provider'
+import { SidebarNav } from '@/components/layout/SidebarNav'
+import { Toaster } from '@/components/ui/toast'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -15,47 +18,26 @@ export const metadata: Metadata = {
   keywords: ['XRechnung', 'ZUGFeRD', 'E-Rechnung', 'OCR', 'UBL', 'EN 16931'],
 }
 
-const navLinks = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/ocr', label: 'OCR Upload' },
-  { href: '/manual', label: 'Manuelle Eingabe' },
-  { href: '/invoices', label: 'Rechnungen' },
-]
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={inter.className}>
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        {/* Persistent top navigation */}
-        <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
-            {/* Brand */}
-            <Link href="/" className="flex items-center gap-2 shrink-0">
-              <span className="text-xl font-bold text-blue-700 tracking-tight">
-                RechnungsWerk
-              </span>
-              <span className="hidden sm:inline-flex items-center text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                XRechnung 3.0.2
-              </span>
-            </Link>
+    <html lang="de" className={inter.className} suppressHydrationWarning>
+      <body className="min-h-screen antialiased" style={{ backgroundColor: 'rgb(var(--background))', color: 'rgb(var(--foreground))' }}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <div className="flex h-screen overflow-hidden">
+              {/* Sidebar — desktop only */}
+              <SidebarNav />
 
-            {/* Nav links */}
-            <div className="flex items-center gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {/* Main content area */}
+              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                <main className="flex-1 overflow-y-auto">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
-        </nav>
-
-        {/* Page content */}
-        {children}
+            <Toaster position="bottom-right" />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

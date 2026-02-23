@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices
+from app.routers import health, invoices, suppliers, external_api
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,8 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(invoices.router, prefix="/api", tags=["Invoices"])
+app.include_router(suppliers.router, tags=["Suppliers"])
+app.include_router(external_api.router, tags=["External API v1"])
 
 
 @app.get("/")

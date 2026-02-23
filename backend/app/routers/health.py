@@ -80,7 +80,22 @@ async def health_check(db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    ocr_engine = "ollama-text+vision" if ollama_available else "tesseract"
+    # --- PaddleOCR ---
+    paddleocr_available = False
+    try:
+        from paddleocr import PaddleOCR as _PaddleOCR
+        paddleocr_available = True
+    except ImportError:
+        pass
+
+    if paddleocr_available and ollama_available:
+        ocr_engine = "paddleocr+ollama-text+vision"
+    elif ollama_available:
+        ocr_engine = "ollama-text+vision"
+    elif paddleocr_available:
+        ocr_engine = "paddleocr+tesseract"
+    else:
+        ocr_engine = "tesseract"
     overall_status = "healthy" if db_status == "connected" else "degraded"
 
     return HealthResponse(
@@ -93,6 +108,6 @@ async def health_check(db: Session = Depends(get_db)):
         xrechnung_version=settings.xrechnung_version,
         ollama_available=ollama_available,
         ollama_primary_model="qwen2.5:14b",
-        ollama_vision_model="gemma3:latest",
+        ollama_vision_model="qwen2-vl:7b",
         ocr_engine=ocr_engine,
     )

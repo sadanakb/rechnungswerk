@@ -39,6 +39,9 @@ class InvoiceCreate(BaseModel):
     bic: Optional[str] = None
     payment_account_name: Optional[str] = None
 
+    # Currency
+    currency: str = "EUR"
+
     # Routing & Reference
     buyer_reference: Optional[str] = None
     seller_endpoint_id: Optional[str] = None
@@ -122,6 +125,38 @@ class OCRResult(BaseModel):
     confidence: float
     fields: dict
     suggestions: dict  # Suggested values for fields
+    field_confidences: dict = {}  # Per-field confidence scores
+    consistency_checks: List[dict] = []  # Mathematical consistency checks
+    completeness: float = 0.0  # Percentage of core fields filled
+    source: str = ""  # Engine used: ollama-text, ollama-vision, tesseract
+    total_pages: int = 1
+    ocr_engine: str = ""  # paddleocr or tesseract
+
+
+class BatchFileResult(BaseModel):
+    """Result for a single file in a batch."""
+    filename: str
+    status: str
+    invoice_id: Optional[str] = None
+    fields: dict = {}
+    confidence: float = 0.0
+    field_confidences: dict = {}
+    error: Optional[str] = None
+    source: str = ""
+
+
+class BatchJobResponse(BaseModel):
+    """Batch processing job status."""
+    batch_id: str
+    total_files: int
+    processed: int
+    succeeded: int
+    failed: int
+    status: str
+    progress_percent: float
+    results: List[BatchFileResult]
+    created_at: str
+    completed_at: Optional[str] = None
 
 
 class ValidationRequest(BaseModel):

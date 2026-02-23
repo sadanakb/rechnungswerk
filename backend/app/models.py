@@ -45,6 +45,7 @@ class Invoice(Base):
     tax_amount = Column(Numeric(12, 2))
     gross_amount = Column(Numeric(12, 2))
     tax_rate = Column(Numeric(5, 2), default=19.0)  # German VAT: 19% or 7%
+    currency = Column(String(3), default='EUR')  # ISO 4217 currency code
 
     # Payment details (BG-16)
     iban = Column(String(34))                # BT-84: IBAN
@@ -124,3 +125,87 @@ class ValidationResult(Base):
     validated_at = Column(DateTime(timezone=True), default=_utc_now)
 
     invoice = relationship("Invoice", back_populates="validation_results")
+
+
+class BatchJob(Base):
+    """Batch OCR processing job"""
+    __tablename__ = 'batch_jobs'
+
+    id = Column(Integer, primary_key=True)
+    batch_id = Column(String, unique=True, index=True)
+    total_files = Column(Integer, default=0)
+    processed = Column(Integer, default=0)
+    succeeded = Column(Integer, default=0)
+    failed = Column(Integer, default=0)
+    status = Column(String, default="pending")  # pending, processing, completed, failed, partial
+    results = Column(JSON)  # Array of per-file results
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class Supplier(Base):
+    """Known supplier / vendor"""
+    __tablename__ = 'suppliers'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, index=True)
+    vat_id = Column(String, unique=True, index=True)  # USt-IdNr
+    address = Column(Text)
+    iban = Column(String(34))
+    bic = Column(String(11))
+    email = Column(String)
+    default_account = Column(String(10))  # SKR03/04 account number
+    notes = Column(Text)
+    invoice_count = Column(Integer, default=0)
+    total_volume = Column(Numeric(12, 2), default=0)
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
+
+
+class RecurringInvoice(Base):
+    """Recurring invoice template"""
+    __tablename__ = 'recurring_invoices'
+
+    id = Column(Integer, primary_key=True)
+    template_id = Column(String, unique=True, index=True)
+    name = Column(String)  # Template display name
+    active = Column(Boolean, default=True)
+    frequency = Column(String)  # monthly, quarterly, half-yearly, yearly
+    next_date = Column(Date)
+    last_generated = Column(Date, nullable=True)
+
+    # Invoice template data
+    number_prefix = Column(String, default='RE')
+    payment_days = Column(Integer, default=14)
+    seller_name = Column(String)
+    seller_vat_id = Column(String)
+    seller_address = Column(Text)
+    buyer_name = Column(String)
+    buyer_vat_id = Column(String)
+    buyer_address = Column(Text)
+    line_items = Column(JSON)
+    tax_rate = Column(Numeric(5, 2), default=19.0)
+    currency = Column(String(3), default='EUR')
+    iban = Column(String(34))
+    bic = Column(String(11))
+    payment_account_name = Column(String(70))
+    buyer_reference = Column(String(200))
+    seller_endpoint_id = Column(String(200))
+    buyer_endpoint_id = Column(String(200))
+
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
+
+
+class ArchiveEntry(Base):
+    """GoBD-compliant archive entry"""
+    __tablename__ = 'archive_entries'
+
+    id = Column(Integer, primary_key=True)
+    archive_id = Column(String, unique=True, index=True)
+    invoice_id = Column(String, ForeignKey('invoices.invoice_id'), index=True)
+    document_type = Column(String)  # xrechnung_xml, zugferd_pdf, original_pdf
+    sha256_hash = Column(String(64))
+    archive_path = Column(String)
+    file_size = Column(Integer)
+    archived_at = Column(DateTime(timezone=True), default=_utc_now)

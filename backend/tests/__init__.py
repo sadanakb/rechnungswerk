@@ -1,0 +1,1 @@
+"""RechnungsWerk test suite."""
