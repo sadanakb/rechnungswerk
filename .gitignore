@@ -15,6 +15,9 @@ data/uploads/
 data/xml_output/
 data/*.db
 data/.api_key
+backend/data/uploads/
+backend/data/xml_output/
+backend/data/.api_key
 
 # Node / Frontend
 node_modules/

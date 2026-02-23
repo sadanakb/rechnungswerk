@@ -1,13 +1,120 @@
 """
 Tests for the OCR pipeline components.
 
-External dependencies (PaddleOCR, Ollama) are mocked — these tests verify
+External dependencies (PaddleOCR, Ollama, pdfplumber) are mocked — these tests verify
 the pipeline orchestration, confidence scoring, and batch processing logic.
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from app.ocr.confidence import ConfidenceScorer
 from app.ocr.batch_processor import BatchProcessor
+from app.ocr.pipeline import OCRPipelineV2
+
+
+class TestOCRPipelineV2DigitalPath:
+    """Tests for the digital PDF fast-path (pdfplumber → Ollama, skipping PaddleOCR)."""
+
+    @patch("app.ocr.pipeline.PaddleOCREngine")
+    @patch("app.ocr.pipeline.ConfidenceScorer")
+    def test_digital_pdf_skips_paddleocr(self, mock_scorer_cls, mock_engine_cls):
+        """When pdfplumber finds text, PaddleOCR should NOT be called."""
+        mock_engine = MagicMock()
+        mock_engine_cls.return_value = mock_engine
+
+        mock_scorer = MagicMock()
+        mock_scorer.score.return_value = {
+            "overall_confidence": 92.0,
+            "field_confidences": {},
+            "consistency_checks": [],
+            "completeness": 80.0,
+        }
+        mock_scorer_cls.return_value = mock_scorer
+
+        pipeline = OCRPipelineV2()
+
+        # Mock pdfplumber to return rich text (digital PDF)
+        digital_text = "Rechnung RE-2026-001\nMusterfirma GmbH\nGesamtbetrag: 1.190,00 EUR" * 5
+
+        with patch.object(pipeline, "_extract_digital_text", return_value=digital_text), \
+             patch.object(pipeline, "_count_pages", return_value=2), \
+             patch.object(pipeline, "_extract_with_text_model", return_value=(
+                 {"invoice_number": "RE-2026-001", "gross_amount": 1190.0}, "ollama-text"
+             )):
+            result = pipeline.process("fake_digital.pdf")
+
+        # PaddleOCR must not have been called
+        mock_engine.extract_from_pdf.assert_not_called()
+        assert result["ocr_engine"] == "pdfplumber"
+        assert result["source"].startswith("digital-")
+        assert result["total_pages"] == 2
+
+    @patch("app.ocr.pipeline.PaddleOCREngine")
+    @patch("app.ocr.pipeline.ConfidenceScorer")
+    def test_scanned_pdf_uses_paddleocr(self, mock_scorer_cls, mock_engine_cls):
+        """When pdfplumber finds no text (scanned PDF), PaddleOCR must be called."""
+        mock_ocr_result = MagicMock()
+        mock_ocr_result.full_text = "Rechnung text from OCR"
+        mock_ocr_result.avg_confidence = 75.0
+        mock_ocr_result.total_pages = 1
+        mock_ocr_result.engine = "paddleocr"
+
+        mock_engine = MagicMock()
+        mock_engine.extract_from_pdf.return_value = mock_ocr_result
+        mock_engine_cls.return_value = mock_engine
+
+        mock_scorer = MagicMock()
+        mock_scorer.score.return_value = {
+            "overall_confidence": 75.0,
+            "field_confidences": {},
+            "consistency_checks": [],
+            "completeness": 60.0,
+        }
+        mock_scorer_cls.return_value = mock_scorer
+
+        pipeline = OCRPipelineV2()
+
+        with patch.object(pipeline, "_extract_digital_text", return_value=""), \
+             patch.object(pipeline, "_extract_with_text_model", return_value=(
+                 {"invoice_number": "RE-001"}, "ollama-text"
+             )):
+            result = pipeline.process("fake_scanned.pdf")
+
+        mock_engine.extract_from_pdf.assert_called_once_with("fake_scanned.pdf")
+        assert result["ocr_engine"] == "paddleocr"
+        assert not result["source"].startswith("digital-")
+
+    @patch("app.ocr.pipeline.PaddleOCREngine")
+    @patch("app.ocr.pipeline.ConfidenceScorer")
+    def test_short_digital_text_falls_through_to_ocr(self, mock_scorer_cls, mock_engine_cls):
+        """Minimal text (< 100 chars) should not trigger digital fast-path."""
+        mock_ocr_result = MagicMock()
+        mock_ocr_result.full_text = "minimal ocr text"
+        mock_ocr_result.avg_confidence = 50.0
+        mock_ocr_result.total_pages = 1
+        mock_ocr_result.engine = "paddleocr"
+
+        mock_engine = MagicMock()
+        mock_engine.extract_from_pdf.return_value = mock_ocr_result
+        mock_engine_cls.return_value = mock_engine
+        mock_scorer_cls.return_value = MagicMock(
+            score=MagicMock(return_value={
+                "overall_confidence": 30.0,
+                "field_confidences": {},
+                "consistency_checks": [],
+                "completeness": 20.0,
+            })
+        )
+
+        pipeline = OCRPipelineV2()
+
+        # Very short text — under the 100-char threshold
+        with patch.object(pipeline, "_extract_digital_text", return_value="Kurz"), \
+             patch.object(pipeline, "_extract_with_text_model", return_value=(
+                 {"invoice_number": "RE-001"}, "ollama-text"
+             )):
+            pipeline.process("fake_short.pdf")
+
+        mock_engine.extract_from_pdf.assert_called_once()
 
 
 class TestConfidenceScorer:

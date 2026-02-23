@@ -1,8 +1,9 @@
 """
-OCR Pipeline V2 — Orchestrates PaddleOCR + Ollama + Confidence Scoring.
+OCR Pipeline V2 — Orchestrates Digital-PDF-Check + PaddleOCR + Ollama + Confidence Scoring.
 
 Flow:
-  1. PaddleOCR extracts text from all PDF pages
+  0. pdfplumber checks for embedded text (fast path for digital PDFs — 70-80% of invoices)
+  1. If no embedded text: PaddleOCR extracts text from all PDF pages (scanned PDFs)
   2. Ollama (qwen2.5:14b) extracts structured fields from text
   3. If scanned PDF (no text): Ollama Vision (qwen2-vl:7b) analyzes image
   4. Confidence scorer validates each field
@@ -97,16 +98,52 @@ Extrahiere die Felder als JSON."""
 
 class OCRPipelineV2:
     """
-    Orchestrates: PaddleOCR -> Ollama (JSON) -> Confidence -> Result.
+    Orchestrates: Digital-PDF-Check -> PaddleOCR -> Ollama (JSON) -> Confidence -> Result.
+
+    Fast path: 70-80% of German invoices are digital PDFs (lexoffice, sevDesk, SAP).
+    pdfplumber extracts text at 100% accuracy — no OCR needed.
     """
 
     def __init__(self):
         self.ocr_engine = PaddleOCREngine()
         self.confidence_scorer = ConfidenceScorer()
 
+    def _extract_digital_text(self, pdf_path: str) -> str:
+        """Extract embedded text from digital PDFs using pdfplumber (no OCR needed)."""
+        try:
+            import pdfplumber
+            with pdfplumber.open(pdf_path) as pdf:
+                pages = []
+                for i, page in enumerate(pdf.pages):
+                    text = page.extract_text() or ""
+                    tables = page.extract_tables()
+                    if tables:
+                        for table in tables:
+                            for row in table:
+                                if row:
+                                    text += "\n" + " | ".join(str(c) if c else "" for c in row)
+                    if text.strip():
+                        pages.append(f"--- Seite {i+1} ---\n{text}")
+                return "\n\n".join(pages)
+        except Exception as e:
+            logger.debug("pdfplumber digital-text extraction failed: %s", e)
+        return ""
+
+    def _count_pages(self, pdf_path: str) -> int:
+        """Count PDF pages without full extraction."""
+        try:
+            import pdfplumber
+            with pdfplumber.open(pdf_path) as pdf:
+                return len(pdf.pages)
+        except Exception:
+            return 1
+
     def process(self, pdf_path: str) -> Dict:
         """
         Process a PDF through the full OCR pipeline.
+
+        Fast path: digital PDFs bypass PaddleOCR entirely (pdfplumber → Ollama).
+        Slow path: scanned PDFs use PaddleOCR → Ollama Vision.
 
         Returns:
             {
@@ -120,8 +157,34 @@ class OCRPipelineV2:
                 "ocr_engine": str,
             }
         """
+        # Step 0: Digital PDF fast path — skip OCR entirely for embedded-text PDFs
+        pdf_text = self._extract_digital_text(pdf_path)
+        if pdf_text and len(pdf_text.strip()) > 100:
+            logger.info(
+                "Pipeline V2: Digital PDF detected (%d chars) — skipping OCR for '%s'",
+                len(pdf_text), pdf_path,
+            )
+            fields, source = self._extract_with_text_model(pdf_text)
+            if fields:
+                scoring = self.confidence_scorer.score(fields)
+                logger.info(
+                    "Pipeline V2 complete (digital): source=%s, confidence=%.1f%%",
+                    source, scoring["overall_confidence"],
+                )
+                return {
+                    "fields": fields,
+                    "confidence": scoring["overall_confidence"],
+                    "field_confidences": scoring["field_confidences"],
+                    "consistency_checks": scoring["consistency_checks"],
+                    "completeness": scoring["completeness"],
+                    "source": f"digital-{source}",
+                    "raw_text": pdf_text[:2000],
+                    "total_pages": self._count_pages(pdf_path),
+                    "ocr_engine": "pdfplumber",
+                }
+
         # Step 1: OCR text extraction (PaddleOCR with Tesseract fallback)
-        logger.info("Pipeline V2: Starting OCR for '%s'", pdf_path)
+        logger.info("Pipeline V2: Scanned PDF — starting OCR for '%s'", pdf_path)
         ocr_result = self.ocr_engine.extract_from_pdf(pdf_path)
 
         # Step 2: LLM field extraction
