@@ -192,76 +192,26 @@ def _compute_confidence(fields: dict) -> float:
 
 def extract_invoice_fields(pdf_path: str) -> dict:
     """
-    Extract invoice fields from a PDF using local Ollama LLM.
+    Extract invoice fields from a PDF.
+
+    Delegates to OCRPipelineV2 (PaddleOCR + Ollama + Confidence).
+    Falls back to legacy Tesseract pipeline if V2 fails.
 
     Returns dict: {fields, confidence, source, raw_text}
-    source is one of: "ollama-text", "ollama-vision", "tesseract", "error"
     """
-    import ollama  # raises ImportError if not installed → caught below
-
-    if not _is_ollama_available():
-        logger.warning("Ollama not reachable — falling back to Tesseract")
-        return _tesseract_fallback(pdf_path)
-
     try:
-        # ── Strategy 1: Text extraction + qwen2.5:14b ────────────────────
-        pdf_text = _extract_pdf_text(pdf_path)
-
-        if pdf_text and len(pdf_text) > 50:
-            logger.info(
-                "qwen2.5:14b text extraction for '%s' (%d chars)", pdf_path, len(pdf_text)
-            )
-            prompt = _TEXT_PROMPT.format(text=pdf_text[:8000])
-
-            response = ollama.chat(
-                model=OLLAMA_TEXT_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0.1},
-            )
-            raw_text = response.message.content  # attribute access (not dict)
-            logger.debug("qwen2.5 response[:300]: %s", raw_text[:300])
-
-            fields = _parse_json(raw_text)
-            if fields:
-                confidence = _compute_confidence(fields)
-                logger.info("qwen2.5 done — confidence %.1f%%", confidence)
-                return {
-                    "fields": fields,
-                    "confidence": confidence,
-                    "source": "ollama-text",
-                    "raw_text": raw_text,
-                }
-
-        # ── Strategy 2: Vision (scanned PDF) → gemma3 ────────────────────
-        logger.info("gemma3 vision extraction for '%s'", pdf_path)
-        b64 = _pdf_to_base64_png(pdf_path)
-
-        response = ollama.chat(
-            model=OLLAMA_VISION_MODEL,
-            messages=[{
-                "role": "user",
-                "content": _VISION_PROMPT,
-                "images": [b64],
-            }],
-            options={"temperature": 0.1},
-        )
-        raw_text = response.message.content
-        logger.debug("gemma3 response[:300]: %s", raw_text[:300])
-
-        fields = _parse_json(raw_text)
-        confidence = _compute_confidence(fields)
-        logger.info("gemma3 done — confidence %.1f%%", confidence)
-        return {
-            "fields": fields,
-            "confidence": confidence,
-            "source": "ollama-vision",
-            "raw_text": raw_text,
-        }
-
-    except ImportError:
-        logger.warning("ollama package not installed — Tesseract fallback")
+        from app.ocr.pipeline import OCRPipelineV2
+        pipeline = OCRPipelineV2()
+        result = pipeline.process(pdf_path)
+        if result.get("fields"):
+            return {
+                "fields": result["fields"],
+                "confidence": result.get("confidence", 0.0),
+                "source": result.get("source", "pipeline-v2"),
+                "raw_text": result.get("raw_text", ""),
+            }
     except Exception as exc:
-        logger.warning("Ollama extraction failed (%s: %s) — Tesseract fallback", type(exc).__name__, exc)
+        logger.warning("Pipeline V2 failed (%s), trying legacy path", exc)
 
     return _tesseract_fallback(pdf_path)
 

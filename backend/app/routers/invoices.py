@@ -330,7 +330,7 @@ async def generate_xrechnung(
 @router.get("/invoices", response_model=InvoiceListResponse)
 async def list_invoices(
     skip: int = Query(default=0, ge=0, description="Anzahl zu überspringender Einträge"),
-    limit: int = Query(default=50, ge=1, le=200, description="Max. Einträge (1-200)"),
+    limit: int = Query(default=50, ge=1, le=500, description="Max. Einträge (1-500)"),
     db: Session = Depends(get_db)
 ):
     """List all invoices with pagination"""

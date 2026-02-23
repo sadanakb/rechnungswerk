@@ -67,7 +67,6 @@ class PaddleOCREngine:
                 self._ocr = PaddleOCR(
                     use_angle_cls=True,
                     lang="german",
-                    show_log=False,
                     use_gpu=False,
                 )
                 logger.info("PaddleOCR initialized (lang=german)")

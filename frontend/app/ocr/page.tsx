@@ -56,28 +56,37 @@ interface EditableFields {
   tax_rate: string
 }
 
+function flattenValue(val: unknown): string {
+  if (val == null) return ''
+  if (typeof val === 'string') return val
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val)
+  if (Array.isArray(val)) return val.map(flattenValue).filter(Boolean).join(', ')
+  if (typeof val === 'object') return Object.values(val).map(flattenValue).filter(Boolean).join(', ')
+  return String(val)
+}
+
 function fieldsFromOCR(ocr: OCRResult): EditableFields {
   const f = ocr.suggestions ?? ocr.fields ?? {}
   return {
-    invoice_number: String(f.invoice_number ?? ''),
-    invoice_date: String(f.invoice_date ?? ''),
-    due_date: String(f.due_date ?? ''),
-    seller_name: String(f.seller_name ?? ''),
-    seller_vat_id: String(f.seller_vat_id ?? ''),
-    seller_address: String(f.seller_address ?? ''),
-    seller_endpoint_id: String(f.seller_endpoint_id ?? ''),
-    buyer_name: String(f.buyer_name ?? ''),
-    buyer_vat_id: String(f.buyer_vat_id ?? ''),
-    buyer_address: String(f.buyer_address ?? ''),
-    buyer_reference: String(f.buyer_reference ?? ''),
-    buyer_endpoint_id: String(f.buyer_endpoint_id ?? ''),
-    iban: String(f.iban ?? ''),
-    bic: String(f.bic ?? ''),
-    payment_account_name: String(f.payment_account_name ?? ''),
-    net_amount: String(f.net_amount ?? ''),
-    tax_amount: String(f.tax_amount ?? ''),
-    gross_amount: String(f.gross_amount ?? ''),
-    tax_rate: String(f.tax_rate ?? '19'),
+    invoice_number: flattenValue(f.invoice_number),
+    invoice_date: flattenValue(f.invoice_date),
+    due_date: flattenValue(f.due_date),
+    seller_name: flattenValue(f.seller_name),
+    seller_vat_id: flattenValue(f.seller_vat_id),
+    seller_address: flattenValue(f.seller_address),
+    seller_endpoint_id: flattenValue(f.seller_endpoint_id),
+    buyer_name: flattenValue(f.buyer_name),
+    buyer_vat_id: flattenValue(f.buyer_vat_id),
+    buyer_address: flattenValue(f.buyer_address),
+    buyer_reference: flattenValue(f.buyer_reference),
+    buyer_endpoint_id: flattenValue(f.buyer_endpoint_id),
+    iban: flattenValue(f.iban),
+    bic: flattenValue(f.bic),
+    payment_account_name: flattenValue(f.payment_account_name),
+    net_amount: flattenValue(f.net_amount),
+    tax_amount: flattenValue(f.tax_amount),
+    gross_amount: flattenValue(f.gross_amount),
+    tax_rate: flattenValue(f.tax_rate) || '19',
   }
 }
 

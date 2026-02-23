@@ -54,8 +54,8 @@ class OCRPipeline:
             (extracted_text, confidence_score)
         """
         try:
-            # Convert PDF to images (first page only for now)
-            images = convert_from_path(pdf_path, dpi=self.dpi, first_page=1, last_page=1)
+            # Convert PDF to images (all pages)
+            images = convert_from_path(pdf_path, dpi=self.dpi)
             
             if not images:
                 return "", 0.0
