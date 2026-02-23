@@ -11,28 +11,42 @@ from app.ocr.batch_processor import BatchProcessor
 from app.ocr.pipeline import OCRPipelineV2
 
 
+def _make_mock_ocr_engine(full_text="Rechnung OCR text", engine="surya"):
+    """Helper: create a mock OCR engine with configurable result."""
+    mock_result = MagicMock()
+    mock_result.full_text = full_text
+    mock_result.avg_confidence = 75.0
+    mock_result.total_pages = 1
+    mock_result.engine = engine
+    mock_engine = MagicMock()
+    mock_engine.extract_from_pdf.return_value = mock_result
+    return mock_engine
+
+
+def _make_mock_scorer(confidence=80.0):
+    """Helper: create a mock ConfidenceScorer."""
+    scorer = MagicMock()
+    scorer.score.return_value = {
+        "overall_confidence": confidence,
+        "field_confidences": {},
+        "consistency_checks": [],
+        "completeness": confidence,
+    }
+    return scorer
+
+
 class TestOCRPipelineV2DigitalPath:
-    """Tests for the digital PDF fast-path (pdfplumber → Ollama, skipping PaddleOCR)."""
+    """Tests for the digital PDF fast-path (pdfplumber → Ollama, skipping OCR engine)."""
 
-    @patch("app.ocr.pipeline.PaddleOCREngine")
     @patch("app.ocr.pipeline.ConfidenceScorer")
-    def test_digital_pdf_skips_paddleocr(self, mock_scorer_cls, mock_engine_cls):
-        """When pdfplumber finds text, PaddleOCR should NOT be called."""
-        mock_engine = MagicMock()
-        mock_engine_cls.return_value = mock_engine
-
-        mock_scorer = MagicMock()
-        mock_scorer.score.return_value = {
-            "overall_confidence": 92.0,
-            "field_confidences": {},
-            "consistency_checks": [],
-            "completeness": 80.0,
-        }
-        mock_scorer_cls.return_value = mock_scorer
+    @patch.object(OCRPipelineV2, "_build_ocr_engine")
+    def test_digital_pdf_skips_ocr_engine(self, mock_build, mock_scorer_cls):
+        """When pdfplumber finds text, the OCR engine should NOT be called."""
+        mock_engine = _make_mock_ocr_engine()
+        mock_build.return_value = mock_engine
+        mock_scorer_cls.return_value = _make_mock_scorer(92.0)
 
         pipeline = OCRPipelineV2()
-
-        # Mock pdfplumber to return rich text (digital PDF)
         digital_text = "Rechnung RE-2026-001\nMusterfirma GmbH\nGesamtbetrag: 1.190,00 EUR" * 5
 
         with patch.object(pipeline, "_extract_digital_text", return_value=digital_text), \
@@ -42,34 +56,18 @@ class TestOCRPipelineV2DigitalPath:
              )):
             result = pipeline.process("fake_digital.pdf")
 
-        # PaddleOCR must not have been called
         mock_engine.extract_from_pdf.assert_not_called()
         assert result["ocr_engine"] == "pdfplumber"
         assert result["source"].startswith("digital-")
         assert result["total_pages"] == 2
 
-    @patch("app.ocr.pipeline.PaddleOCREngine")
     @patch("app.ocr.pipeline.ConfidenceScorer")
-    def test_scanned_pdf_uses_paddleocr(self, mock_scorer_cls, mock_engine_cls):
-        """When pdfplumber finds no text (scanned PDF), PaddleOCR must be called."""
-        mock_ocr_result = MagicMock()
-        mock_ocr_result.full_text = "Rechnung text from OCR"
-        mock_ocr_result.avg_confidence = 75.0
-        mock_ocr_result.total_pages = 1
-        mock_ocr_result.engine = "paddleocr"
-
-        mock_engine = MagicMock()
-        mock_engine.extract_from_pdf.return_value = mock_ocr_result
-        mock_engine_cls.return_value = mock_engine
-
-        mock_scorer = MagicMock()
-        mock_scorer.score.return_value = {
-            "overall_confidence": 75.0,
-            "field_confidences": {},
-            "consistency_checks": [],
-            "completeness": 60.0,
-        }
-        mock_scorer_cls.return_value = mock_scorer
+    @patch.object(OCRPipelineV2, "_build_ocr_engine")
+    def test_scanned_pdf_uses_ocr_engine(self, mock_build, mock_scorer_cls):
+        """When pdfplumber finds no text (scanned PDF), OCR engine must be called."""
+        mock_engine = _make_mock_ocr_engine(engine="surya")
+        mock_build.return_value = mock_engine
+        mock_scorer_cls.return_value = _make_mock_scorer(75.0)
 
         pipeline = OCRPipelineV2()
 
@@ -80,34 +78,19 @@ class TestOCRPipelineV2DigitalPath:
             result = pipeline.process("fake_scanned.pdf")
 
         mock_engine.extract_from_pdf.assert_called_once_with("fake_scanned.pdf")
-        assert result["ocr_engine"] == "paddleocr"
+        assert result["ocr_engine"] == "surya"
         assert not result["source"].startswith("digital-")
 
-    @patch("app.ocr.pipeline.PaddleOCREngine")
     @patch("app.ocr.pipeline.ConfidenceScorer")
-    def test_short_digital_text_falls_through_to_ocr(self, mock_scorer_cls, mock_engine_cls):
+    @patch.object(OCRPipelineV2, "_build_ocr_engine")
+    def test_short_digital_text_falls_through_to_ocr(self, mock_build, mock_scorer_cls):
         """Minimal text (< 100 chars) should not trigger digital fast-path."""
-        mock_ocr_result = MagicMock()
-        mock_ocr_result.full_text = "minimal ocr text"
-        mock_ocr_result.avg_confidence = 50.0
-        mock_ocr_result.total_pages = 1
-        mock_ocr_result.engine = "paddleocr"
-
-        mock_engine = MagicMock()
-        mock_engine.extract_from_pdf.return_value = mock_ocr_result
-        mock_engine_cls.return_value = mock_engine
-        mock_scorer_cls.return_value = MagicMock(
-            score=MagicMock(return_value={
-                "overall_confidence": 30.0,
-                "field_confidences": {},
-                "consistency_checks": [],
-                "completeness": 20.0,
-            })
-        )
+        mock_engine = _make_mock_ocr_engine(engine="surya")
+        mock_build.return_value = mock_engine
+        mock_scorer_cls.return_value = _make_mock_scorer(30.0)
 
         pipeline = OCRPipelineV2()
 
-        # Very short text — under the 100-char threshold
         with patch.object(pipeline, "_extract_digital_text", return_value="Kurz"), \
              patch.object(pipeline, "_extract_with_text_model", return_value=(
                  {"invoice_number": "RE-001"}, "ollama-text"

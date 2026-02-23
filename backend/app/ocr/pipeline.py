@@ -12,7 +12,7 @@ Flow:
 import logging
 from typing import Dict, Optional
 
-from app.ocr.paddleocr_engine import PaddleOCREngine, OCRDocumentResult
+from app.ocr.paddleocr_engine import OCRDocumentResult
 from app.ocr.confidence import ConfidenceScorer
 
 logger = logging.getLogger(__name__)
@@ -133,8 +133,21 @@ class OCRPipelineV2:
     """
 
     def __init__(self):
-        self.ocr_engine = PaddleOCREngine()
+        self.ocr_engine = self._build_ocr_engine()
         self.confidence_scorer = ConfidenceScorer()
+
+    @staticmethod
+    def _build_ocr_engine():
+        """Return Surya engine if available, else fall back to PaddleOCR."""
+        try:
+            import surya  # noqa: F401 — just check availability
+            from app.ocr.surya_engine import SuryaOCREngine
+            logger.info("OCR engine: Surya (preferred)")
+            return SuryaOCREngine()
+        except ImportError:
+            from app.ocr.paddleocr_engine import PaddleOCREngine
+            logger.info("OCR engine: PaddleOCR (Surya not installed)")
+            return PaddleOCREngine()
 
     def _extract_digital_text(self, pdf_path: str) -> str:
         """Extract embedded text from digital PDFs using pdfplumber (no OCR needed)."""
