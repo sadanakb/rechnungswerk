@@ -38,6 +38,13 @@ python-dotenv==1.0.0
 requests==2.32.3
 httpx==0.28.1
 
+# Background Task Queue (ARQ = lightweight Redis-based, no Celery overhead)
+arq>=0.26.0
+redis>=5.0.0
+
+# PostgreSQL (production database driver)
+psycopg2-binary>=2.9.0
+
 # Development & Testing
 pytest==8.3.0
 pytest-asyncio==0.24.0
