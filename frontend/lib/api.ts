@@ -400,3 +400,101 @@ export const searchSuppliers = async (q: string): Promise<Supplier[]> => {
   const resp = await api.get<Supplier[]>('/api/suppliers/search', { params: { q } })
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// Recurring Invoices
+// ---------------------------------------------------------------------------
+
+export interface RecurringLineItem {
+  description: string
+  quantity: number
+  unit_price: number
+  net_amount: number
+  tax_rate: number
+}
+
+export interface RecurringTemplate {
+  id: number
+  template_id: string
+  name: string
+  active: boolean
+  frequency: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
+  next_date: string
+  last_generated: string | null
+  number_prefix: string
+  payment_days: number
+  seller_name: string
+  seller_vat_id: string
+  seller_address: string | null
+  buyer_name: string
+  buyer_vat_id: string | null
+  buyer_address: string | null
+  line_items: RecurringLineItem[]
+  tax_rate: number
+  currency: string
+  iban: string | null
+  bic: string | null
+  payment_account_name: string | null
+  buyer_reference: string | null
+  seller_endpoint_id: string | null
+  buyer_endpoint_id: string | null
+  net_amount: number
+  created_at: string
+  updated_at: string | null
+}
+
+export interface RecurringCreate {
+  name: string
+  frequency: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
+  next_date: string
+  number_prefix?: string
+  payment_days?: number
+  seller_name: string
+  seller_vat_id: string
+  seller_address?: string
+  buyer_name: string
+  buyer_vat_id?: string
+  buyer_address?: string
+  line_items: RecurringLineItem[]
+  tax_rate?: number
+  currency?: string
+  iban?: string
+  bic?: string
+  payment_account_name?: string
+  buyer_reference?: string
+}
+
+export interface TriggerResult {
+  message: string
+  invoice_id: string
+  invoice_number: string
+  gross_amount: number
+  next_date: string
+}
+
+export const listRecurring = async (
+  skip = 0,
+  limit = 50,
+): Promise<{ items: RecurringTemplate[]; total: number }> => {
+  const resp = await api.get('/api/recurring', { params: { skip, limit } })
+  return resp.data
+}
+
+export const createRecurring = async (data: RecurringCreate): Promise<RecurringTemplate> => {
+  const resp = await api.post<RecurringTemplate>('/api/recurring', data)
+  return resp.data
+}
+
+export const deleteRecurring = async (templateId: string): Promise<void> => {
+  await api.delete(`/api/recurring/${templateId}`)
+}
+
+export const toggleRecurring = async (templateId: string): Promise<RecurringTemplate> => {
+  const resp = await api.post<RecurringTemplate>(`/api/recurring/${templateId}/toggle`)
+  return resp.data
+}
+
+export const triggerRecurring = async (templateId: string): Promise<TriggerResult> => {
+  const resp = await api.post<TriggerResult>(`/api/recurring/${templateId}/trigger`)
+  return resp.data
+}
