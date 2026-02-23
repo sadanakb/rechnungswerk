@@ -4,15 +4,14 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
 
 env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
 
 jobs:
-  # ─── Backend Tests ────────────────────────────────────────────────
-  backend:
+  # ─── Job 1: Backend Tests ──────────────────────────────────────────
+  backend-tests:
     name: Backend (pytest)
     runs-on: ubuntu-latest
     defaults:
@@ -20,67 +19,106 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Python ${{ env.PYTHON_VERSION }}
+      - name: Python ${{ env.PYTHON_VERSION }} setup
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install system deps (Tesseract, WeasyPrint)
+      - name: Install system dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-deu \
-            libpango1.0-dev libharfbuzz-dev libffi-dev
+          sudo apt-get install -y -qq \
+            tesseract-ocr \
+            tesseract-ocr-deu \
+            libpango1.0-dev \
+            libharfbuzz-dev \
+            libffi-dev \
+            poppler-utils
 
-      - name: Install Python deps
+      - name: Install Python dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install test dependencies
+        run: pip install pytest pytest-asyncio httpx
+
       - name: Run pytest
         env:
-          DATABASE_URL: "sqlite://"
+          DATABASE_URL: "sqlite:///./data/test.db"
           REQUIRE_API_KEY: "false"
-        run: python -m pytest tests/ -v --tb=short
+          API_KEY: "test-key"
+          KOSIT_DOCKER: "false"
+        run: pytest tests/ -q --tb=short
 
-  # ─── Frontend Build ───────────────────────────────────────────────
-  frontend:
-    name: Frontend (build)
+      - name: Cleanup test database
+        if: always()
+        run: rm -f data/test.db
+
+  # ─── Job 2: Frontend Build ─────────────────────────────────────────
+  frontend-build:
+    name: Frontend (Next.js build)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Node.js ${{ env.NODE_VERSION }}
+      - name: Node.js ${{ env.NODE_VERSION }} setup
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
-
-      - name: TypeScript check
-        run: npx tsc --noEmit || true
 
       - name: Build
         run: npm run build
 
-  # ─── Lint ─────────────────────────────────────────────────────────
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Run Vitest
+        run: |
+          if node -e "const p=require('./package.json'); process.exit((p.devDependencies&&p.devDependencies.vitest)||(p.dependencies&&p.dependencies.vitest)?0:1)" 2>/dev/null; then
+            npx vitest run
+          else
+            echo "vitest nicht in package.json — Schritt übersprungen"
+          fi
 
-      - name: Python ${{ env.PYTHON_VERSION }}
+  # ─── Job 3: Lint ───────────────────────────────────────────────────
+  lint:
+    name: Lint (ESLint + ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js ${{ env.NODE_VERSION }} setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Python ${{ env.PYTHON_VERSION }} setup
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -88,6 +126,6 @@ jobs:
       - name: Install ruff
         run: pip install ruff
 
-      - name: Lint backend
+      - name: Ruff lint (backend)
         run: ruff check backend/ --select E,W,F --ignore E501
         continue-on-error: true

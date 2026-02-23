@@ -308,12 +308,17 @@ def trigger_recurring(
     tax = round(net * tax_rate / 100, 2)
     gross = round(net + tax, 2)
 
+    # due_date aus invoice_data kann ein ISO-String sein → in date konvertieren
+    raw_due = invoice_data.get("due_date", today)
+    if isinstance(raw_due, str):
+        raw_due = date.fromisoformat(raw_due)
+
     # Rechnung anlegen
     inv = Invoice(
         invoice_id=f"INV-{today.strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}",
         invoice_number=invoice_data["invoice_number"],
         invoice_date=today,
-        due_date=invoice_data.get("due_date", today),
+        due_date=raw_due,
         seller_name=invoice_data.get("seller_name", ""),
         seller_vat_id=invoice_data.get("seller_vat_id", ""),
         seller_address=invoice_data.get("seller_address"),
