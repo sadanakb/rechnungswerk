@@ -310,8 +310,30 @@ export const getZUGFeRDDownloadUrl = (invoiceId: string): string => {
 // Validation & Fraud
 // ---------------------------------------------------------------------------
 
-export const validateInvoice = async (invoiceId: string): Promise<{ is_valid: boolean; errors: unknown[]; warnings: unknown[] }> => {
-  const resp = await api.post(`/api/invoices/${invoiceId}/validate`)
+export interface ValidationIssue {
+  code: string
+  message: string
+  location: string
+}
+
+export interface ValidationResult {
+  validation_id: string
+  is_valid: boolean
+  error_count: number
+  warning_count: number
+  errors: ValidationIssue[]
+  warnings: ValidationIssue[]
+  report_html?: string | null
+  validator: 'kosit' | 'local' | string
+}
+
+export const validateInvoice = async (invoiceId: string): Promise<ValidationResult> => {
+  const resp = await api.post<ValidationResult>(`/api/invoices/${invoiceId}/validate`)
+  return resp.data
+}
+
+export const validateXML = async (xmlContent: string): Promise<ValidationResult> => {
+  const resp = await api.post<ValidationResult>('/api/v1/validate', { xml_content: xmlContent })
   return resp.data
 }
 

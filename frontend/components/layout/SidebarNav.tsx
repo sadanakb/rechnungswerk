@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/ocr', label: 'OCR Upload', icon: Upload },
   { href: '/manual', label: 'Manuelle Eingabe', icon: FileText },
   { href: '/invoices', label: 'Rechnungen', icon: List },
-  { href: '/validator', label: 'Validator', icon: CheckCircle, comingSoon: true },
+  { href: '/validator', label: 'Validator', icon: CheckCircle },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/suppliers', label: 'Lieferanten', icon: Users },
   { href: '/recurring', label: 'Wiederkehrend', icon: Repeat },
