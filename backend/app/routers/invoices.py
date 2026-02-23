@@ -25,6 +25,7 @@ from app.kosit_validator import KoSITValidator
 from app.export.datev_export import DATEVExporter
 from app.fraud.detector import FraudDetector
 from app.archive.gobd_archive import GoBDArchive
+from app.ai.categorizer import InvoiceCategorizer
 from app.auth import verify_api_key
 from app.config import settings
 import uuid
@@ -791,6 +792,44 @@ async def check_fraud(
 
     result = fraud_detector.check(invoice_data, db)
     return result
+
+
+@router.post("/invoices/{invoice_id}/categorize")
+async def categorize_invoice(
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
+    db: Session = Depends(get_db),
+):
+    """
+    KI-gestützte Kategorisierung einer Rechnung mit SKR03/SKR04-Kontozuordnung.
+
+    Nutzt primär Ollama (qwen2.5:14b) lokal, fällt bei Nicht-Verfügbarkeit
+    auf regelbasiertes Keyword-Matching zurück. Kein externer API-Key nötig.
+    """
+    invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    invoice_data = {
+        "invoice_number": invoice.invoice_number,
+        "seller_name": invoice.seller_name,
+        "seller_vat_id": invoice.seller_vat_id,
+        "buyer_name": invoice.buyer_name,
+        "buyer_vat_id": invoice.buyer_vat_id,
+        "line_items": invoice.line_items or [],
+        "net_amount": float(invoice.net_amount or 0),
+        "gross_amount": float(invoice.gross_amount or 0),
+        "tax_rate": float(invoice.tax_rate or 19),
+        "currency": invoice.currency or "EUR",
+    }
+
+    categorizer = InvoiceCategorizer()
+    result = await categorizer.categorize(invoice_data)
+
+    return {
+        "invoice_id": invoice_id,
+        "invoice_number": invoice.invoice_number,
+        **result,
+    }
 
 
 @router.get("/analytics/summary")

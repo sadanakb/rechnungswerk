@@ -498,3 +498,22 @@ export const triggerRecurring = async (templateId: string): Promise<TriggerResul
   const resp = await api.post<TriggerResult>(`/api/recurring/${templateId}/trigger`)
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// AI Categorization
+// ---------------------------------------------------------------------------
+
+export interface CategorizationResult {
+  invoice_id: string
+  invoice_number: string
+  category: string
+  skr03_account: string
+  skr04_account: string
+  confidence: number
+  reasoning: string
+}
+
+export const categorizeInvoice = async (invoiceId: string): Promise<CategorizationResult> => {
+  const resp = await api.post<CategorizationResult>(`/api/invoices/${invoiceId}/categorize`)
+  return resp.data
+}
