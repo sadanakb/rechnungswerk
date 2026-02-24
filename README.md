@@ -5,7 +5,7 @@
 ![CI](https://github.com/sadanakb/rechnungswerk/actions/workflows/ci.yml/badge.svg)
 ![XRechnung](https://img.shields.io/badge/XRechnung-3.0.2-blue)
 ![EN 16931](https://img.shields.io/badge/EN_16931-compliant-green)
-![Tests](https://img.shields.io/badge/tests-163%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-174%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 RechnungsWerk wandelt Papierrechnungen per KI-OCR in normkonforme XRechnung-XML um, generiert ZUGFeRD-PDFs und validiert gegen den offiziellen KoSIT-Validator. Gedacht als Open-Source-Alternative zu sevDesk & Co. (die 500–2.000 €/Monat kosten).
@@ -306,7 +306,7 @@ curl -X POST http://localhost:8001/api/upload-ocr \
 ## Tests
 
 ```bash
-# Backend (163 Tests)
+# Backend (174 Tests)
 cd backend
 python -m pytest tests/ -v
 
@@ -413,7 +413,7 @@ rechnungswerk/
 | Styling | Tailwind CSS v4 + Radix UI Primitives |
 | Animationen | Framer Motion |
 | Charts | Recharts |
-| Testing | pytest 163 Tests · vitest 59 Tests |
+| Testing | pytest 174 Tests · vitest 59 Tests |
 | CI/CD | GitHub Actions (pytest + build + lint) |
 | Entwickelt mit | Unterstützung von [Claude Code](https://claude.ai) |
 
@@ -465,6 +465,6 @@ Kommerzielle Nutzung: Autor kontaktieren.
 
 ## Autor
 
-**Sadan Akbari** — Wirtschaftsinformatik-Student an der Frankfurt University of Applied Sciences
+**Sadan Akbari** — Wirtschaftsinformatik-Student, Frankfurt UAS
 
 [Portfolio](https://sadanakb.github.io) · [LinkedIn](https://www.linkedin.com/in/sadan-akbari) · [GitHub](https://github.com/sadanakb)
