@@ -10,6 +10,10 @@
 
 RechnungsWerk wandelt Papierrechnungen per KI-OCR in normkonforme XRechnung-XML um, generiert ZUGFeRD-PDFs und validiert gegen den offiziellen KoSIT-Validator. Gedacht als Open-Source-Alternative zu sevDesk & Co. (die 500–2.000 €/Monat kosten).
 
+### Warum dieses Projekt?
+
+Ich habe RechnungsWerk gestartet, weil die E-Rechnungspflicht ab 2025 jedes Unternehmen in Deutschland betrifft — und die bestehenden Lösungen kosten 500–2.000 €/Monat. Als Wirtschaftsinformatik-Student war mein Ziel: eine Open-Source-Alternative bauen, die alles kann was die teuren Tools können. XRechnung 3.0.2, ZUGFeRD, KoSIT-Validierung, DATEV-Export — alles in einem System, kostenlos und selbst gehostet.
+
 ---
 
 ## Quick Start (5 Minuten)
@@ -127,7 +131,7 @@ alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-Backend läuft auf: http://localhost:8001  
+Backend läuft auf: http://localhost:8001
 Swagger-Dokumentation: http://localhost:8001/docs
 
 ### Frontend
@@ -411,24 +415,25 @@ rechnungswerk/
 | Charts | Recharts |
 | Testing | pytest 163 Tests · vitest 59 Tests |
 | CI/CD | GitHub Actions (pytest + build + lint) |
+| Entwickelt mit | Unterstützung von [Claude Code](https://claude.ai) |
 
 ---
 
 ## Häufige Probleme
 
-**OCR liefert schlechte Ergebnisse**  
+**OCR liefert schlechte Ergebnisse**
 → Ollama installieren und `ollama pull qwen2.5:14b` ausführen. Ohne Ollama läuft nur Tesseract (60–80% Genauigkeit).
 
-**`no such table: invoices`**  
+**`no such table: invoices`**
 → Datenbankmigrationen ausführen: `cd backend && alembic upgrade head`
 
-**Frontend zeigt "Backend nicht erreichbar"**  
+**Frontend zeigt "Backend nicht erreichbar"**
 → Backend auf Port 8001 läuft? `REQUIRE_API_KEY=false` in `.env` gesetzt?
 
-**KoSIT-Validator meldet Fehler**  
+**KoSIT-Validator meldet Fehler**
 → Docker-Container prüfen: `docker ps | grep kosit`. Ohne Docker greift lokaler Fallback.
 
-**PaddleOCR Installation schlägt fehl**  
+**PaddleOCR Installation schlägt fehl**
 → Auf macOS mit Apple Silicon: `pip install paddlepaddle-gpu` durch `pip install paddlepaddle` ersetzen.
 
 ---
@@ -455,10 +460,11 @@ rechnungswerk/
 
 ## Lizenz
 
-MIT License — kostenlos für nicht-kommerzielle Nutzung.  
+MIT License — kostenlos für nicht-kommerzielle Nutzung.
 Kommerzielle Nutzung: Autor kontaktieren.
 
 ## Autor
 
-**Sadan** — Wirtschaftsinformatik Student  
-Gebaut mit Claude Code Max · Februar 2026
+**Sadan Akbari** — Wirtschaftsinformatik-Student an der Frankfurt University of Applied Sciences
+
+[Portfolio](https://sadanakb.github.io) · [LinkedIn](https://www.linkedin.com/in/sadan-akbari) · [GitHub](https://github.com/sadanakb)
