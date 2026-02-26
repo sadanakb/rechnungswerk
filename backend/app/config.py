@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 10
     allowed_extensions: List[str] = [".pdf", ".xml"]
 
+    # Deployment mode
+    cloud_mode: bool = True  # False for self-hosted, True for SaaS
+
+    # Stripe (placeholders for Task 12)
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_starter_price_id: str = ""
+    stripe_starter_yearly_price_id: str = ""
+    stripe_pro_price_id: str = ""
+    stripe_pro_yearly_price_id: str = ""
+
     model_config = SettingsConfigDict(env_file=".env")
 
 
