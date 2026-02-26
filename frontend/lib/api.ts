@@ -20,6 +20,17 @@ api.interceptors.response.use(
   },
 )
 
+// Add token to all requests
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('rw-access-token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  }
+  return config
+})
+
 export { api }
 
 /**
@@ -537,5 +548,50 @@ export interface CategorizationResult {
 
 export const categorizeInvoice = async (invoiceId: string): Promise<CategorizationResult> => {
   const resp = await api.post<CategorizationResult>(`/api/invoices/${invoiceId}/categorize`)
+  return resp.data
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export interface RegisterData {
+  email: string
+  password: string
+  full_name: string
+  organization_name: string
+}
+
+export interface LoginData {
+  email: string
+  password: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  user?: { id: number; email: string; full_name: string }
+  organization?: { id: number; name: string; slug: string; plan: string }
+}
+
+export async function registerUser(data: RegisterData): Promise<AuthResponse> {
+  const resp = await api.post<AuthResponse>('/api/auth/register', data)
+  return resp.data
+}
+
+export async function loginUser(data: LoginData): Promise<AuthResponse> {
+  const resp = await api.post<AuthResponse>('/api/auth/login', data)
+  return resp.data
+}
+
+export async function getMe(): Promise<{
+  id: number
+  email: string
+  full_name: string
+  organization: { id: number; name: string; slug: string; plan: string }
+  role: string
+}> {
+  const resp = await api.get('/api/auth/me')
   return resp.data
 }

@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { ThemeProvider } from '@/components/design-system/theme-provider'
+import { AuthProvider } from '@/lib/auth'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -19,20 +20,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="min-h-screen antialiased" style={{ backgroundColor: 'rgb(var(--background))', color: 'rgb(var(--foreground))' }}>
         <ThemeProvider>
-          <TooltipProvider>
-            <div className="flex h-screen overflow-hidden">
-              {/* Sidebar — desktop only */}
-              <SidebarNav />
+          <AuthProvider>
+            <TooltipProvider>
+              <div className="flex h-screen overflow-hidden">
+                {/* Sidebar — desktop only */}
+                <SidebarNav />
 
-              {/* Main content area */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <main className="flex-1 overflow-y-auto">
-                  {children}
-                </main>
+                {/* Main content area */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                  <main className="flex-1 overflow-y-auto">
+                    {children}
+                  </main>
+                </div>
               </div>
-            </div>
-            <Toaster position="bottom-right" />
-          </TooltipProvider>
+              <Toaster position="bottom-right" />
+            </TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
