@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/design-system/theme-provider'
 import { AuthProvider } from '@/lib/auth'
 import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { CookieBanner } from '@/components/CookieBanner'
 
 export const metadata: Metadata = {
   title: 'RechnungsWerk - E-Invoice OCR & XRechnung 3.0.2',
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TooltipProvider>
               {children}
               <Toaster position="bottom-right" />
+              <CookieBanner />
             </TooltipProvider>
           </AuthProvider>
         </ThemeProvider>
