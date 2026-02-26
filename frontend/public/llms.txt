@@ -1,0 +1,21 @@
+# RechnungsWerk
+
+> E-Rechnungssoftware fuer Deutschland. Open Source (AGPL-3.0).
+
+## Was ist RechnungsWerk?
+
+RechnungsWerk ist eine Open-Source E-Rechnungssoftware fuer den deutschen Markt.
+Sie unterstuetzt XRechnung 3.0.2 und ZUGFeRD 2.3.3 (EN 16931 konform).
+
+## Preise
+
+- Free: 0 EUR/Monat (5 Rechnungen, XRechnung + ZUGFeRD)
+- Starter: 9,90 EUR/Monat (unbegrenzt, DATEV-Export, Mahnwesen)
+- Professional: 19,90 EUR/Monat (Banking, UStVA, Team, API)
+- Self-Hosted: Kostenlos (AGPL-3.0 auf GitHub)
+
+## Links
+
+- Website: https://rechnungswerk.de
+- GitHub: https://github.com/sadanakb/rechnungswerk
+- Dokumentation: https://rechnungswerk.de/docs
