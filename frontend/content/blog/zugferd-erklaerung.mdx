@@ -1,0 +1,140 @@
+---
+title: "Was ist ZUGFeRD? Format, Versionen und Vorteile erklaert"
+description: "ZUGFeRD verbindet PDF und XML in einem Hybrid-Format fuer E-Rechnungen. Erfahren Sie alles ueber Versionen, Profile und die Vorteile gegenueber reinem XML."
+date: "2026-02-24"
+author: "RechnungsWerk Team"
+---
+
+## Was ist ZUGFeRD?
+
+ZUGFeRD steht fuer "Zentraler User Guide des Forums elektronische Rechnung Deutschland" und ist ein deutsches Standardformat fuer elektronische Rechnungen. Das Besondere an ZUGFeRD: Es handelt sich um ein Hybrid-Format, das eine menschenlesbare PDF-Rechnung mit maschinenlesbaren XML-Daten in einer einzigen Datei vereint.
+
+Technisch basiert ZUGFeRD auf dem PDF/A-3 Standard, der es erlaubt, beliebige Dateien in ein PDF einzubetten. Bei ZUGFeRD wird eine XML-Datei mit den strukturierten Rechnungsdaten in das PDF eingebettet. So erhaelt der Empfaenger eine Datei, die er sowohl visuell lesen als auch automatisch verarbeiten kann.
+
+ZUGFeRD wurde vom Forum elektronische Rechnung Deutschland (FeRD) entwickelt, einer Arbeitsgemeinschaft unter dem Dach der Arbeitsgemeinschaft fuer wirtschaftliche Verwaltung (AWV). Die Entwicklung erfolgte in enger Zusammenarbeit mit Wirtschaft, Verbaenden und der oeffentlichen Verwaltung.
+
+## Die Versionen im Ueberblick
+
+### ZUGFeRD 1.0 (2014)
+
+Die erste Version von ZUGFeRD erschien im Juni 2014 und markierte den Beginn der standardisierten elektronischen Rechnungsstellung in Deutschland. ZUGFeRD 1.0 basierte auf dem UN/CEFACT Cross Industry Invoice (CII) Datenmodell und bot drei Profile: Basic, Comfort und Extended.
+
+Diese Version war ein wichtiger Meilenstein, entsprach jedoch noch nicht der spaeter verabschiedeten europaeischen Norm EN 16931.
+
+### ZUGFeRD 2.0 (2019)
+
+Mit Version 2.0 wurde ZUGFeRD grundlegend ueberarbeitet und an die europaeische Norm EN 16931 angepasst. Die Profilstruktur wurde erweitert, und erstmals wurde ein XRechnung-Profil eingefuehrt, das die Verwendung als reines XML-Format ermoeglicht.
+
+ZUGFeRD 2.0 brachte auch die Kompatibilitaet mit dem franzoesischen Standard Factur-X, was den grenzueberschreitenden Rechnungsaustausch vereinfachte. Beide Formate teilen sich die technische Basis und sind interoperabel.
+
+### ZUGFeRD 2.1 (2020)
+
+Version 2.1 brachte kleinere Korrekturen und Ergaenzungen. Insbesondere wurden Fehler in den Codelisten behoben und die Dokumentation verbessert. Die grundlegende Struktur blieb gegenueber Version 2.0 unveraendert.
+
+### ZUGFeRD 2.3.3 (aktuell)
+
+Die aktuelle Version ZUGFeRD 2.3.3 ist die derzeit empfohlene Version fuer den produktiven Einsatz. Sie bringt wichtige Verbesserungen mit:
+
+- Vollstaendige Konformitaet mit EN 16931
+- Aktualisierte Codelisten und Geschaeftsregeln
+- Verbesserte Validierungsregeln
+- Kompatibilitaet mit XRechnung 3.0.2
+- Unterstuetzung fuer aktuelle gesetzliche Anforderungen der E-Rechnungspflicht
+
+## Die Profile erklaert
+
+ZUGFeRD bietet verschiedene Profile, die sich im Umfang der enthaltenen Daten unterscheiden. Je nach Anwendungsfall koennen Sie das passende Profil waehlen:
+
+### Minimum
+
+Das einfachste Profil enthaelt nur die grundlegendsten Rechnungsinformationen: Rechnungsnummer, Datum, Gesamtbetrag und Steuerbetrag. Es eignet sich fuer einfache Buchungszwecke, erfuellt aber nicht die Anforderungen der EN 16931.
+
+### Basic WL (Without Lines)
+
+Dieses Profil enthaelt mehr Kopfdaten als Minimum, verzichtet aber auf einzelne Rechnungspositionen. Es eignet sich fuer Szenarien, in denen nur die Gesamtbetraege relevant sind.
+
+### Basic
+
+Das Basic-Profil enthaelt alle wesentlichen Rechnungsinformationen inklusive einzelner Positionen. Es ist das Minimalformat, das eine vollstaendige automatische Verarbeitung ermoeglicht.
+
+### EN 16931 (Comfort)
+
+Dieses Profil entspricht exakt der europaeischen Norm EN 16931 und ist damit das Referenzprofil fuer die E-Rechnungspflicht. Es enthaelt alle Pflichtfelder der Norm und ermoeglicht die vollstaendige automatische Verarbeitung.
+
+Fuer die meisten Anwendungsfaelle in Deutschland ist dieses Profil die richtige Wahl, da es sowohl die gesetzlichen Anforderungen erfuellt als auch ausreichend Daten fuer die automatische Buchhaltung liefert.
+
+### Extended
+
+Das Extended-Profil geht ueber die EN 16931 hinaus und bietet zusaetzliche Felder fuer spezielle Anforderungen. Es eignet sich fuer komplexe Geschaeftsprozesse, die ueber den Standard hinausgehende Informationen erfordern.
+
+### XRechnung
+
+Das XRechnung-Profil ist ein spezielles Profil, das die Anforderungen des deutschen XRechnung-Standards erfuellt. Es enthaelt alle Pflichtfelder fuer Rechnungen an oeffentliche Auftraggeber, einschliesslich der Leitweg-ID. Bei Verwendung dieses Profils ist die PDF-Komponente optional — die Rechnung kann auch als reines XML versendet werden.
+
+## Das Hybrid-Format: PDF/A-3 + XML
+
+Das Kernkonzept von ZUGFeRD ist die Verbindung von menschenlesbarer und maschinenlesbarer Information in einer einzigen Datei:
+
+### Die PDF-Komponente
+
+Die PDF-Schicht basiert auf PDF/A-3, einem ISO-Standard fuer die Langzeitarchivierung. Die Rechnung wird als visuell aufbereitetes Dokument dargestellt — mit Ihrem Logo, Layoutvorgaben und allen Informationen, die der Empfaenger auf den ersten Blick benoetigt.
+
+Der Vorteil: Jeder kann die Rechnung oeffnen und lesen, auch ohne spezielle Software. Ein Standard-PDF-Reader genuegt.
+
+### Die XML-Komponente
+
+In die PDF-Datei ist eine XML-Datei eingebettet, die alle Rechnungsdaten in strukturierter Form enthaelt. Diese XML-Datei folgt dem UN/CEFACT Cross Industry Invoice (CII) Schema und kann von Software automatisch ausgelesen und verarbeitet werden.
+
+Die XML-Daten ermoeglichen die automatische Buchung ohne manuelle Dateneingabe, die maschinelle Validierung der Rechnungsdaten, den automatischen Abgleich mit Bestellungen und Lieferscheinen sowie die revisionssichere Archivierung.
+
+## Vorteile gegenueber reinem XML
+
+Waehrend XRechnung ein reines XML-Format ist, bietet ZUGFeRD durch seinen hybriden Ansatz einige praktische Vorteile:
+
+### Menschenlesbar und maschinenlesbar
+
+Der groesste Vorteil von ZUGFeRD ist die doppelte Lesbarkeit. Mitarbeiter koennen die Rechnung wie gewohnt als PDF lesen und pruefen, waehrend die Buchhaltungssoftware die XML-Daten automatisch verarbeitet. Es gibt keinen Medienbruch.
+
+### Sanfter Uebergang
+
+Fuer Unternehmen, die den Umstieg auf E-Rechnungen noch vor sich haben, bietet ZUGFeRD einen sanften Einstieg. Die Rechnung sieht aus wie ein bekanntes PDF, enthaelt aber bereits die maschinenlesbaren Daten. So koennen bestehende Prozesse weitgehend beibehalten werden.
+
+### Universelle Kompatibilitaet
+
+Eine ZUGFeRD-Datei kann von jedem PDF-Reader geoeffnet werden. Auch wenn der Empfaenger keine spezielle E-Rechnungssoftware hat, kann er die Rechnung lesen und manuell verarbeiten. Die XML-Daten stehen dann bereit, sobald die Software nachgeruestet wird.
+
+### Archivierungsfreundlich
+
+Da ZUGFeRD auf PDF/A-3 basiert, erfuellt es bereits die Anforderungen an die Langzeitarchivierung. Die eingebetteten XML-Daten bleiben dauerhaft erhalten und koennen auch nach Jahren noch ausgelesen werden.
+
+## ZUGFeRD vs XRechnung: Unterschiede und Gemeinsamkeiten
+
+Beide Formate sind in Deutschland fuer die E-Rechnungspflicht zugelassen, unterscheiden sich aber in einigen Punkten:
+
+### Gemeinsamkeiten
+
+- Beide sind EN 16931-konform
+- Beide enthalten strukturierte XML-Daten
+- Beide werden von der E-Rechnungspflicht akzeptiert
+- Beide koennen ueber Peppol und E-Mail versendet werden
+
+### Unterschiede
+
+- **Format:** XRechnung ist reines XML, ZUGFeRD ist PDF/A-3 mit eingebettetem XML
+- **Lesbarkeit:** ZUGFeRD ist ohne Spezialsoftware lesbar, XRechnung benoetigt einen Viewer
+- **Pflicht B2G:** Fuer Bundesbehoerden ist XRechnung das vorgeschriebene Format
+- **Datenmodell:** XRechnung nutzt UBL 2.1, ZUGFeRD nutzt UN/CEFACT CII
+- **Dateigroesse:** ZUGFeRD-Dateien sind durch die PDF-Komponente groesser
+- **Internationale Verbreitung:** ZUGFeRD/Factur-X wird in Deutschland und Frankreich genutzt, XRechnung/Peppol BIS ist europaweit verbreitet
+
+### Welches Format sollten Sie waehlen?
+
+Fuer Rechnungen an Bundesbehoerden ist XRechnung Pflicht. Fuer B2B-Rechnungen haben Sie die Wahl. ZUGFeRD eignet sich besonders gut, wenn Ihre Kunden die Rechnungen auch visuell pruefen moechten. XRechnung ist die bessere Wahl, wenn die vollautomatische Verarbeitung im Vordergrund steht.
+
+## Fazit
+
+ZUGFeRD ist ein durchdachtes Format, das die Bruecke zwischen der traditionellen PDF-Rechnung und der vollstaendig digitalen E-Rechnung schlaegt. Durch seinen hybriden Ansatz macht es den Umstieg auf E-Rechnungen besonders einfach — sowohl fuer den Versender als auch fuer den Empfaenger.
+
+Mit der aktuellen Version 2.3.3 ist ZUGFeRD vollstaendig konform mit der EN 16931 und erfuellt alle Anforderungen der deutschen E-Rechnungspflicht. Fuer viele Unternehmen ist es das ideale Format fuer den Einstieg in die Welt der elektronischen Rechnungsstellung.
+
+**Erstellen Sie mit RechnungsWerk ZUGFeRD-Rechnungen in wenigen Klicks** — EN 16931-konform, automatisch validiert und sofort versandbereit. Jetzt kostenlos testen.
