@@ -28,6 +28,7 @@ class Organization(Base):
     vat_id = Column(String(20))
     address = Column(Text)
     logo_url = Column(String(500))
+    onboarding_completed = Column(Boolean, default=False)
     plan = Column(String(20), default="free")  # free, starter, professional
     stripe_customer_id = Column(String(100))
     stripe_subscription_id = Column(String(100))
