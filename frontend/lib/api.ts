@@ -552,6 +552,47 @@ export const categorizeInvoice = async (invoiceId: string): Promise<Categorizati
 }
 
 // ---------------------------------------------------------------------------
+// Mahnwesen (Dunning)
+// ---------------------------------------------------------------------------
+
+export interface OverdueInvoice {
+  invoice_id: string
+  invoice_number: string
+  buyer_name: string
+  gross_amount: number
+  due_date: string
+  days_overdue: number
+  mahnung_count: number
+}
+
+export interface MahnungRecord {
+  mahnung_id: string
+  invoice_id: string
+  level: number
+  fee: number
+  interest: number
+  total_due: number
+  status: string
+  sent_at: string | null
+  created_at: string
+}
+
+export async function getOverdueInvoices(): Promise<OverdueInvoice[]> {
+  const resp = await api.get<OverdueInvoice[]>('/api/mahnwesen/overdue')
+  return resp.data
+}
+
+export async function getMahnungen(invoiceId: string): Promise<MahnungRecord[]> {
+  const resp = await api.get<MahnungRecord[]>(`/api/mahnwesen/${invoiceId}`)
+  return resp.data
+}
+
+export async function createMahnung(invoiceId: string): Promise<MahnungRecord> {
+  const resp = await api.post<MahnungRecord>(`/api/mahnwesen/${invoiceId}/mahnung`)
+  return resp.data
+}
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 

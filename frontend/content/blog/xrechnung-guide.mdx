@@ -1,0 +1,121 @@
+---
+title: "XRechnung erstellen: Schritt-fuer-Schritt Anleitung 2025"
+description: "Erfahren Sie, wie Sie XRechnungen korrekt erstellen, validieren und versenden. Mit praktischer Anleitung, Pflichtfeldern und Tipps zur Fehlervermeidung."
+date: "2026-02-25"
+author: "RechnungsWerk Team"
+---
+
+## Was ist XRechnung?
+
+XRechnung ist der offizielle deutsche Standard fuer elektronische Rechnungen an oeffentliche Auftraggeber und zunehmend auch im B2B-Bereich. Das Format basiert auf dem internationalen UBL 2.1 Standard (Universal Business Language) und ist vollstaendig konform mit der europaeischen Norm EN 16931.
+
+Im Gegensatz zu einer PDF-Rechnung handelt es sich bei einer XRechnung um eine rein maschinenlesbare XML-Datei. Sie enthaelt alle Rechnungsinformationen in einem strukturierten Format, das von Software automatisch ausgelesen und verarbeitet werden kann — ohne manuelle Dateneingabe.
+
+Die XRechnung wird von der KoSIT (Koordinierungsstelle fuer IT-Standards) entwickelt und gepflegt. Die aktuelle Version ist XRechnung 3.0.2, die im Herbst 2024 veroeffentlicht wurde. Regelmaessige Updates stellen sicher, dass der Standard mit den europaeischen Vorgaben Schritt haelt.
+
+## Wer muss XRechnung nutzen?
+
+Die Pflicht zur Nutzung von XRechnung betrifft verschiedene Gruppen zu unterschiedlichen Zeitpunkten:
+
+### B2G: Pflicht seit 2020
+
+Seit dem 27. November 2020 muessen alle Lieferanten des Bundes ihre Rechnungen im XRechnung-Format einreichen. Die meisten Bundeslaender haben aehnliche Regelungen eingefuehrt, wobei die genauen Fristen je nach Land variieren.
+
+Fuer Rechnungen an Bundesbehoerden ist die sogenannte Leitweg-ID ein Pflichtfeld. Diese ID identifiziert die empfangende Behoerde eindeutig und ist fuer die korrekte Zustellung unerlaesslich.
+
+### B2B: Ab 2025 Empfangspflicht, ab 2027/2028 Versandpflicht
+
+Mit dem Wachstumschancengesetz wurde die E-Rechnungspflicht auch fuer den B2B-Bereich eingefuehrt. Seit dem 1. Januar 2025 muessen alle Unternehmen in Deutschland E-Rechnungen empfangen koennen. XRechnung ist dabei eines der zugelassenen Formate neben ZUGFeRD.
+
+Ab 2027 muessen Unternehmen mit mehr als 800.000 Euro Jahresumsatz aktiv E-Rechnungen versenden. Ab 2028 gilt diese Pflicht dann fuer alle Unternehmen — unabhaengig von der Groesse.
+
+## Aufbau einer XRechnung
+
+Eine XRechnung ist eine XML-Datei mit einer klar definierten Struktur. Die wichtigsten Bereiche sind:
+
+### Pflichtfelder im Ueberblick
+
+- **Rechnungsnummer (BT-1):** Eindeutige Kennung der Rechnung
+- **Rechnungsdatum (BT-2):** Ausstellungsdatum im Format JJJJ-MM-TT
+- **Rechnungsart (BT-3):** Code fuer die Art des Dokuments (380 fuer Rechnung, 381 fuer Gutschrift)
+- **Waehrungscode (BT-5):** In der Regel EUR
+- **Verkaeuferdaten (BG-4):** Name, Adresse, USt-IdNr. des Rechnungsstellers
+- **Kaeuferdaten (BG-7):** Name, Adresse des Rechnungsempfaengers
+- **Zahlungsinformationen (BG-16):** Faelligkeitsdatum, Zahlungsart, IBAN
+- **Rechnungspositionen (BG-25):** Einzelne Posten mit Menge, Preis, Steuersatz
+- **Gesamtbetraege (BG-22):** Nettobetrag, Steuerbetrag, Bruttobetrag
+
+### XML-Struktur
+
+Die XML-Datei folgt dem UBL-Schema und beginnt mit dem Wurzelelement `Invoice`. Innerhalb dieses Elements werden die einzelnen Informationsgruppen (Business Groups, BG) und Informationselemente (Business Terms, BT) nach der EN 16931 abgebildet.
+
+Jede Rechnungsposition enthaelt Angaben zur Menge, zum Einzelpreis, zum Steuersatz und zur Artikelbeschreibung. Die Berechnung der Steuerbetraege und Gesamtsummen muss konsistent sein — Abweichungen fuehren zu Validierungsfehlern.
+
+## Schritt-fuer-Schritt Anleitung
+
+### Schritt 1: Rechnungsdaten zusammenstellen
+
+Bevor Sie eine XRechnung erstellen, benoetigen Sie alle relevanten Daten:
+
+- Ihre vollstaendigen Unternehmensdaten inklusive USt-IdNr. oder Steuernummer
+- Die vollstaendige Empfaengeradresse und ggf. die Leitweg-ID (bei oeffentlichen Auftraggebern)
+- Alle Rechnungspositionen mit Menge, Einzelpreis und zugehoerigem Steuersatz
+- Zahlungsbedingungen und Ihre Bankverbindung (IBAN/BIC)
+- Eine eindeutige, fortlaufende Rechnungsnummer
+
+### Schritt 2: Format waehlen und Rechnung erstellen
+
+Fuer die Erstellung einer XRechnung haben Sie mehrere Moeglichkeiten:
+
+- **Software-Loesung wie RechnungsWerk:** Geben Sie Ihre Rechnungsdaten ein und die Software generiert automatisch eine valide XRechnung im korrekten XML-Format. Dies ist der einfachste und sicherste Weg.
+- **Online-Portale:** Einige Plattformen bieten kostenlose XRechnung-Generatoren an, die jedoch oft nur begrenzte Funktionalitaet bieten.
+- **Manuelle Erstellung:** Technisch versierte Nutzer koennen die XML-Datei manuell erstellen, was jedoch fehleranfaellig ist und nicht empfohlen wird.
+
+### Schritt 3: Validierung durchfuehren
+
+Vor dem Versand muessen Sie sicherstellen, dass Ihre XRechnung gueltig ist. Die Validierung prueft:
+
+- Die korrekte XML-Struktur (Schema-Validierung)
+- Die Einhaltung der EN 16931 Geschaeftsregeln
+- Deutsche Erweiterungsregeln (CIUS)
+- Die rechnerische Korrektheit aller Betraege
+
+RechnungsWerk validiert Ihre Rechnungen automatisch gegen den offiziellen KoSIT-Validator und zeigt Fehler sofort an, bevor Sie die Rechnung versenden.
+
+### Schritt 4: Rechnung versenden
+
+Fuer den Versand Ihrer XRechnung stehen verschiedene Wege zur Verfuegung:
+
+- **Peppol-Netzwerk:** Der europaeische Standard fuer den sicheren Austausch von Geschaeftsdokumenten. Besonders fuer den internationalen Rechnungsversand relevant.
+- **E-Mail:** Die XRechnung kann als XML-Datei per E-Mail versendet werden. Achten Sie auf eine sichere Uebertragung.
+- **Zentrale Rechnungseingangsplattformen:** Fuer Rechnungen an den Bund nutzen Sie die ZRE (Zentrale Rechnungseingangsplattform) oder die OZG-RE.
+
+## Haeufige Fehler vermeiden
+
+### Fehlende oder falsche Leitweg-ID
+
+Bei Rechnungen an oeffentliche Auftraggeber ist die Leitweg-ID ein Pflichtfeld. Ohne korrekte Leitweg-ID wird Ihre Rechnung abgelehnt. Fragen Sie Ihren Auftraggeber nach der korrekten ID, bevor Sie die Rechnung erstellen.
+
+### Falsche oder fehlende USt-IdNr.
+
+Die Umsatzsteuer-Identifikationsnummer des Rechnungsstellers ist ein Pflichtfeld in der XRechnung. Stellen Sie sicher, dass die Nummer korrekt und aktuell ist. Eine fehlende oder ungueltige USt-IdNr. fuehrt zur Ablehnung.
+
+### Ungueltiges XML
+
+Haeufige technische Fehler sind fehlende Pflichtfelder, falsche Datentypen (z.B. Text statt Zahl in Betragsfeldern), inkonsistente Betragsberechnungen und falsche Zeichenkodierung. Verwenden Sie immer UTF-8 und validieren Sie die Datei vor dem Versand.
+
+### Rechnerische Inkonsistenz
+
+Die Summe der Einzelpositionen muss exakt dem Gesamtbetrag entsprechen. Auch die Steuerbetraege muessen korrekt berechnet sein. Rundungsdifferenzen sind ein haeufiger Ablehnungsgrund.
+
+### Falsche Rechnungsart
+
+Verwenden Sie den korrekten Code fuer die Rechnungsart: 380 fuer eine regulaere Rechnung, 381 fuer eine Gutschrift. Ein falscher Code fuehrt zu Verarbeitungsfehlern beim Empfaenger.
+
+## Fazit
+
+Die Erstellung von XRechnungen muss nicht kompliziert sein. Mit der richtigen Software werden die technischen Details im Hintergrund erledigt, waehrend Sie sich auf Ihr Kerngeschaeft konzentrieren koennen.
+
+Der Schluessel zum Erfolg liegt in der Verwendung einer Loesung, die automatisch validiert, die aktuellste XRechnung-Version unterstuetzt und den Versand ueber gaengige Kanaele wie Peppol und E-Mail ermoeglicht.
+
+**Testen Sie RechnungsWerk jetzt kostenlos** und erstellen Sie Ihre erste XRechnung in wenigen Minuten — vollstaendig konform und sofort versandbereit.

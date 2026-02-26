@@ -56,6 +56,16 @@ email-validator>=2.0.0
 # Payments (Stripe)
 stripe>=11.0.0
 
+# Email (Brevo Transactional)
+sib-api-v3-sdk>=7.6.0
+
+# KI APIs (Phase 2 migration)
+anthropic>=0.50.0
+mistralai>=1.0.0
+
+# PDF Generation (GoBD docs)
+reportlab>=4.2.0
+
 # Development & Testing
 pytest==8.3.0
 pytest-asyncio==0.24.0

@@ -5,39 +5,26 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   RefreshCw,
-  FileText,
-  Loader2,
   AlertCircle,
   Plus,
   Search,
   Download,
   Filter,
-  ChevronUp,
-  ChevronDown,
   X,
-  Trash2,
-  CheckSquare,
-  Square,
-  ArrowLeft,
-  ArrowRight,
-  ChevronsLeft,
-  ChevronsRight,
+  FileSpreadsheet,
 } from 'lucide-react'
 import {
   listInvoices,
-  generateXRechnung,
-  deleteInvoice,
-  getErrorMessage,
   API_BASE,
   type Invoice,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { InvoiceTable, type InvoiceRow } from '@/components/InvoiceTable'
+import DATEVExportDialog from '@/components/DATEVExportDialog'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const PAGE_SIZE = 20
-
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
   xrechnung_generated: { label: 'XML erstellt', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' },
   pending: { label: 'Ausstehend', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
@@ -53,11 +40,8 @@ const SOURCE_LABELS: Record<string, string> = {
   xml: 'XML',
 }
 
-type SortKey = 'invoice_number' | 'seller_name' | 'buyer_name' | 'net_amount' | 'gross_amount' | 'invoice_date' | 'validation_status'
-type SortDir = 'asc' | 'desc'
-
 // ---------------------------------------------------------------------------
-// Badge components
+// Badge components (used in detail panel)
 // ---------------------------------------------------------------------------
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? { label: status, bg: 'bg-gray-100', text: 'text-gray-600' }
@@ -279,41 +263,6 @@ function DetailRow({
 }
 
 // ---------------------------------------------------------------------------
-// Sortable column header
-// ---------------------------------------------------------------------------
-function SortableHeader({
-  label,
-  sortKey,
-  currentSort,
-  currentDir,
-  onSort,
-}: {
-  label: string
-  sortKey: SortKey
-  currentSort: SortKey
-  currentDir: SortDir
-  onSort: (key: SortKey) => void
-}) {
-  const active = currentSort === sortKey
-  return (
-    <button
-      onClick={() => onSort(sortKey)}
-      className="flex items-center gap-1 text-left font-semibold uppercase tracking-wide text-[11px] transition-colors hover:opacity-80"
-      style={{
-        color: active ? 'rgb(var(--primary))' : 'rgb(var(--foreground-muted))',
-      }}
-    >
-      {label}
-      {active
-        ? currentDir === 'asc'
-          ? <ChevronUp size={11} />
-          : <ChevronDown size={11} />
-        : <ChevronDown size={11} className="opacity-30" />}
-    </button>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function InvoicesPage() {
@@ -321,20 +270,13 @@ export default function InvoicesPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
-
   // UI state
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('invoice_date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null)
   const [showFilters, setShowFilters] = useState(false)
-  const [bulkGenerating, setBulkGenerating] = useState(false)
+  const [showDATEVExport, setShowDATEVExport] = useState(false)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -354,7 +296,7 @@ export default function InvoicesPage() {
     fetchInvoices()
   }, [fetchInvoices])
 
-  // Client-side filtering + sorting
+  // Client-side filtering (sorting + pagination handled by InvoiceTable)
   const filtered = useMemo(() => {
     let result = [...invoices]
 
@@ -380,106 +322,13 @@ export default function InvoicesPage() {
       result = result.filter((inv) => inv.source_type === sourceFilter)
     }
 
-    // Sort
-    result.sort((a, b) => {
-      const aVal = a[sortKey] ?? ''
-      const bVal = b[sortKey] ?? ''
-      const cmp = String(aVal).localeCompare(String(bVal), 'de', { numeric: true })
-      return sortDir === 'asc' ? cmp : -cmp
-    })
-
     return result
-  }, [invoices, searchQuery, statusFilter, sourceFilter, sortKey, sortDir])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir('asc')
-    }
-    setCurrentPage(1)
-  }
-
-  const handleGenerateXML = async (invoiceId: string) => {
-    setGeneratingIds((prev) => new Set(prev).add(invoiceId))
-    try {
-      await generateXRechnung(invoiceId)
-      await fetchInvoices()
-    } catch (err: unknown) {
-      alert(getErrorMessage(err, 'Fehler bei XML-Generierung'))
-    } finally {
-      setGeneratingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(invoiceId)
-        return next
-      })
-    }
-  }
-
-  const handleDelete = async (invoiceId: string) => {
-    if (!confirm('Rechnung wirklich löschen?')) return
-    setDeletingIds((prev) => new Set(prev).add(invoiceId))
-    try {
-      await deleteInvoice(invoiceId)
-      await fetchInvoices()
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        next.delete(invoiceId)
-        return next
-      })
-    } catch (err: unknown) {
-      alert(getErrorMessage(err, 'Fehler beim Löschen'))
-    } finally {
-      setDeletingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(invoiceId)
-        return next
-      })
-    }
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === paginated.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(paginated.map((inv) => inv.invoice_id)))
-    }
-  }
-
-  const handleBulkGenerateXML = async () => {
-    if (!selectedIds.size) return
-    setBulkGenerating(true)
-    const ids = Array.from(selectedIds)
-    for (const id of ids) {
-      try {
-        await generateXRechnung(id)
-      } catch {
-        // continue with others
-      }
-    }
-    await fetchInvoices()
-    setSelectedIds(new Set())
-    setBulkGenerating(false)
-  }
+  }, [invoices, searchQuery, statusFilter, sourceFilter])
 
   const clearFilters = () => {
     setSearchQuery('')
     setStatusFilter('all')
     setSourceFilter('all')
-    setCurrentPage(1)
   }
 
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || sourceFilter !== 'all'
@@ -511,6 +360,9 @@ export default function InvoicesPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* DATEV Export Dialog */}
+      <DATEVExportDialog open={showDATEVExport} onOpenChange={setShowDATEVExport} />
 
       {/* ===== Page Header ===== */}
       <motion.div
@@ -552,6 +404,17 @@ export default function InvoicesPage() {
             <Plus size={14} /> Manuell
           </Link>
           <button
+            onClick={() => setShowDATEVExport(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors"
+            style={{
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+              backgroundColor: 'rgb(var(--card))',
+            }}
+          >
+            <FileSpreadsheet size={14} /> DATEV Export
+          </button>
+          <button
             onClick={fetchInvoices}
             disabled={loading}
             className="p-2 rounded-lg border transition-colors disabled:opacity-40"
@@ -592,7 +455,7 @@ export default function InvoicesPage() {
               type="text"
               placeholder="Suchen nach Nummer, Verkäufer, Käufer..."
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
               style={selectStyle}
             />
@@ -656,7 +519,7 @@ export default function InvoicesPage() {
                 </label>
                 <select
                   value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
                   style={selectStyle}
                 >
@@ -679,7 +542,7 @@ export default function InvoicesPage() {
                 </label>
                 <select
                   value={sourceFilter}
-                  onChange={(e) => { setSourceFilter(e.target.value); setCurrentPage(1) }}
+                  onChange={(e) => setSourceFilter(e.target.value)}
                   className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
                   style={selectStyle}
                 >
@@ -694,49 +557,8 @@ export default function InvoicesPage() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ===== Bulk Actions bar ===== */}
-      <AnimatePresence>
-        {selectedIds.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
-            className="mb-4 rounded-xl border px-4 py-3 flex items-center gap-4 flex-wrap"
-            style={{
-              backgroundColor: 'rgb(var(--primary-light))',
-              borderColor: 'rgb(var(--primary-border))',
-            }}
-          >
-            <span className="text-sm font-medium" style={{ color: 'rgb(var(--primary))' }}>
-              {selectedIds.size} ausgewählt
-            </span>
-            <button
-              onClick={handleBulkGenerateXML}
-              disabled={bulkGenerating}
-              className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
-              style={{ backgroundColor: 'rgb(var(--primary))' }}
-            >
-              {bulkGenerating ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-              XML generieren
-            </button>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="text-xs"
-              style={{ color: 'rgb(var(--primary))' }}
-            >
-              Auswahl aufheben
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ===== Table ===== */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20 gap-3" style={{ color: 'rgb(var(--foreground-muted))' }}>
-          <Loader2 className="animate-spin" size={22} />
-          <span className="text-sm">Lade Rechnungen...</span>
-        </div>
-      ) : error ? (
+      {error ? (
         <div
           className="rounded-xl border p-6 flex items-start gap-3"
           style={{
@@ -761,382 +583,25 @@ export default function InvoicesPage() {
             </p>
           </div>
         </div>
-      ) : filtered.length === 0 ? (
-        <div
-          className="rounded-xl border p-12 text-center"
-          style={{
-            backgroundColor: 'rgb(var(--card))',
-            borderColor: 'rgb(var(--border))',
-          }}
-        >
-          <FileText size={48} className="mx-auto mb-4" style={{ color: 'rgb(var(--border-strong))' }} />
-          <p className="font-medium mb-1" style={{ color: 'rgb(var(--foreground))' }}>
-            {hasActiveFilters ? 'Keine Rechnungen gefunden' : 'Noch keine Rechnungen vorhanden'}
-          </p>
-          <p className="text-sm mb-6" style={{ color: 'rgb(var(--foreground-muted))' }}>
-            {hasActiveFilters
-              ? 'Versuchen Sie, die Filter anzupassen'
-              : 'Starten Sie mit OCR Upload oder manueller Eingabe'}
-          </p>
-          {hasActiveFilters ? (
-            <button
-              onClick={clearFilters}
-              className="text-sm font-medium"
-              style={{ color: 'rgb(var(--primary))' }}
-            >
-              Filter zurücksetzen
-            </button>
-          ) : (
-            <div className="flex gap-3 justify-center">
-              <Link
-                href="/ocr"
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                style={{ backgroundColor: 'rgb(var(--primary))' }}
-              >
-                OCR Upload
-              </Link>
-              <Link
-                href="/manual"
-                className="px-4 py-2 rounded-lg text-sm font-medium border"
-                style={{
-                  borderColor: 'rgb(var(--border))',
-                  color: 'rgb(var(--foreground))',
-                }}
-              >
-                Manuell eingeben
-              </Link>
-            </div>
-          )}
-        </div>
       ) : (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="rounded-xl border overflow-hidden"
-          style={{
-            backgroundColor: 'rgb(var(--card))',
-            borderColor: 'rgb(var(--border))',
-          }}
         >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px]">
-              <thead>
-                <tr
-                  className="border-b"
-                  style={{
-                    backgroundColor: 'rgb(var(--muted))',
-                    borderColor: 'rgb(var(--border))',
-                  }}
-                >
-                  {/* Select all */}
-                  <th className="w-10 px-4 py-3">
-                    <button onClick={toggleSelectAll}>
-                      {selectedIds.size === paginated.length && paginated.length > 0 ? (
-                        <CheckSquare size={15} style={{ color: 'rgb(var(--primary))' }} />
-                      ) : (
-                        <Square size={15} style={{ color: 'rgb(var(--foreground-muted))' }} />
-                      )}
-                    </button>
-                  </th>
-                  <th className="text-left px-3 py-3">
-                    <SortableHeader label="Rechnung" sortKey="invoice_number" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                  </th>
-                  <th className="text-left px-3 py-3">
-                    <SortableHeader label="Verkäufer" sortKey="seller_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                  </th>
-                  <th className="text-left px-3 py-3">
-                    <SortableHeader label="Käufer" sortKey="buyer_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                  </th>
-                  <th className="text-right px-3 py-3">
-                    <SortableHeader label="Brutto" sortKey="gross_amount" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                  </th>
-                  <th className="text-left px-3 py-3">
-                    <SortableHeader label="Status" sortKey="validation_status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                  </th>
-                  <th className="text-left px-3 py-3">
-                    <SortableHeader label="Datum" sortKey="invoice_date" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-                  </th>
-                  <th className="text-left px-4 py-3">
-                    <span
-                      className="text-[11px] font-semibold uppercase tracking-wide"
-                      style={{ color: 'rgb(var(--foreground-muted))' }}
-                    >
-                      Aktionen
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map((inv) => {
-                  const isSelected = selectedIds.has(inv.invoice_id)
-                  const isGenerating = generatingIds.has(inv.invoice_id)
-                  const isDeleting = deletingIds.has(inv.invoice_id)
-                  return (
-                    <tr
-                      key={inv.id}
-                      className={cn(
-                        'border-b last:border-b-0 transition-colors duration-100 cursor-pointer',
-                        isSelected ? 'selected-row' : '',
-                      )}
-                      style={{
-                        borderColor: 'rgb(var(--border))',
-                        backgroundColor: isSelected ? 'rgb(var(--primary-light))' : 'transparent',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'rgb(var(--muted))'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'transparent'
-                        }
-                      }}
-                      onClick={() => setDetailInvoice(inv)}
-                    >
-                      {/* Checkbox */}
-                      <td
-                        className="w-10 px-4 py-3"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleSelect(inv.invoice_id)
-                        }}
-                      >
-                        {isSelected ? (
-                          <CheckSquare size={15} style={{ color: 'rgb(var(--primary))' }} />
-                        ) : (
-                          <Square size={15} style={{ color: 'rgb(var(--foreground-muted))' }} />
-                        )}
-                      </td>
-
-                      {/* Invoice number */}
-                      <td className="px-3 py-3">
-                        <p
-                          className="text-sm font-semibold"
-                          style={{ color: 'rgb(var(--foreground))' }}
-                        >
-                          {inv.invoice_number || '—'}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <SourceBadge source={inv.source_type} />
-                          <p
-                            className="text-[10px] font-mono"
-                            style={{ color: 'rgb(var(--foreground-muted))' }}
-                          >
-                            {inv.invoice_id?.slice(0, 16)}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Seller */}
-                      <td
-                        className="px-3 py-3 text-sm max-w-[120px]"
-                        style={{ color: 'rgb(var(--foreground))' }}
-                      >
-                        <p className="truncate">{inv.seller_name || '—'}</p>
-                      </td>
-
-                      {/* Buyer */}
-                      <td
-                        className="px-3 py-3 text-sm max-w-[120px]"
-                        style={{ color: 'rgb(var(--foreground))' }}
-                      >
-                        <p className="truncate">{inv.buyer_name || '—'}</p>
-                      </td>
-
-                      {/* Gross amount */}
-                      <td
-                        className="px-3 py-3 text-sm font-semibold text-right tabular-nums whitespace-nowrap"
-                        style={{ color: 'rgb(var(--foreground))' }}
-                      >
-                        {inv.gross_amount != null ? `${inv.gross_amount.toFixed(2)} €` : '—'}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-3 py-3">
-                        <StatusBadge status={inv.validation_status} />
-                      </td>
-
-                      {/* Date */}
-                      <td
-                        className="px-3 py-3 text-xs whitespace-nowrap"
-                        style={{ color: 'rgb(var(--foreground-muted))' }}
-                      >
-                        {inv.invoice_date || '—'}
-                      </td>
-
-                      {/* Actions */}
-                      <td
-                        className="px-4 py-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center gap-2">
-                          {/* Generate XML */}
-                          {inv.validation_status !== 'xrechnung_generated' && (
-                            <button
-                              onClick={() => handleGenerateXML(inv.invoice_id)}
-                              disabled={isGenerating}
-                              className="text-xs font-medium whitespace-nowrap flex items-center gap-1 disabled:opacity-40"
-                              style={{ color: 'rgb(var(--primary))' }}
-                            >
-                              {isGenerating ? (
-                                <Loader2 className="animate-spin" size={12} />
-                              ) : null}
-                              XML
-                            </button>
-                          )}
-
-                          {/* Download XML */}
-                          {inv.xrechnung_available && (
-                            <a
-                              href={`${API_BASE}/api/invoices/${inv.invoice_id}/download-xrechnung`}
-                              className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded"
-                              style={{
-                                backgroundColor: 'rgb(var(--accent-light))',
-                                color: 'rgb(var(--accent))',
-                              }}
-                              download
-                              title="XRechnung XML herunterladen"
-                            >
-                              <Download size={11} /> XML
-                            </a>
-                          )}
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => handleDelete(inv.invoice_id)}
-                            disabled={isDeleting}
-                            className="p-0.5 transition-colors disabled:opacity-40"
-                            style={{ color: 'rgb(var(--foreground-muted))' }}
-                            title="Löschen"
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.color = 'rgb(var(--destructive))'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.color = 'rgb(var(--foreground-muted))'
-                            }}
-                          >
-                            {isDeleting ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={13} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* ===== Pagination ===== */}
-          {totalPages > 1 && (
-            <div
-              className="flex items-center justify-between px-4 py-3 border-t"
-              style={{ borderColor: 'rgb(var(--border))' }}
-            >
-              <p className="text-xs" style={{ color: 'rgb(var(--foreground-muted))' }}>
-                Seite {currentPage} von {totalPages} · {filtered.length} Rechnungen
-              </p>
-              <div className="flex items-center gap-1">
-                <PaginationButton
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  title="Erste Seite"
-                >
-                  <ChevronsLeft size={13} />
-                </PaginationButton>
-                <PaginationButton
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  title="Vorherige Seite"
-                >
-                  <ArrowLeft size={13} />
-                </PaginationButton>
-
-                {/* Page numbers */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let page: number
-                  if (totalPages <= 5) {
-                    page = i + 1
-                  } else if (currentPage <= 3) {
-                    page = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    page = totalPages - 4 + i
-                  } else {
-                    page = currentPage - 2 + i
-                  }
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className="w-8 h-8 rounded-md text-xs font-medium flex items-center justify-center transition-colors"
-                      style={{
-                        backgroundColor:
-                          currentPage === page ? 'rgb(var(--primary))' : 'transparent',
-                        color:
-                          currentPage === page
-                            ? 'white'
-                            : 'rgb(var(--foreground-muted))',
-                      }}
-                    >
-                      {page}
-                    </button>
-                  )
-                })}
-
-                <PaginationButton
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  title="Nächste Seite"
-                >
-                  <ArrowRight size={13} />
-                </PaginationButton>
-                <PaginationButton
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  title="Letzte Seite"
-                >
-                  <ChevronsRight size={13} />
-                </PaginationButton>
-              </div>
-            </div>
-          )}
+          <InvoiceTable
+            invoices={filtered.map((inv): InvoiceRow => ({
+              invoice_id: inv.invoice_id,
+              invoice_number: inv.invoice_number,
+              created_at: inv.created_at,
+              buyer_name: inv.buyer_name,
+              gross_amount: inv.gross_amount,
+              status: inv.validation_status,
+            }))}
+            loading={loading}
+          />
         </motion.div>
       )}
     </div>
-  )
-}
-
-function PaginationButton({
-  onClick,
-  disabled,
-  title,
-  children,
-}: {
-  onClick: () => void
-  disabled: boolean
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className="w-8 h-8 rounded-md flex items-center justify-center transition-colors disabled:opacity-30"
-      style={{ color: 'rgb(var(--foreground-muted))' }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.backgroundColor = 'rgb(var(--muted))'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent'
-      }}
-    >
-      {children}
-    </button>
   )
 }

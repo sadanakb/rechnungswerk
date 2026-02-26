@@ -28,6 +28,7 @@ class Organization(Base):
     vat_id = Column(String(20))
     address = Column(Text)
     logo_url = Column(String(500))
+    onboarding_completed = Column(Boolean, default=False)
     plan = Column(String(20), default="free")  # free, starter, professional
     stripe_customer_id = Column(String(100))
     stripe_subscription_id = Column(String(100))
@@ -263,3 +264,22 @@ class ArchiveEntry(Base):
     archive_path = Column(String)
     file_size = Column(Integer)
     archived_at = Column(DateTime(timezone=True), default=_utc_now)
+
+
+class Mahnung(Base):
+    """Dunning/reminder record for overdue invoices"""
+    __tablename__ = 'mahnungen'
+
+    id = Column(Integer, primary_key=True)
+    mahnung_id = Column(String, unique=True, index=True)
+    invoice_id = Column(String, ForeignKey('invoices.invoice_id'), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    level = Column(Integer, nullable=False)  # 1, 2, or 3
+    fee = Column(Numeric(8, 2), default=0)  # Mahngebuehr
+    interest = Column(Numeric(8, 2), default=0)  # Verzugszinsen
+    total_due = Column(Numeric(12, 2))  # Original amount + fees + interest
+    status = Column(String(20), default="created")  # created, sent, paid, cancelled
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+
+    invoice = relationship("Invoice")

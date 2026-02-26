@@ -17,6 +17,7 @@ import {
   Monitor,
   Users,
   Repeat,
+  AlertTriangle,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/suppliers', label: 'Lieferanten', icon: Users },
   { href: '/recurring', label: 'Wiederkehrend', icon: Repeat },
+  { href: '/mahnwesen', label: 'Mahnwesen', icon: AlertTriangle },
 ]
 
 const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5)

@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,10 @@ app.include_router(external_api.router, tags=["External API v1"])
 app.include_router(email.router, tags=["Email"])
 app.include_router(auth_router.router)
 app.include_router(billing.router)
+app.include_router(mahnwesen.router, tags=["Mahnwesen"])
+app.include_router(onboarding.router)
+app.include_router(newsletter.router)
+app.include_router(gobd.router)
 
 
 @app.get("/")
