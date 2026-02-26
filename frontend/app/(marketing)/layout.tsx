@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { NewsletterForm } from '@/components/NewsletterForm'
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
@@ -90,13 +91,11 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               </ul>
             </div>
             <div>
-              <h3 className="font-bold mb-3" style={{ color: 'rgb(var(--foreground))' }}>RechnungsWerk</h3>
-              <p className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
-                Open-Source E-Rechnungen fuer Deutschland
+              <h3 className="font-bold mb-3" style={{ color: 'rgb(var(--foreground))' }}>Newsletter</h3>
+              <p className="text-sm mb-3" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                Erhalten Sie Updates zur E-Rechnungspflicht.
               </p>
-              <p className="text-sm mt-2" style={{ color: 'rgb(var(--foreground-muted))', opacity: 0.7 }}>
-                AGPL-3.0 Lizenz
-              </p>
+              <NewsletterForm />
             </div>
           </div>
           <div

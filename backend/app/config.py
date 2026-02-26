@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:14b"
     ai_provider: str = "auto"  # auto, anthropic, mistral, ollama
 
+    # Brevo (Newsletter)
+    brevo_api_key: str = ""
+
     # Stripe (placeholders for Task 12)
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
