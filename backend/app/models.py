@@ -18,6 +18,56 @@ class Base(DeclarativeBase):
     pass
 
 
+class Organization(Base):
+    """Organization / tenant for multi-tenancy"""
+    __tablename__ = 'organizations'
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    slug = Column(String(100), unique=True, nullable=False, index=True)
+    vat_id = Column(String(20))
+    address = Column(Text)
+    logo_url = Column(String(500))
+    plan = Column(String(20), default="free")  # free, starter, professional
+    stripe_customer_id = Column(String(100))
+    stripe_subscription_id = Column(String(100))
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
+
+    members = relationship("OrganizationMember", back_populates="organization")
+    invoices = relationship("Invoice", back_populates="organization")
+
+
+class User(Base):
+    """Application user"""
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(200))
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
+
+    memberships = relationship("OrganizationMember", back_populates="user")
+
+
+class OrganizationMember(Base):
+    """Links users to organizations with roles"""
+    __tablename__ = 'organization_members'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    role = Column(String(20), default="member")  # owner, admin, member
+    joined_at = Column(DateTime(timezone=True), default=_utc_now)
+
+    user = relationship("User", back_populates="memberships")
+    organization = relationship("Organization", back_populates="members")
+
+
 class Invoice(Base):
     """Processed invoice entity"""
     __tablename__ = 'invoices'
@@ -75,6 +125,10 @@ class Invoice(Base):
     # Timestamps — timezone-aware UTC (H2)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
+
+    # Multi-tenant
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    organization = relationship("Organization", back_populates="invoices")
 
     # Relationships (H6)
     upload_logs = relationship("UploadLog", back_populates="invoice")
