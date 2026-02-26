@@ -25,6 +25,8 @@ node_modules/
 dist/
 build/
 *.log
+# Serwist service worker (generated at build time)
+frontend/public/sw.js
 
 # macOS
 .DS_Store
