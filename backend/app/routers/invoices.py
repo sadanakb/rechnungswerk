@@ -27,16 +27,37 @@ from app.fraud.detector import FraudDetector
 from app.archive.gobd_archive import GoBDArchive
 from app.ai.categorizer import InvoiceCategorizer
 from app.auth import verify_api_key
+from app.auth_jwt import oauth2_scheme, decode_token
 from app.config import settings
 import uuid
 import os
 import io
 from datetime import datetime, date
 import re
-from typing import List
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
+
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)):
+    """Returns user dict if authenticated, None otherwise (backwards-compatible)."""
+    if not token:
+        return None
+    try:
+        if not settings.require_api_key:
+            return None
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+        return {
+            "user_id": payload.get("sub"),
+            "org_id": payload.get("org_id"),
+            "role": payload.get("role", "user"),
+        }
+    except Exception:
+        return None
+
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 ocr_pipeline = OCRPipeline()
@@ -207,7 +228,8 @@ async def upload_pdf_for_ocr(
 @router.post("/invoices", response_model=InvoiceResponse)
 async def create_invoice(
     invoice: InvoiceCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
     """
     Create invoice manually (without OCR)
@@ -221,6 +243,11 @@ async def create_invoice(
     net_amount = sum(item.net_amount for item in invoice.line_items)
     tax_amount = net_amount * (invoice.tax_rate / 100)
     gross_amount = net_amount + tax_amount
+
+    # Auto-set organization_id from JWT token (tenant isolation)
+    org_id = None
+    if current_user and current_user.get("org_id"):
+        org_id = current_user["org_id"]
 
     # Create invoice record
     db_invoice = Invoice(
@@ -249,7 +276,8 @@ async def create_invoice(
         buyer_endpoint_id=invoice.buyer_endpoint_id,
         buyer_endpoint_scheme=invoice.buyer_endpoint_scheme,
         source_type="manual",
-        validation_status="pending"
+        validation_status="pending",
+        organization_id=org_id,
     )
 
     db.add(db_invoice)
@@ -331,11 +359,18 @@ async def generate_xrechnung(
 async def list_invoices(
     skip: int = Query(default=0, ge=0, description="Anzahl zu überspringender Einträge"),
     limit: int = Query(default=50, ge=1, le=500, description="Max. Einträge (1-500)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
-    """List all invoices with pagination"""
-    total = db.query(Invoice).count()
-    invoices = db.query(Invoice).offset(skip).limit(limit).all()
+    """List all invoices with pagination (filtered by org if authenticated)"""
+    query = db.query(Invoice)
+
+    # Tenant isolation: filter by organization_id if authenticated
+    if current_user and current_user.get("org_id"):
+        query = query.filter(Invoice.organization_id == current_user["org_id"])
+
+    total = query.count()
+    invoices = query.offset(skip).limit(limit).all()
     return InvoiceListResponse(items=invoices, total=total, skip=skip, limit=limit)
 
 
