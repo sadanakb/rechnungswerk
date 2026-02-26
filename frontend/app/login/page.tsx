@@ -21,7 +21,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login({ email, password })
-      router.push('/')
+      router.push('/dashboard')
     } catch {
       setError('Ungueltige Anmeldedaten')
     } finally {

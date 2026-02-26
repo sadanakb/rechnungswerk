@@ -25,7 +25,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register(form)
-      router.push('/')
+      router.push('/dashboard')
     } catch {
       setError('Registrierung fehlgeschlagen. Bitte versuche es erneut.')
     } finally {
