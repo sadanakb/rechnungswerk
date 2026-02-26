@@ -1,17 +1,20 @@
 # Web Framework
-fastapi==0.115.0
+fastapi[standard]==0.133.1
 uvicorn[standard]==0.32.0
-python-multipart==0.0.12
+python-multipart>=0.0.18
 
 # Database
-sqlalchemy==2.0.36
+sqlalchemy==2.0.47
 pydantic==2.10.0
-pydantic-settings==2.7.0
+pydantic-settings==2.7.1
+
+# Database Migrations
+alembic==1.14.1
 
 # OCR & PDF Processing
 pytesseract==0.3.13
 pdf2image==1.17.0
-Pillow==11.1.0
+Pillow>=10.2.0
 opencv-python==4.11.0.86
 ollama>=0.4.0
 pdfplumber>=0.11.0
@@ -44,6 +47,14 @@ redis>=5.0.0
 
 # PostgreSQL (production database driver)
 psycopg2-binary>=2.9.0
+
+# Auth (JWT + password hashing)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+email-validator>=2.0.0
+
+# Payments (Stripe)
+stripe>=11.0.0
 
 # Development & Testing
 pytest==8.3.0

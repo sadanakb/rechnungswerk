@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: rechnungswerk
+      POSTGRES_USER: rw
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rw"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://rw:${DB_PASSWORD}@db:5432/rechnungswerk
+      REDIS_URL: redis://redis:6379
+      REQUIRE_API_KEY: "true"
+      ALLOWED_ORIGINS: '["https://rechnungswerk.de"]'
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: https://api.rechnungswerk.de
+    ports:
+      - "3001:3001"
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    ports:
+      - "3002:3001"
+    volumes:
+      - uptime-data:/app/data
+
+volumes:
+  pgdata:
+  uptime-data:
