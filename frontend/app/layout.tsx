@@ -1,15 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { ThemeProvider } from '@/components/design-system/theme-provider'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'RechnungsWerk - E-Invoice OCR & XRechnung 3.0.2',
@@ -20,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={inter.className} suppressHydrationWarning>
+    <html lang="de" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="min-h-screen antialiased" style={{ backgroundColor: 'rgb(var(--background))', color: 'rgb(var(--foreground))' }}>
         <ThemeProvider>
           <TooltipProvider>
