@@ -11,6 +11,7 @@ import {
   Download,
   Filter,
   X,
+  FileSpreadsheet,
 } from 'lucide-react'
 import {
   listInvoices,
@@ -19,6 +20,7 @@ import {
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { InvoiceTable, type InvoiceRow } from '@/components/InvoiceTable'
+import DATEVExportDialog from '@/components/DATEVExportDialog'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -274,6 +276,7 @@ export default function InvoicesPage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [showDATEVExport, setShowDATEVExport] = useState(false)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -358,6 +361,9 @@ export default function InvoicesPage() {
         )}
       </AnimatePresence>
 
+      {/* DATEV Export Dialog */}
+      <DATEVExportDialog open={showDATEVExport} onOpenChange={setShowDATEVExport} />
+
       {/* ===== Page Header ===== */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -397,6 +403,17 @@ export default function InvoicesPage() {
           >
             <Plus size={14} /> Manuell
           </Link>
+          <button
+            onClick={() => setShowDATEVExport(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors"
+            style={{
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+              backgroundColor: 'rgb(var(--card))',
+            }}
+          >
+            <FileSpreadsheet size={14} /> DATEV Export
+          </button>
           <button
             onClick={fetchInvoices}
             disabled={loading}
