@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/dashboard/', '/invoices/', '/ocr/', '/manual/', '/settings/'],
+        disallow: ['/dashboard', '/login', '/register', '/onboarding', '/settings', '/api/'],
       },
     ],
     sitemap: 'https://rechnungswerk.de/sitemap.xml',
