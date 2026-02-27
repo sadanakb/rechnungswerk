@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     # Redis / ARQ task queue
     redis_url: str = "redis://localhost:6379"
 
+    # Storage backend
+    storage_backend: str = "local"  # "local" or "s3"
+    aws_bucket: str = ""
+    aws_region: str = "eu-central-1"
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+
     # Stripe (placeholders for Task 12)
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
