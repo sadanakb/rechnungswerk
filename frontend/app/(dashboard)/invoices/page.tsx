@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -26,6 +27,7 @@ import {
   API_BASE,
   type Invoice,
   type BulkValidateEntry,
+  type InvoiceFilters,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { InvoiceTable, type InvoiceRow } from '@/components/InvoiceTable'
@@ -465,14 +467,21 @@ function DeleteConfirmDialog({
 // Page
 // ---------------------------------------------------------------------------
 export default function InvoicesPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // UI state
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [sourceFilter, setSourceFilter] = useState<string>('all')
+  // UI state — initialise from URL params
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') ?? '')
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get('status') ?? 'all')
+  const [sourceFilter, setSourceFilter] = useState<string>(() => searchParams.get('source') ?? 'all')
+  const [dateFrom, setDateFrom] = useState<string>(() => searchParams.get('date_from') ?? '')
+  const [dateTo, setDateTo] = useState<string>(() => searchParams.get('date_to') ?? '')
+  const [amountMin, setAmountMin] = useState<string>(() => searchParams.get('amount_min') ?? '')
+  const [amountMax, setAmountMax] = useState<string>(() => searchParams.get('amount_max') ?? '')
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [showDATEVExport, setShowDATEVExport] = useState(false)
@@ -483,6 +492,54 @@ export default function InvoicesPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkValidating, setBulkValidating] = useState(false)
   const [validateResults, setValidateResults] = useState<BulkValidateEntry[] | null>(null)
+
+  // Sync filter state to URL
+  const syncToUrl = useCallback((overrides: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value && value !== 'all') {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    }
+    router.push(`?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+    syncToUrl({ search: value })
+  }, [syncToUrl])
+
+  const handleStatusChange = useCallback((value: string) => {
+    setStatusFilter(value)
+    syncToUrl({ status: value })
+  }, [syncToUrl])
+
+  const handleSourceChange = useCallback((value: string) => {
+    setSourceFilter(value)
+    syncToUrl({ source: value })
+  }, [syncToUrl])
+
+  const handleDateFromChange = useCallback((value: string) => {
+    setDateFrom(value)
+    syncToUrl({ date_from: value })
+  }, [syncToUrl])
+
+  const handleDateToChange = useCallback((value: string) => {
+    setDateTo(value)
+    syncToUrl({ date_to: value })
+  }, [syncToUrl])
+
+  const handleAmountMinChange = useCallback((value: string) => {
+    setAmountMin(value)
+    syncToUrl({ amount_min: value })
+  }, [syncToUrl])
+
+  const handleAmountMaxChange = useCallback((value: string) => {
+    setAmountMax(value)
+    syncToUrl({ amount_max: value })
+  }, [syncToUrl])
 
   const handleZugferdDownload = useCallback(async (invoice: Invoice) => {
     try {
@@ -496,7 +553,14 @@ export default function InvoicesPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await listInvoices(0, 500)
+      const filters: InvoiceFilters = {}
+      if (statusFilter !== 'all') filters.status = statusFilter
+      if (searchQuery.trim()) filters.search = searchQuery.trim()
+      if (dateFrom) filters.date_from = dateFrom
+      if (dateTo) filters.date_to = dateTo
+      if (amountMin) filters.amount_min = parseFloat(amountMin)
+      if (amountMax) filters.amount_max = parseFloat(amountMax)
+      const data = await listInvoices(0, 500, filters)
       setInvoices(data.items)
       setTotal(data.total)
     } catch {
@@ -504,7 +568,7 @@ export default function InvoicesPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [statusFilter, searchQuery, dateFrom, dateTo, amountMin, amountMax])
 
   // Bulk action handlers
   const handleBulkDelete = useCallback(async () => {
@@ -534,46 +598,41 @@ export default function InvoicesPage() {
     }
   }, [selectedIds])
 
+  // Re-fetch when any server-side filter changes
   useEffect(() => {
     fetchInvoices()
   }, [fetchInvoices])
 
-  // Client-side filtering (sorting + pagination handled by InvoiceTable)
+  // Client-side filtering — only source filter remains client-side (not sent to backend)
   const filtered = useMemo(() => {
     let result = [...invoices]
-
-    // Search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (inv) =>
-          inv.invoice_number?.toLowerCase().includes(q) ||
-          inv.seller_name?.toLowerCase().includes(q) ||
-          inv.buyer_name?.toLowerCase().includes(q) ||
-          inv.invoice_id?.toLowerCase().includes(q),
-      )
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      result = result.filter((inv) => inv.validation_status === statusFilter)
-    }
-
-    // Source filter
+    // Source filter (client-side only)
     if (sourceFilter !== 'all') {
       result = result.filter((inv) => inv.source_type === sourceFilter)
     }
-
     return result
-  }, [invoices, searchQuery, statusFilter, sourceFilter])
+  }, [invoices, sourceFilter])
 
   const clearFilters = () => {
     setSearchQuery('')
     setStatusFilter('all')
     setSourceFilter('all')
+    setDateFrom('')
+    setDateTo('')
+    setAmountMin('')
+    setAmountMax('')
+    // Clear URL params too
+    router.push('?', { scroll: false })
   }
 
-  const hasActiveFilters = searchQuery || statusFilter !== 'all' || sourceFilter !== 'all'
+  const hasActiveFilters =
+    searchQuery ||
+    statusFilter !== 'all' ||
+    sourceFilter !== 'all' ||
+    dateFrom ||
+    dateTo ||
+    amountMin ||
+    amountMax
 
   const selectStyle = {
     backgroundColor: 'rgb(var(--input))',
@@ -716,7 +775,7 @@ export default function InvoicesPage() {
               type="text"
               placeholder="Suchen nach Nummer, Verkäufer, Käufer..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
               style={selectStyle}
             />
@@ -768,50 +827,127 @@ export default function InvoicesPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-3"
+              className="mt-3 pt-3 border-t"
               style={{ borderColor: 'rgb(var(--border))' }}
             >
-              <div>
-                <label
-                  className="block text-xs font-medium mb-1"
-                  style={{ color: 'rgb(var(--foreground-muted))' }}
-                >
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                  style={selectStyle}
-                >
-                  <option value="all">Alle Status</option>
-                  <option value="xrechnung_generated">XML erstellt</option>
-                  <option value="pending">Ausstehend</option>
-                  <option value="ocr_processed">OCR verarbeitet</option>
-                  <option value="valid">Validiert</option>
-                  <option value="invalid">Ungültig</option>
-                  <option value="error">Fehler</option>
-                </select>
+              {/* Row 1: Status + Quelle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    style={selectStyle}
+                  >
+                    <option value="all">Alle Status</option>
+                    <option value="xrechnung_generated">XML erstellt</option>
+                    <option value="pending">Ausstehend</option>
+                    <option value="ocr_processed">OCR verarbeitet</option>
+                    <option value="valid">Gültig</option>
+                    <option value="invalid">Ungültig</option>
+                    <option value="error">Fehler</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Quelle
+                  </label>
+                  <select
+                    value={sourceFilter}
+                    onChange={(e) => handleSourceChange(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    style={selectStyle}
+                  >
+                    <option value="all">Alle Quellen</option>
+                    <option value="ocr">OCR</option>
+                    <option value="manual">Manuell</option>
+                    <option value="xml">XML</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label
-                  className="block text-xs font-medium mb-1"
-                  style={{ color: 'rgb(var(--foreground-muted))' }}
-                >
-                  Quelle
-                </label>
-                <select
-                  value={sourceFilter}
-                  onChange={(e) => setSourceFilter(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                  style={selectStyle}
-                >
-                  <option value="all">Alle Quellen</option>
-                  <option value="ocr">OCR</option>
-                  <option value="manual">Manuell</option>
-                  <option value="xml">XML</option>
-                </select>
+              {/* Row 2: Date range */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Datum von
+                  </label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => handleDateFromChange(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    style={selectStyle}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Datum bis
+                  </label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => handleDateToChange(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    style={selectStyle}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Amount range (hidden on small screens) */}
+              <div className="hidden sm:grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Betrag von (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={amountMin}
+                    onChange={(e) => handleAmountMinChange(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    style={selectStyle}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Betrag bis (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={amountMax}
+                    onChange={(e) => handleAmountMaxChange(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    style={selectStyle}
+                  />
+                </div>
               </div>
             </motion.div>
           )}

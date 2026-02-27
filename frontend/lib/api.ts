@@ -316,10 +316,32 @@ export interface InvoiceListResponse {
   limit: number
 }
 
-export const listInvoices = async (skip = 0, limit = 50): Promise<InvoiceListResponse> => {
-  const response = await api.get<InvoiceListResponse>('/api/invoices', {
-    params: { skip, limit },
-  })
+export interface InvoiceFilters {
+  status?: string
+  supplier?: string
+  search?: string
+  date_from?: string
+  date_to?: string
+  amount_min?: number
+  amount_max?: number
+}
+
+export const listInvoices = async (
+  skip = 0,
+  limit = 50,
+  filters?: InvoiceFilters,
+): Promise<InvoiceListResponse> => {
+  const params = new URLSearchParams()
+  params.set('skip', String(skip))
+  params.set('limit', String(limit))
+  if (filters?.status) params.set('status', filters.status)
+  if (filters?.supplier) params.set('supplier', filters.supplier)
+  if (filters?.search) params.set('search', filters.search)
+  if (filters?.date_from) params.set('date_from', filters.date_from)
+  if (filters?.date_to) params.set('date_to', filters.date_to)
+  if (filters?.amount_min != null) params.set('amount_min', String(filters.amount_min))
+  if (filters?.amount_max != null) params.set('amount_max', String(filters.amount_max))
+  const response = await api.get<InvoiceListResponse>(`/api/invoices?${params.toString()}`)
   return response.data
 }
 
