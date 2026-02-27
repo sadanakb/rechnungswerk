@@ -27,7 +27,7 @@ import {
   CloudUpload,
   Cpu,
 } from 'lucide-react'
-import { getHealth, listInvoices, type HealthData, type Invoice } from '@/lib/api'
+import { getHealth, listInvoices, getDashboardStats, type HealthData, type Invoice, type DashboardStats } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -176,6 +176,7 @@ export default function Dashboard() {
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesLoading, setInvoicesLoading] = useState(true)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
 
   const [uploadDragging, setUploadDragging] = useState(false)
   const [uploadDropped, setUploadDropped] = useState<File | null>(null)
@@ -193,12 +194,16 @@ export default function Dashboard() {
     }
   }, [])
 
-  // Fetch invoices
+  // Fetch invoices and stats
   const fetchInvoices = useCallback(async () => {
     setInvoicesLoading(true)
     try {
-      const data = await listInvoices(0, 100)
+      const [data, statsData] = await Promise.all([
+        listInvoices(0, 100),
+        getDashboardStats(),
+      ])
       setInvoices(data.items)
+      setStats(statsData)
     } catch {
       setInvoices([])
     } finally {
@@ -234,8 +239,8 @@ export default function Dashboard() {
 
   const kpis: KPI[] = [
     {
-      label: 'Gesamtrechnungen',
-      value: health?.total_invoices ?? invoices.length,
+      label: 'Rechnungen gesamt',
+      value: stats?.total_invoices ?? health?.total_invoices ?? invoices.length,
       sub: 'Alle gespeicherten Rechnungen',
       icon: FileText,
       color: 'rgb(var(--primary))',
@@ -243,33 +248,39 @@ export default function Dashboard() {
       href: '/invoices',
     },
     {
-      label: 'Monatsumsatz',
-      value: invoicesLoading ? '...' : formatEur(calcMonthlyRevenue(invoices)),
-      sub: 'Brutto, aktueller Monat',
+      label: 'Diesen Monat',
+      value: invoicesLoading ? '...' : (stats?.invoices_this_month ?? 0),
+      sub: 'Neue Rechnungen',
       icon: TrendingUp,
       color: 'rgb(var(--accent))',
       bgColor: 'rgb(var(--accent-light))',
     },
     {
-      label: 'OCR-Erfolgsquote',
-      value: invoicesLoading ? '...' : calcOcrSuccessRate(invoices),
-      sub: 'Confidence ≥ 60%',
+      label: 'Umsatz (Monat)',
+      value: invoicesLoading ? '...' : formatEur(stats?.revenue_this_month ?? calcMonthlyRevenue(invoices)),
+      sub: 'Brutto, aktueller Monat',
       icon: Cpu,
       color: '#7c3aed',
       bgColor: '#f3f4ff',
     },
     {
-      label: 'XRechnung erstellt',
-      value: xrechnungCount,
-      sub: 'UBL XML generiert',
+      label: 'Überfällig',
+      value: stats?.overdue_count ?? 0,
+      sub: stats && stats.overdue_count > 0 ? formatEur(stats.overdue_amount) : 'Keine überfälligen',
       icon: CheckCircle,
-      color: 'rgb(var(--accent))',
-      bgColor: 'rgb(var(--accent-light))',
+      color: stats && stats.overdue_count > 0 ? 'rgb(239 68 68)' : 'rgb(var(--accent))',
+      bgColor: stats && stats.overdue_count > 0 ? 'rgb(239 68 68 / 0.1)' : 'rgb(var(--accent-light))',
       href: '/invoices',
     },
   ]
 
-  const monthlyData = buildMonthlyData(invoices)
+  const monthlyData = stats?.monthly_revenue
+    ? stats.monthly_revenue.map((r) => ({
+        month: MONTH_NAMES[parseInt(r.month.split('-')[1], 10) - 1],
+        betrag: r.amount,
+        anzahl: 0,
+      }))
+    : buildMonthlyData(invoices)
   const recentInvoices = [...invoices]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5)

@@ -707,6 +707,125 @@ async def update_payment_status(
     return {"ok": True, "payment_status": invoice.payment_status}
 
 
+@router.get("/invoices/autocomplete")
+def autocomplete_invoices(
+    q: str = Query(""),
+    field: str = Query("buyer_name"),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    allowed_fields = {
+        "buyer_name": Invoice.buyer_name,
+        "invoice_number": Invoice.invoice_number,
+        "seller_name": Invoice.seller_name,
+    }
+    if not q or field not in allowed_fields:
+        return []
+    col = allowed_fields[field]
+    org_id = current_user.get("org_id") if current_user else None
+    query = db.query(col).filter(
+        col.ilike(f"{q}%"),
+        col.isnot(None),
+        col != "",
+    )
+    if org_id:
+        query = query.filter(Invoice.organization_id == int(org_id))
+    results = (
+        query
+        .distinct()
+        .order_by(col)
+        .limit(10)
+        .all()
+    )
+    return [r[0] for r in results if r[0]]
+
+
+@router.get("/invoices/stats")
+def get_invoice_stats(
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy import func
+    from datetime import date, timedelta
+    import calendar as cal
+
+    org_id = int(current_user["org_id"]) if current_user and current_user.get("org_id") else None
+    today = date.today()
+    first_of_month = today.replace(day=1)
+    prev_month_end = first_of_month - timedelta(days=1)
+    first_of_last_month = prev_month_end.replace(day=1)
+
+    def _base_q(query):
+        if org_id is not None:
+            return query.filter(Invoice.organization_id == org_id)
+        return query
+
+    total = _base_q(db.query(func.count(Invoice.id))).scalar() or 0
+
+    this_month_count = _base_q(db.query(func.count(Invoice.id))).filter(
+        Invoice.invoice_date >= str(first_of_month),
+    ).scalar() or 0
+
+    revenue_this_month = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+        Invoice.invoice_date >= str(first_of_month),
+    ).scalar() or 0)
+
+    revenue_last_month = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+        Invoice.invoice_date >= str(first_of_last_month),
+        Invoice.invoice_date < str(first_of_month),
+    ).scalar() or 0)
+
+    # Try payment_status columns (added in Phase 7 migration)
+    try:
+        overdue_count = _base_q(db.query(func.count(Invoice.id))).filter(
+            Invoice.payment_status == "overdue",
+        ).scalar() or 0
+        overdue_amount = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+            Invoice.payment_status == "overdue",
+        ).scalar() or 0)
+        paid_count = _base_q(db.query(func.count(Invoice.id))).filter(
+            Invoice.payment_status == "paid",
+        ).scalar() or 0
+        unpaid_count = _base_q(db.query(func.count(Invoice.id))).filter(
+            Invoice.payment_status.in_(["unpaid", "partial"]),
+        ).scalar() or 0
+    except Exception:
+        overdue_count = overdue_amount = paid_count = unpaid_count = 0
+
+    valid_count = _base_q(db.query(func.count(Invoice.id))).filter(
+        Invoice.validation_status == "valid",
+    ).scalar() or 0
+    validation_rate = round(valid_count / total, 2) if total > 0 else 0.0
+
+    monthly_revenue = []
+    for i in range(5, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_start = date(y, m, 1)
+        month_end = date(y, m, cal.monthrange(y, m)[1])
+        amount = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+            Invoice.invoice_date >= str(month_start),
+            Invoice.invoice_date <= str(month_end),
+        ).scalar() or 0)
+        monthly_revenue.append({"month": f"{y}-{m:02d}", "amount": amount})
+
+    return {
+        "total_invoices": total,
+        "invoices_this_month": this_month_count,
+        "revenue_this_month": revenue_this_month,
+        "revenue_last_month": revenue_last_month,
+        "overdue_count": overdue_count,
+        "overdue_amount": overdue_amount,
+        "paid_count": paid_count,
+        "unpaid_count": unpaid_count,
+        "validation_rate": validation_rate,
+        "monthly_revenue": monthly_revenue,
+    }
+
+
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
 async def get_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),

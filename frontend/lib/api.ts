@@ -1350,3 +1350,31 @@ export async function downloadImportTemplate(): Promise<void> {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+
+export async function autocompleteInvoices(q: string, field: string = 'buyer_name'): Promise<string[]> {
+  if (!q || q.length < 1) return []
+  try {
+    const res = await api.get(`/api/invoices/autocomplete?q=${encodeURIComponent(q)}&field=${field}`)
+    return res.data
+  } catch { return [] }
+}
+
+export interface DashboardStats {
+  total_invoices: number
+  invoices_this_month: number
+  revenue_this_month: number
+  revenue_last_month: number
+  overdue_count: number
+  overdue_amount: number
+  paid_count: number
+  unpaid_count: number
+  validation_rate: number
+  monthly_revenue: Array<{ month: string; amount: number }>
+}
+
+export async function getDashboardStats(): Promise<DashboardStats | null> {
+  try {
+    const res = await api.get('/api/invoices/stats')
+    return res.data
+  } catch { return null }
+}
