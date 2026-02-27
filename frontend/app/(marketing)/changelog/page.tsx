@@ -29,6 +29,25 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: 'v0.5.0',
+    title: 'Phase 5: Integrations, Compliance & Growth',
+    date: '27.02.2026',
+    items: [
+      { text: 'Outbound Webhooks mit HMAC-SHA256-Signatur und Delivery-Log', tag: 'feature' },
+      { text: 'API-Key-Verwaltung: Erstellen, Auflisten, Widerrufen (sicher gehasht)', tag: 'feature' },
+      { text: 'GoBD-konformes Auditprotokoll: unveraenderliche Aktionsaufzeichnung', tag: 'security' },
+      { text: 'Rechnungsvorlagen: Farbe, Zahlungsziel, IBAN/BIC, Live-Vorschau', tag: 'feature' },
+      { text: 'Massen-Operationen: Bulk-Loeschen und Bulk-Validieren', tag: 'feature' },
+      { text: 'Berichte: Steuerauswertung, Cashflow-Diagramm, Faelligkeitsanalyse', tag: 'feature' },
+      { text: 'Webhook-Verwaltungs-UI: Erstellen, Testen, Delivery-Log', tag: 'feature' },
+      { text: 'FAQ-Seite mit FAQPage JSON-LD Schema (15 Fragen)', tag: 'seo' },
+      { text: 'Self-Hosting-Dokumentation: Docker-Deployment-Anleitung', tag: 'content' },
+      { text: '3 neue SEO-Blogartikel: XRechnung vs ZUGFeRD, Rechnungspflichtangaben, §19 UStG', tag: 'seo' },
+      { text: 'GitHub Actions CI/CD: automatisierte Tests + Docker-Builds', tag: 'infra' },
+      { text: 'Alembic-Migration fuer Webhooks, Audit-Logs, Templates, API-Keys', tag: 'infra' },
+    ],
+  },
+  {
     version: 'v0.4.0',
     title: 'Phase 4: Completeness & Polish',
     date: '27.02.2026',

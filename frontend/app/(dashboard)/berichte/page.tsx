@@ -247,7 +247,7 @@ function CashflowSection() {
                 tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
-                formatter={(value: number) => [fmt(value), 'Umsatz']}
+                formatter={(value) => [fmt(Number(value ?? 0)), 'Umsatz']}
                 contentStyle={{
                   backgroundColor: 'rgb(var(--card))',
                   borderColor: 'rgb(var(--border))',

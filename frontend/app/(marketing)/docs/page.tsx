@@ -279,7 +279,6 @@ export default function DocsPage() {
               style={{
                 backgroundColor: 'rgb(var(--card))',
                 borderColor: 'rgb(var(--border))',
-                divideColor: 'rgb(var(--border))',
               }}
             >
               {[
