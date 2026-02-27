@@ -1216,6 +1216,66 @@ export async function markNotificationsRead(ids?: number[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Contacts
+// ---------------------------------------------------------------------------
+
+export interface Contact {
+  id: number
+  org_id: number
+  type: 'customer' | 'supplier'
+  name: string
+  email: string | null
+  phone: string | null
+  address_line1: string | null
+  address_line2?: string | null
+  city: string | null
+  zip: string | null
+  country: string
+  vat_id: string | null
+  payment_terms: number
+  notes: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface ContactCreate {
+  type: string
+  name: string
+  email?: string
+  phone?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  zip?: string
+  country?: string
+  vat_id?: string
+  payment_terms?: number
+  notes?: string
+}
+
+export async function listContacts(params?: { type?: string; search?: string }): Promise<Contact[]> {
+  const p = new URLSearchParams()
+  if (params?.type) p.set('type', params.type)
+  if (params?.search) p.set('search', params.search)
+  const res = await api.get(`/api/contacts${p.toString() ? '?' + p : ''}`)
+  return res.data
+}
+
+export async function createContact(data: ContactCreate): Promise<Contact> {
+  const res = await api.post('/api/contacts', data)
+  return res.data
+}
+
+export async function updateContact(id: number, data: Partial<ContactCreate>): Promise<Contact> {
+  const res = await api.patch(`/api/contacts/${id}`, data)
+  return res.data
+}
+
+export async function deleteContact(id: number): Promise<void> {
+  await api.delete(`/api/contacts/${id}`)
+}
+
+// ---------------------------------------------------------------------------
 // Logo Upload
 // ---------------------------------------------------------------------------
 

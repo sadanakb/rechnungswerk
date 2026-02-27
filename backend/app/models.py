@@ -397,3 +397,25 @@ class Notification(Base):
     is_read = Column(Boolean, default=False, nullable=False)
     link = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Contact(Base):
+    """Customer or supplier contact scoped to an organization."""
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    org_id = Column(Integer, nullable=False, index=True)
+    type = Column(String(20), nullable=False, default='customer')  # customer | supplier
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    address_line1 = Column(String(255), nullable=True)
+    address_line2 = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    zip = Column(String(20), nullable=True)
+    country = Column(String(2), default='DE', nullable=False)
+    vat_id = Column(String(50), nullable=True)
+    payment_terms = Column(Integer, default=30)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
