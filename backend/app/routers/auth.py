@@ -1,5 +1,9 @@
-"""Auth router: register, login, me."""
+"""Auth router: register, login, me, forgot-password, reset-password."""
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 import re
 
@@ -21,6 +25,7 @@ from app.schemas_auth import (
     UserResponse,
     OrganizationResponse,
 )
+from app import email_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -132,3 +137,73 @@ def get_me(
         organization=OrganizationResponse.model_validate(org),
         role=member.role,
     )
+
+
+# ---------------------------------------------------------------------------
+# Forgot / Reset Password
+# ---------------------------------------------------------------------------
+
+FRONTEND_URL = "http://localhost:3000"
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", status_code=200)
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Request a password reset link. Always returns 200 to prevent email enumeration."""
+    user = db.query(User).filter(User.email == req.email).first()
+    if user:
+        # Generate a random token and store its hash
+        raw_token = secrets.token_urlsafe(32)
+        user.password_reset_token = hash_password(raw_token)
+        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.commit()
+
+        reset_url = f"{FRONTEND_URL}/passwort-zuruecksetzen?token={raw_token}"
+        email_service.send_password_reset_email(user.email, reset_url)
+
+    # Always return success — no enumeration
+    return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link gesendet."}
+
+
+@router.post("/reset-password", status_code=200)
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password using a valid token."""
+    # Find users with a non-expired reset token
+    now = datetime.now(timezone.utc)
+    candidates = (
+        db.query(User)
+        .filter(
+            User.password_reset_token.isnot(None),
+            User.password_reset_expires > now,
+        )
+        .all()
+    )
+
+    # Verify the raw token against stored hashes
+    matched_user = None
+    for candidate in candidates:
+        if verify_password(req.token, candidate.password_reset_token):
+            matched_user = candidate
+            break
+
+    if not matched_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Link ungueltig oder abgelaufen",
+        )
+
+    # Update password and clear reset fields
+    matched_user.hashed_password = hash_password(req.new_password)
+    matched_user.password_reset_token = None
+    matched_user.password_reset_expires = None
+    db.commit()
+
+    return {"message": "Passwort erfolgreich geaendert."}

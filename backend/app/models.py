@@ -49,6 +49,8 @@ class User(Base):
     full_name = Column(String(200))
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    password_reset_token = Column(String(255), nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
 

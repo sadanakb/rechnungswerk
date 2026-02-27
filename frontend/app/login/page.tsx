@@ -60,6 +60,15 @@ export default function LoginPage() {
             required
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex justify-end">
+            <Link
+              href="/passwort-vergessen"
+              className="text-sm font-medium"
+              style={{ color: 'rgb(var(--primary))' }}
+            >
+              Passwort vergessen?
+            </Link>
+          </div>
           <Button
             type="submit"
             className="w-full"
