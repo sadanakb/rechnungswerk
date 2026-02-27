@@ -157,6 +157,55 @@ _MAHNUNG_TEMPLATES = {
 }
 
 
+def send_team_invite(
+    to_email: str,
+    org_name: str,
+    inviter_name: str,
+    invite_url: str,
+) -> bool:
+    """Send a team invitation email via Brevo transactional API.
+
+    Returns True on success, False on failure or if API key not configured.
+    """
+    if not settings.brevo_api_key:
+        logger.warning(
+            "Brevo API key not configured, skipping team invite email to %s",
+            to_email,
+        )
+        return False
+
+    import sib_api_v3_sdk
+
+    api = _get_transactional_api()
+
+    html_content = (
+        "<html><body>"
+        "<h2>Team-Einladung</h2>"
+        f"<p><strong>{inviter_name}</strong> hat Sie eingeladen, dem Team "
+        f"<strong>{org_name}</strong> bei RechnungsWerk beizutreten.</p>"
+        "<p>Klicken Sie auf den folgenden Link, um die Einladung anzunehmen:</p>"
+        f'<p><a href="{invite_url}">{invite_url}</a></p>'
+        "<p>Dieser Link ist 7 Tage gueltig.</p>"
+        "<br><p>Ihr RechnungsWerk Team</p>"
+        "</body></html>"
+    )
+
+    email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": to_email}],
+        sender=SENDER,
+        subject=f"Einladung zum Team {org_name} - RechnungsWerk",
+        html_content=html_content,
+    )
+
+    try:
+        api.send_transac_email(email)
+        logger.info("Team invite email sent to %s for org %s", to_email, org_name)
+        return True
+    except Exception as e:
+        logger.error("Failed to send team invite email to %s: %s", to_email, e)
+        return False
+
+
 def send_mahnung_email(
     to_email: str,
     customer_name: str,

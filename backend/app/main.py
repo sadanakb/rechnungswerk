@@ -15,7 +15,7 @@ from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
 
@@ -77,6 +77,7 @@ app.include_router(onboarding.router)
 app.include_router(newsletter.router)
 app.include_router(gobd.router)
 app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
 
 
 @app.get("/")
