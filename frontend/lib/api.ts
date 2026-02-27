@@ -1287,3 +1287,34 @@ export async function uploadLogo(file: File): Promise<{ logo_url: string }> {
   })
   return res.data
 }
+
+// ---------------------------------------------------------------------------
+// Invoice Number Sequences
+// ---------------------------------------------------------------------------
+
+export interface SequenceConfig {
+  prefix: string
+  separator: string
+  year_format: string
+  padding: number
+  reset_yearly: boolean
+}
+
+export interface SequenceInfo extends SequenceConfig {
+  configured: boolean
+  id?: number
+  org_id?: number
+  current_counter?: number
+  last_reset_year?: number | null
+  preview: string
+}
+
+export async function getInvoiceSequence(): Promise<SequenceInfo> {
+  const res = await api.get('/api/invoice-sequences')
+  return res.data
+}
+
+export async function saveInvoiceSequence(config: SequenceConfig): Promise<{ ok: boolean; preview: string }> {
+  const res = await api.post('/api/invoice-sequences', config)
+  return res.data
+}

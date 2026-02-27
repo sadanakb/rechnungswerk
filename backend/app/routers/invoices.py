@@ -30,6 +30,7 @@ from app.archive.gobd_archive import GoBDArchive
 from app.ai.categorizer import InvoiceCategorizer
 from app.auth import verify_api_key
 from app.auth_jwt import oauth2_scheme, decode_token
+from app.invoice_number_service import generate_next_invoice_number
 from app.config import settings
 from app.webhook_service import publish_event
 from app.audit_service import log_action
@@ -254,10 +255,15 @@ async def create_invoice(
     if current_user and current_user.get("org_id"):
         org_id = current_user["org_id"]
 
+    # Resolve invoice number: use provided value or generate from sequence
+    resolved_invoice_number = invoice.invoice_number
+    if not resolved_invoice_number and org_id:
+        resolved_invoice_number = generate_next_invoice_number(db, int(org_id))
+
     # Create invoice record
     db_invoice = Invoice(
         invoice_id=invoice_id,
-        invoice_number=invoice.invoice_number,
+        invoice_number=resolved_invoice_number,
         invoice_date=invoice.invoice_date,
         due_date=invoice.due_date,
         seller_name=invoice.seller_name,

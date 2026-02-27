@@ -419,3 +419,19 @@ class Contact(Base):
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class InvoiceNumberSequence(Base):
+    """Configurable invoice number sequence per organization."""
+    __tablename__ = "invoice_number_sequences"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    org_id = Column(Integer, nullable=False, unique=True, index=True)
+    prefix = Column(String(20), default='RE', nullable=False)
+    separator = Column(String(5), default='-', nullable=False)
+    year_format = Column(String(10), default='YYYY', nullable=False)
+    padding = Column(Integer, default=4, nullable=False)
+    current_counter = Column(Integer, default=0, nullable=False)
+    reset_yearly = Column(Boolean, default=True, nullable=False)
+    last_reset_year = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
