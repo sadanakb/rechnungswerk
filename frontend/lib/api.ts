@@ -1000,3 +1000,51 @@ export async function getAuditLog(params?: AuditLogParams): Promise<AuditLogList
   const resp = await api.get<AuditLogListResponse>('/api/audit', { params: queryParams })
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// Webhook Management
+// ---------------------------------------------------------------------------
+
+export interface WebhookSubscription {
+  id: number
+  url: string
+  events: string[]
+  is_active: boolean
+  created_at: string
+}
+
+export interface WebhookDelivery {
+  id: number
+  event_type: string
+  status: string
+  response_code: number | null
+  attempts: number
+  created_at: string
+  last_attempted_at: string | null
+}
+
+export async function listWebhooks(): Promise<WebhookSubscription[]> {
+  const resp = await api.get<WebhookSubscription[]>('/api/webhooks')
+  return resp.data
+}
+
+export async function createWebhook(data: {
+  url: string
+  events: string[]
+}): Promise<{ id: number; secret: string }> {
+  const resp = await api.post<{ id: number; secret: string }>('/api/webhooks', data)
+  return resp.data
+}
+
+export async function deleteWebhook(id: number): Promise<void> {
+  await api.delete(`/api/webhooks/${id}`)
+}
+
+export async function testWebhook(id: number): Promise<void> {
+  await api.post(`/api/webhooks/${id}/test`)
+}
+
+export async function getWebhookDeliveries(id: number): Promise<WebhookDelivery[]> {
+  const resp = await api.get<WebhookDelivery[]>(`/api/webhooks/${id}/deliveries`)
+  return resp.data
+}

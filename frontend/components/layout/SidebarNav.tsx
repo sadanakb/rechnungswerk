@@ -22,6 +22,7 @@ import {
   Settings,
   ClipboardList,
   LayoutTemplate,
+  Webhook,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/team', label: 'Team', icon: UsersRound },
   { href: '/berichte', label: 'Berichte', icon: BarChart3 },
   { href: '/audit', label: 'Protokoll', icon: ClipboardList },
+  { href: '/webhooks', label: 'Webhooks', icon: Webhook },
   { href: '/settings', label: 'Einstellungen', icon: Settings },
 ]
 
