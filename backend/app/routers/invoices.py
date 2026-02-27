@@ -29,6 +29,8 @@ from app.ai.categorizer import InvoiceCategorizer
 from app.auth import verify_api_key
 from app.auth_jwt import oauth2_scheme, decode_token
 from app.config import settings
+from app.webhook_service import publish_event
+from app.audit_service import log_action
 import uuid
 import os
 import io
@@ -284,6 +286,39 @@ async def create_invoice(
     db.commit()
     db.refresh(db_invoice)
 
+    # Publish webhook event if the invoice belongs to an organization
+    if org_id:
+        try:
+            publish_event(
+                db,
+                org_id,
+                "invoice.created",
+                {
+                    "id": db_invoice.id,
+                    "number": db_invoice.invoice_number,
+                    "amount": float(db_invoice.total_amount) if hasattr(db_invoice, "total_amount") and db_invoice.total_amount is not None else float(db_invoice.gross_amount or 0),
+                },
+            )
+        except Exception:
+            # Webhook delivery failure must never break invoice creation
+            logger.warning("Webhook publish failed for invoice %s", db_invoice.invoice_id)
+
+    # Audit log
+    if org_id:
+        user_id = int(current_user["user_id"]) if current_user and current_user.get("user_id") else None
+        log_action(
+            db,
+            org_id=int(org_id),
+            user_id=user_id,
+            action="invoice_created",
+            resource_type="invoice",
+            resource_id=db_invoice.invoice_id,
+            details={
+                "invoice_number": db_invoice.invoice_number,
+                "gross_amount": float(db_invoice.gross_amount or 0),
+            },
+        )
+
     return db_invoice
 
 
@@ -388,13 +423,22 @@ async def get_invoice(
 
 @router.delete("/invoices/{invoice_id}")
 async def delete_invoice(
+    request: Request,
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
     """Delete invoice and clean up associated files (M5)."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Capture audit context before deletion
+    audit_org_id = invoice.organization_id
+    audit_details = {
+        "invoice_number": invoice.invoice_number,
+        "gross_amount": float(invoice.gross_amount or 0),
+    }
 
     # Clean up XML file
     if invoice.xrechnung_xml_path:
@@ -412,6 +456,21 @@ async def delete_invoice(
 
     db.delete(invoice)
     db.commit()
+
+    # Audit log
+    if audit_org_id:
+        user_id = int(current_user["user_id"]) if current_user and current_user.get("user_id") else None
+        ip = request.client.host if request.client else None
+        log_action(
+            db,
+            org_id=int(audit_org_id),
+            user_id=user_id,
+            action="invoice_deleted",
+            resource_type="invoice",
+            resource_id=invoice_id,
+            details=audit_details,
+            ip_address=ip,
+        )
 
     return {"message": "Rechnung gelöscht", "invoice_id": invoice_id}
 

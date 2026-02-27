@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column, Integer, String, Float, Numeric, Date, DateTime, Text,
-    JSON, Boolean, ForeignKey,
+    JSON, Boolean, ForeignKey, func,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -270,6 +270,26 @@ class ArchiveEntry(Base):
     archived_at = Column(DateTime(timezone=True), default=_utc_now)
 
 
+class ApiKey(Base):
+    """API keys for programmatic access — org-scoped, bcrypt-hashed"""
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    key_prefix = Column(String(12), nullable=False)  # "rw_live_xxxx" first 12 chars
+    key_hash = Column(String(255), nullable=False)   # bcrypt hash of full key
+    scopes = Column(JSON, default=list)              # ["read:invoices", "write:invoices"]
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    organization = relationship("Organization")
+    user = relationship("User")
+
+
 class Mahnung(Base):
     """Dunning/reminder record for overdue invoices"""
     __tablename__ = 'mahnungen'
@@ -287,3 +307,51 @@ class Mahnung(Base):
     created_at = Column(DateTime(timezone=True), default=_utc_now)
 
     invoice = relationship("Invoice")
+
+
+class WebhookSubscription(Base):
+    """Outbound webhook subscription for an organization"""
+    __tablename__ = "webhook_subscriptions"
+
+    id = Column(Integer, primary_key=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    url = Column(String(500), nullable=False)
+    events = Column(JSON, default=list)  # ["invoice.created", "mahnung.sent", ...]
+    secret = Column(String(255), nullable=False)  # for HMAC verification
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    deliveries = relationship("WebhookDelivery", back_populates="subscription")
+
+
+class WebhookDelivery(Base):
+    """Log of individual webhook delivery attempts"""
+    __tablename__ = "webhook_deliveries"
+
+    id = Column(Integer, primary_key=True)
+    subscription_id = Column(Integer, ForeignKey("webhook_subscriptions.id"), nullable=False)
+    event_type = Column(String(100), nullable=False)
+    payload = Column(JSON)
+    status = Column(String(20), default="pending")  # pending, success, failed
+    attempts = Column(Integer, default=0)
+    response_code = Column(Integer, nullable=True)
+    response_body = Column(String(500), nullable=True)
+    last_attempted_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    subscription = relationship("WebhookSubscription", back_populates="deliveries")
+
+
+class AuditLog(Base):
+    """Immutable audit log for all significant actions within an organization."""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable for system actions
+    action = Column(String(100), nullable=False)  # "invoice_created", "password_changed", etc.
+    resource_type = Column(String(50), nullable=True)  # "invoice", "user", "member"
+    resource_id = Column(String(100), nullable=True)   # the ID of the resource
+    details = Column(JSON, nullable=True)              # extra context
+    ip_address = Column(String(45), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
