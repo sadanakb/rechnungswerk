@@ -1,7 +1,8 @@
-"""Onboarding router: status, company update, completion."""
-from fastapi import APIRouter, Depends, HTTPException
+"""Onboarding router: status, company update, completion, logo upload."""
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import os
 
 from app.database import get_db
 from app.models import Organization, OrganizationMember
@@ -109,6 +110,41 @@ def update_company_info(
         vat_id=org.vat_id,
         address=org.address,
     )
+
+
+@router.post("/logo")
+async def upload_logo(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload a company logo and save it to disk; update the organization record."""
+    allowed_types = {"image/png", "image/jpeg", "image/svg+xml", "image/webp"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültiges Dateiformat. Erlaubt: PNG, JPG, SVG, WebP",
+        )
+
+    contents = await file.read()
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Datei zu groß. Maximum: 2 MB")
+
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "png"
+    save_dir = "static/logos"
+    os.makedirs(save_dir, exist_ok=True)
+
+    org = _get_org(current_user, db)
+    filename = f"{org.id}.{ext}"
+    path = os.path.join(save_dir, filename)
+    with open(path, "wb") as f:
+        f.write(contents)
+
+    logo_url = f"/static/logos/{filename}"
+    org.logo_url = logo_url
+    db.commit()
+
+    return {"logo_url": logo_url}
 
 
 @router.post("/complete", response_model=OnboardingCompleteResponse)

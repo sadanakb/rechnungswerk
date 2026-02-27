@@ -1151,3 +1151,16 @@ export async function getUnreadCount(): Promise<number> {
 export async function markNotificationsRead(ids?: number[]): Promise<void> {
   await api.post('/api/notifications/mark-read', ids ? { ids } : { all: true })
 }
+
+// ---------------------------------------------------------------------------
+// Logo Upload
+// ---------------------------------------------------------------------------
+
+export async function uploadLogo(file: File): Promise<{ logo_url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post('/api/onboarding/logo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
