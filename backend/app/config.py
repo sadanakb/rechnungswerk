@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Brevo (Newsletter)
     brevo_api_key: str = ""
 
+    # Redis / ARQ task queue
+    redis_url: str = "redis://localhost:6379"
+
     # Stripe (placeholders for Task 12)
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

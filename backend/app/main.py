@@ -33,7 +33,24 @@ async def lifespan(app: FastAPI):
         logger.info("[Auth] API-Key: %s", ACTIVE_API_KEY)
     else:
         logger.warning("[Auth] API-Key Authentifizierung DEAKTIVIERT (Entwicklungsmodus)")
+
+    # ARQ Redis pool (graceful degradation if Redis unavailable)
+    try:
+        import arq
+        from arq.connections import RedisSettings as ArqRedisSettings
+        pool = await arq.create_pool(ArqRedisSettings.from_dsn(settings.redis_url))
+        app.state.arq_pool = pool
+        logger.info("[Startup] ARQ pool connected to Redis at %s", settings.redis_url)
+    except Exception as e:
+        logger.warning("[Startup] Redis not available (%s) — ARQ tasks will run synchronously", e)
+        app.state.arq_pool = None
+
     yield
+
+    # Shutdown: close ARQ pool
+    if hasattr(app.state, "arq_pool") and app.state.arq_pool is not None:
+        await app.state.arq_pool.close()
+        logger.info("[Shutdown] ARQ pool closed")
 
 
 # Initialize FastAPI app
