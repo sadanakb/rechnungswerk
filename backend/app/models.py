@@ -435,3 +435,18 @@ class InvoiceNumberSequence(Base):
     reset_yearly = Column(Boolean, default=True, nullable=False)
     last_reset_year = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class InvoiceShareLink(Base):
+    """Shareable link for customer invoice portal access — no authentication required."""
+    __tablename__ = "invoice_share_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False, unique=True)
+    token = Column(String(36), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=True)
+    access_count = Column(Integer, default=0, nullable=False)
+    created_by_user_id = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    invoice = relationship("Invoice")

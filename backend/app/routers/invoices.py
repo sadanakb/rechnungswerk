@@ -872,6 +872,92 @@ async def check_overdue_invoices(
         return {"updated": 0}
 
 
+# ─── Share Link endpoints (MUST be before /{invoice_id} catch-all) ───────────
+
+class ShareLinkResponse(BaseModel):
+    token: str
+    url: str
+    expires_at: str
+
+
+@router.post("/invoices/{invoice_id}/share-link", response_model=ShareLinkResponse, status_code=201)
+async def create_share_link(
+    invoice_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Create or regenerate a shareable portal link for this invoice."""
+    from app.models import InvoiceShareLink
+    import uuid
+    from datetime import datetime, timedelta
+
+    invoice = db.query(Invoice).filter(
+        Invoice.invoice_id == invoice_id,
+    ).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation: if authenticated, enforce org scope
+    if current_user and current_user.get("org_id"):
+        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
+            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Delete existing link if any (regenerate)
+    existing = db.query(InvoiceShareLink).filter(
+        InvoiceShareLink.invoice_id == invoice.id
+    ).first()
+    if existing:
+        db.delete(existing)
+        db.flush()
+
+    token = str(uuid.uuid4())
+    expires_at = datetime.utcnow() + timedelta(days=30)
+    created_by = int(current_user["user_id"]) if current_user and current_user.get("user_id") else 0
+    link = InvoiceShareLink(
+        invoice_id=invoice.id,
+        token=token,
+        expires_at=expires_at,
+        created_by_user_id=created_by,
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+
+    return ShareLinkResponse(
+        token=token,
+        url=f"/portal/{token}",
+        expires_at=expires_at.isoformat(),
+    )
+
+
+@router.delete("/invoices/{invoice_id}/share-link", status_code=204)
+async def delete_share_link(
+    invoice_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Revoke the shareable portal link for this invoice."""
+    from app.models import InvoiceShareLink
+
+    invoice = db.query(Invoice).filter(
+        Invoice.invoice_id == invoice_id,
+    ).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation: if authenticated, enforce org scope
+    if current_user and current_user.get("org_id"):
+        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
+            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    link = db.query(InvoiceShareLink).filter(
+        InvoiceShareLink.invoice_id == invoice.id
+    ).first()
+    if link:
+        db.delete(link)
+        db.commit()
+
+
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
 async def get_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
