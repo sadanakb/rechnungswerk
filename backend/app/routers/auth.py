@@ -2,7 +2,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 import re
@@ -26,6 +26,7 @@ from app.schemas_auth import (
     OrganizationResponse,
 )
 from app import email_service
+from app.rate_limiter import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -37,7 +38,8 @@ def _slugify(name: str) -> str:
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, req: RegisterRequest, db: Session = Depends(get_db)):
     # Check duplicate email
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
@@ -99,7 +101,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user or not verify_password(req.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Ungueltige Anmeldedaten")
@@ -166,7 +169,8 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/forgot-password", status_code=200)
-def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Request a password reset link. Always returns 200 to prevent email enumeration."""
     user = db.query(User).filter(User.email == req.email).first()
     if user:
