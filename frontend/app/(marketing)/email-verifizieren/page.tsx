@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 
 export default function EmailVerifizierenPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Laden...</p></div>}>
+      <EmailVerifizierenContent />
+    </Suspense>
+  )
+}
+
+function EmailVerifizierenContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
 

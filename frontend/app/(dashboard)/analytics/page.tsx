@@ -380,9 +380,9 @@ export default function AnalyticsPage() {
                     tick={{ fontSize: 11, fill: 'rgb(var(--foreground-muted))' }}
                   />
                   <Tooltip
-                    formatter={(value: number | undefined, name: string) => {
-                      if (name === 'total_amount') return [fmt(value ?? 0), 'Umsatz']
-                      return [value ?? 0, 'Rechnungen']
+                    formatter={(value, name) => {
+                      if (name === 'total_amount') return [fmt(Number(value ?? 0)), 'Umsatz']
+                      return [Number(value ?? 0), 'Rechnungen']
                     }}
                     contentStyle={{
                       backgroundColor: 'rgb(var(--card))',
@@ -428,8 +428,8 @@ export default function AnalyticsPage() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={({ label, percent }: { label: string; percent: number }) =>
-                      `${label} (${(percent * 100).toFixed(0)}%)`
+                    label={(props) =>
+                      `${props.name ?? ''} (${((props.percent ?? 0) * 100).toFixed(0)}%)`
                     }
                     labelLine
                   >
