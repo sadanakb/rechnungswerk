@@ -14,7 +14,7 @@ import {
   Clock,
   Printer,
 } from 'lucide-react'
-import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, updatePaymentStatus, type InvoiceDetail } from '@/lib/api'
+import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, updatePaymentStatus, createShareLink, sendInvoiceEmail, type InvoiceDetail } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -474,6 +474,13 @@ export default function InvoiceDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [shareLink, setShareLink] = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [copySuccess, setCopySuccess] = useState(false)
 
   const handlePaymentUpdated = (newStatus: string) => {
     setInvoice((prev) => prev ? { ...prev, payment_status: newStatus } : prev)
@@ -502,6 +509,30 @@ export default function InvoiceDetailPage() {
     } catch {
       setDeleting(false)
       setShowDeleteDialog(false)
+    }
+  }
+
+  const handleCreateShareLink = async () => {
+    if (!invoice) return
+    try {
+      const result = await createShareLink(invoice.invoice_id)
+      setShareLink(`https://rechnungswerk.io${result.url}`)
+      setShowShareModal(true)
+    } catch (err) {
+      console.error('Share link error:', err)
+    }
+  }
+
+  const handleSendEmail = async () => {
+    if (!invoice || !emailTo) return
+    setEmailSending(true)
+    try {
+      await sendInvoiceEmail(invoice.invoice_id, emailTo)
+      setEmailSent(true)
+    } catch (err) {
+      console.error('Send email error:', err)
+    } finally {
+      setEmailSending(false)
     }
   }
 
@@ -623,6 +654,28 @@ export default function InvoiceDetailPage() {
             <ShieldCheck size={14} />
             Validieren
           </Link>
+          <button
+            onClick={handleCreateShareLink}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors"
+            style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground-muted))', backgroundColor: 'rgb(var(--card))' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            Teilen
+          </button>
+
+          <button
+            onClick={() => setShowEmailModal(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors"
+            style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground-muted))', backgroundColor: 'rgb(var(--card))' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Per E-Mail senden
+          </button>
+
           <button
             onClick={() => setShowDeleteDialog(true)}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-900/20"
@@ -893,6 +946,99 @@ export default function InvoiceDetailPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Share Link Modal */}
+      {showShareModal && shareLink && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="rounded-xl shadow-xl p-6 max-w-md w-full mx-4" style={{ backgroundColor: 'rgb(var(--card))' }}>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'rgb(var(--foreground))' }}>Rechnung teilen</h3>
+            <p className="text-sm mb-4" style={{ color: 'rgb(var(--foreground-muted))' }}>
+              Teilen Sie diesen Link mit Ihrem Kunden. Der Link ist 30 Tage gültig.
+            </p>
+            <div className="flex gap-2 mb-4">
+              <input
+                readOnly
+                value={shareLink}
+                className="flex-1 text-sm rounded-lg px-3 py-2 focus:outline-none"
+                style={{ border: '1px solid rgb(var(--border))', backgroundColor: 'rgb(var(--muted))', color: 'rgb(var(--foreground))' }}
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shareLink)
+                  setCopySuccess(true)
+                  setTimeout(() => setCopySuccess(false), 2000)
+                }}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(var(--primary))' }}
+              >
+                {copySuccess ? 'Kopiert!' : 'Kopieren'}
+              </button>
+            </div>
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="w-full py-2 text-sm"
+              style={{ color: 'rgb(var(--foreground-muted))' }}
+            >
+              Schließen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Send by Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="rounded-xl shadow-xl p-6 max-w-md w-full mx-4" style={{ backgroundColor: 'rgb(var(--card))' }}>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'rgb(var(--foreground))' }}>Rechnung per E-Mail senden</h3>
+            {emailSent ? (
+              <div className="text-center py-4">
+                <p className="font-medium mb-1" style={{ color: '#16a34a' }}>E-Mail wird versendet!</p>
+                <p className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                  Ihr Kunde erhält einen Link zum Anzeigen und Herunterladen der Rechnung.
+                </p>
+                <button
+                  onClick={() => { setShowEmailModal(false); setEmailSent(false); setEmailTo('') }}
+                  className="mt-4 w-full py-2 text-sm font-medium text-white rounded-lg"
+                  style={{ backgroundColor: 'rgb(var(--primary))' }}
+                >
+                  Schließen
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm mb-4" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                  Der Kunde erhält einen Link zum Anzeigen und Herunterladen der Rechnung sowie zur Zahlungsbestätigung.
+                </p>
+                <input
+                  type="email"
+                  placeholder="E-Mail-Adresse des Kunden"
+                  value={emailTo}
+                  onChange={e => setEmailTo(e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none"
+                  style={{ border: '1px solid rgb(var(--border))', color: 'rgb(var(--foreground))', backgroundColor: 'rgb(var(--card))' }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowEmailModal(false); setEmailTo('') }}
+                    className="flex-1 py-2 text-sm rounded-lg"
+                    style={{ border: '1px solid rgb(var(--border))', color: 'rgb(var(--foreground-muted))' }}
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleSendEmail}
+                    disabled={!emailTo || emailSending}
+                    className="flex-1 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: 'rgb(var(--primary))' }}
+                  >
+                    {emailSending ? 'Wird gesendet…' : 'E-Mail senden'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -958,6 +958,73 @@ async def delete_share_link(
         db.commit()
 
 
+class SendInvoiceEmailRequest(BaseModel):
+    to_email: str
+    message: Optional[str] = None
+
+
+@router.post("/invoices/{invoice_id}/send-email")
+async def send_invoice_email(
+    invoice_id: str,
+    body: SendInvoiceEmailRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Send invoice to customer via email with portal link."""
+    from app.models import InvoiceShareLink
+    from app.email_service import enqueue_email
+    import uuid
+    from datetime import datetime, timedelta
+
+    invoice = db.query(Invoice).filter(
+        Invoice.invoice_id == invoice_id,
+    ).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation: if authenticated, enforce org scope
+    if current_user and current_user.get("org_id"):
+        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
+            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Create share link if it doesn't exist yet
+    link = db.query(InvoiceShareLink).filter(
+        InvoiceShareLink.invoice_id == invoice.id
+    ).first()
+    if not link:
+        token = str(uuid.uuid4())
+        created_by = int(current_user["user_id"]) if current_user and current_user.get("user_id") else 0
+        link = InvoiceShareLink(
+            invoice_id=invoice.id,
+            token=token,
+            expires_at=datetime.utcnow() + timedelta(days=30),
+            created_by_user_id=created_by,
+        )
+        db.add(link)
+        db.commit()
+        db.refresh(link)
+
+    portal_url = f"/portal/{link.token}"
+    arq_pool = getattr(request.app.state, "arq_pool", None)
+    await enqueue_email(
+        arq_pool,
+        "invoice_portal",
+        to_email=body.to_email,
+        buyer_name=invoice.buyer_name or "Kunde",
+        invoice_number=invoice.invoice_number or "",
+        portal_url=portal_url,
+        invoice_date=str(invoice.invoice_date) if invoice.invoice_date else "",
+        gross_amount=f"{float(invoice.gross_amount or 0):.2f}",
+    )
+
+    return {
+        "message": "E-Mail wird versendet",
+        "portal_url": portal_url,
+        "token": link.token,
+    }
+
+
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
 async def get_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
