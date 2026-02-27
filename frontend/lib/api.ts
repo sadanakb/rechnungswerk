@@ -404,6 +404,25 @@ export const getZUGFeRDDownloadUrl = (invoiceId: string): string => {
   return `${API_BASE}/api/invoices/${invoiceId}/download-zugferd`
 }
 
+/**
+ * Download ZUGFeRD PDF for an invoice directly to the browser.
+ * Generates the PDF on-the-fly if it has not been pre-generated yet.
+ */
+export async function downloadZugferd(invoiceId: string, invoiceNumber: string): Promise<void> {
+  const resp = await api.get(`/api/invoices/${invoiceId}/download-zugferd`, {
+    responseType: 'blob',
+  })
+  const blob = new Blob([resp.data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${invoiceNumber}_ZUGFeRD.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ---------------------------------------------------------------------------
 // Validation & Fraud
 // ---------------------------------------------------------------------------

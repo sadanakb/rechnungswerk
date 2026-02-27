@@ -896,33 +896,88 @@ async def generate_zugferd(
 async def download_zugferd(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
-    """Download ZUGFeRD PDF/A-3 file."""
+    """Download ZUGFeRD PDF/A-3 file.
+
+    If a cached PDF exists on disk, it is served directly.
+    Otherwise the PDF is generated on-the-fly from the invoice data
+    (XRechnung XML is created internally and embedded automatically).
+    """
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    if not invoice.zugferd_pdf_path:
-        raise HTTPException(status_code=404, detail="ZUGFeRD PDF wurde noch nicht generiert")
+    # Org isolation: when authenticated, restrict to the user's org
+    if current_user and current_user.get("org_id") is not None:
+        if invoice.organization_id is not None and invoice.organization_id != current_user["org_id"]:
+            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    pdf_path = os.path.realpath(invoice.zugferd_pdf_path)
-    if not pdf_path.startswith(_ZUGFERD_BASE):
-        raise HTTPException(status_code=403, detail="Zugriff verweigert")
+    # --- Try to serve from cached file first ---
+    if invoice.zugferd_pdf_path:
+        pdf_path = os.path.realpath(invoice.zugferd_pdf_path)
+        if pdf_path.startswith(_ZUGFERD_BASE) and os.path.isfile(pdf_path):
+            with open(pdf_path, "rb") as f:
+                pdf_bytes = f.read()
+            filename = invoice.invoice_number or os.path.basename(pdf_path)
+            return StreamingResponse(
+                io.BytesIO(pdf_bytes),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}_ZUGFeRD.pdf"',
+                    "Content-Length": str(len(pdf_bytes)),
+                },
+            )
 
-    if not os.path.isfile(pdf_path):
-        raise HTTPException(status_code=404, detail="ZUGFeRD PDF-Datei nicht gefunden")
+    # --- Generate on-the-fly ---
+    invoice_data = {
+        "invoice_number": invoice.invoice_number,
+        "invoice_date": str(invoice.invoice_date) if invoice.invoice_date else "",
+        "due_date": str(invoice.due_date) if invoice.due_date else None,
+        "seller_name": invoice.seller_name or "",
+        "seller_vat_id": invoice.seller_vat_id or "",
+        "seller_address": invoice.seller_address or "",
+        "buyer_name": invoice.buyer_name or "",
+        "buyer_vat_id": invoice.buyer_vat_id or "",
+        "buyer_address": invoice.buyer_address or "",
+        "net_amount": invoice.net_amount or 0,
+        "tax_amount": invoice.tax_amount or 0,
+        "gross_amount": invoice.gross_amount or 0,
+        "tax_rate": invoice.tax_rate or 19,
+        "currency": getattr(invoice, "currency", "EUR") or "EUR",
+        "line_items": invoice.line_items or [],
+        "iban": invoice.iban,
+        "bic": invoice.bic,
+        "payment_account_name": invoice.payment_account_name,
+        "buyer_reference": invoice.buyer_reference,
+        "seller_endpoint_id": invoice.seller_endpoint_id,
+        "buyer_endpoint_id": invoice.buyer_endpoint_id,
+    }
 
-    with open(pdf_path, "rb") as f:
-        pdf_bytes = f.read()
+    try:
+        xml_content = xrechnung_gen.generate_xml(invoice_data)
 
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{os.path.basename(pdf_path)}"',
-            "Content-Length": str(len(pdf_bytes)),
-        },
-    )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            pdf_path = os.path.join(tmp_dir, f"{invoice_id}_zugferd.pdf")
+            zugferd_gen.generate(invoice_data, xml_content, pdf_path)
+            with open(pdf_path, "rb") as f:
+                pdf_bytes = f.read()
+
+        filename = invoice.invoice_number or invoice_id
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}_ZUGFeRD.pdf"',
+                "Content-Length": str(len(pdf_bytes)),
+            },
+        )
+    except Exception as e:
+        logger.error("ZUGFeRD on-the-fly generation failed for %s: %s", invoice_id, e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"ZUGFeRD-Generierung fehlgeschlagen: {e}",
+        )
 
 
 @router.post("/invoices/{invoice_id}/validate")

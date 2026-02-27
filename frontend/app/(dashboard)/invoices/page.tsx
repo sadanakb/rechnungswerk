@@ -16,11 +16,13 @@ import {
   CheckCircle2,
   XCircle,
   ShieldCheck,
+  FileDown,
 } from 'lucide-react'
 import {
   listInvoices,
   bulkDeleteInvoices,
   bulkValidateInvoices,
+  downloadZugferd,
   API_BASE,
   type Invoice,
   type BulkValidateEntry,
@@ -85,9 +87,11 @@ function SourceBadge({ source }: { source: string }) {
 function InvoiceDetailPanel({
   invoice,
   onClose,
+  onZugferdDownload,
 }: {
   invoice: Invoice
   onClose: () => void
+  onZugferdDownload: (invoice: Invoice) => void
 }) {
   return (
     <motion.div
@@ -204,6 +208,18 @@ function InvoiceDetailPanel({
               <Download size={15} /> XRechnung XML herunterladen
             </a>
           )}
+          <button
+            onClick={() => onZugferdDownload(invoice)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors"
+            style={{
+              borderColor: 'rgb(var(--primary))',
+              color: 'rgb(var(--primary))',
+              backgroundColor: 'rgb(var(--primary-light))',
+            }}
+            title="ZUGFeRD PDF/A-3 herunterladen (XRechnung XML eingebettet)"
+          >
+            <FileDown size={15} /> ZUGFeRD PDF herunterladen
+          </button>
           <Link
             href="/invoices"
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border text-center"
@@ -468,6 +484,14 @@ export default function InvoicesPage() {
   const [bulkValidating, setBulkValidating] = useState(false)
   const [validateResults, setValidateResults] = useState<BulkValidateEntry[] | null>(null)
 
+  const handleZugferdDownload = useCallback(async (invoice: Invoice) => {
+    try {
+      await downloadZugferd(invoice.invoice_id, invoice.invoice_number)
+    } catch {
+      // Silent fail — browser will show no download, user can retry
+    }
+  }, [])
+
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -574,6 +598,7 @@ export default function InvoicesPage() {
             <InvoiceDetailPanel
               invoice={detailInvoice}
               onClose={() => setDetailInvoice(null)}
+              onZugferdDownload={handleZugferdDownload}
             />
           </>
         )}
