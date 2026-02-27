@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: rechnungswerk
       POSTGRES_USER: rw
@@ -15,11 +16,13 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
 
   backend:
     build: ./backend
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://rw:${DB_PASSWORD}@db:5432/rechnungswerk
       REDIS_URL: redis://redis:6379
@@ -34,9 +37,15 @@ services:
         condition: service_healthy
     ports:
       - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: https://api.rechnungswerk.de
     ports:
@@ -44,6 +53,7 @@ services:
 
   uptime-kuma:
     image: louislam/uptime-kuma:1
+    restart: unless-stopped
     ports:
       - "3002:3001"
     volumes:
