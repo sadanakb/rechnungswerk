@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -38,6 +38,13 @@ export interface InvoiceRow {
 export interface InvoiceTableProps {
   invoices: InvoiceRow[]
   loading: boolean
+  /** Called with the list of selected invoice_ids whenever the selection changes */
+  onSelectionChange?: (invoiceIds: string[]) => void
+  /**
+   * Changing this value (e.g. incrementing a counter) clears the row selection.
+   * Useful when the parent wants to programmatically deselect all rows.
+   */
+  selectionResetKey?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -242,10 +249,17 @@ function createColumns(): ColumnDef<InvoiceRow>[] {
 // ---------------------------------------------------------------------------
 // InvoiceTable Component
 // ---------------------------------------------------------------------------
-export function InvoiceTable({ invoices, loading }: InvoiceTableProps) {
+export function InvoiceTable({ invoices, loading, onSelectionChange, selectionResetKey }: InvoiceTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+  // Reset selection whenever the parent signals it
+  useEffect(() => {
+    if (selectionResetKey !== undefined) {
+      setRowSelection({})
+    }
+  }, [selectionResetKey])
 
   const columns = useMemo(() => createColumns(), [])
 
@@ -274,6 +288,14 @@ export function InvoiceTable({ invoices, loading }: InvoiceTableProps) {
   })
 
   const selectedCount = Object.keys(rowSelection).length
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(Object.keys(rowSelection))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowSelection])
 
   // --- Loading state ---
   if (loading) {

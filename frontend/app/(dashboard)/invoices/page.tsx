@@ -12,11 +12,18 @@ import {
   Filter,
   X,
   FileSpreadsheet,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
 } from 'lucide-react'
 import {
   listInvoices,
+  bulkDeleteInvoices,
+  bulkValidateInvoices,
   API_BASE,
   type Invoice,
+  type BulkValidateEntry,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { InvoiceTable, type InvoiceRow } from '@/components/InvoiceTable'
@@ -263,6 +270,182 @@ function DetailRow({
 }
 
 // ---------------------------------------------------------------------------
+// Bulk validate results modal
+// ---------------------------------------------------------------------------
+function BulkValidateModal({
+  results,
+  onClose,
+}: {
+  results: BulkValidateEntry[]
+  onClose: () => void
+}) {
+  const validCount = results.filter((r) => r.valid).length
+  const invalidCount = results.length - validCount
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      {/* Modal */}
+      <div
+        className="relative z-10 w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden"
+        style={{
+          backgroundColor: 'rgb(var(--card))',
+          borderColor: 'rgb(var(--border))',
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-5 py-4 border-b"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} style={{ color: 'rgb(var(--primary))' }} />
+            <h3 className="font-semibold text-sm" style={{ color: 'rgb(var(--foreground))' }}>
+              Validierungsergebnisse
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md transition-colors"
+            style={{ color: 'rgb(var(--foreground-muted))' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Summary */}
+        <div
+          className="flex items-center gap-4 px-5 py-3 border-b text-sm"
+          style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--muted))' }}
+        >
+          <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+            <CheckCircle2 size={14} /> {validCount} gültig
+          </span>
+          {invalidCount > 0 && (
+            <span className="flex items-center gap-1.5 text-red-600 font-medium">
+              <XCircle size={14} /> {invalidCount} ungültig
+            </span>
+          )}
+        </div>
+
+        {/* Results list */}
+        <div className="max-h-80 overflow-y-auto divide-y" style={{ borderColor: 'rgb(var(--border))' }}>
+          {results.map((r) => (
+            <div key={r.id} className="px-5 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: 'rgb(var(--foreground))' }}>
+                    {r.invoice_number || `ID ${r.id}`}
+                  </p>
+                  {r.errors.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {r.errors.map((e, i) => (
+                        <li key={i} className="text-xs" style={{ color: 'rgb(var(--destructive, 220 38 38))' }}>
+                          &bull; {e}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {r.valid ? (
+                  <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600" />
+                ) : (
+                  <XCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div
+          className="px-5 py-3 border-t flex justify-end"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium rounded-lg border transition-colors"
+            style={{
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+            }}
+          >
+            Schliessen
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Delete confirmation dialog
+// ---------------------------------------------------------------------------
+function DeleteConfirmDialog({
+  count,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  count: number
+  onConfirm: () => void
+  onCancel: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div
+        className="relative z-10 w-full max-w-sm rounded-xl border shadow-2xl p-6"
+        style={{
+          backgroundColor: 'rgb(var(--card))',
+          borderColor: 'rgb(var(--border))',
+        }}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'rgb(239 68 68 / 0.1)' }}
+          >
+            <Trash2 size={18} className="text-red-500" />
+          </div>
+          <h3 className="font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
+            Rechnungen löschen
+          </h3>
+        </div>
+        <p className="text-sm mb-5" style={{ color: 'rgb(var(--foreground-muted))' }}>
+          Sollen wirklich <strong>{count} Rechnung{count !== 1 ? 'en' : ''}</strong> unwiderruflich
+          gelöscht werden?
+        </p>
+        <div className="flex items-center justify-end gap-3">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50"
+            style={{
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+            }}
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
+            style={{ backgroundColor: loading ? 'rgb(239 68 68 / 0.7)' : 'rgb(239 68 68)' }}
+          >
+            {loading ? 'Wird gelöscht…' : 'Löschen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function InvoicesPage() {
@@ -277,6 +460,13 @@ export default function InvoicesPage() {
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [showDATEVExport, setShowDATEVExport] = useState(false)
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectionResetKey, setSelectionResetKey] = useState(0)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkValidating, setBulkValidating] = useState(false)
+  const [validateResults, setValidateResults] = useState<BulkValidateEntry[] | null>(null)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -291,6 +481,34 @@ export default function InvoicesPage() {
       setLoading(false)
     }
   }, [])
+
+  // Bulk action handlers
+  const handleBulkDelete = useCallback(async () => {
+    setBulkDeleting(true)
+    try {
+      await bulkDeleteInvoices(selectedIds)
+      setSelectedIds([])
+      setSelectionResetKey((k) => k + 1)
+      setShowDeleteConfirm(false)
+      fetchInvoices()
+    } catch {
+      // Silently keep dialog open on error — user can retry
+    } finally {
+      setBulkDeleting(false)
+    }
+  }, [selectedIds, fetchInvoices])
+
+  const handleBulkValidate = useCallback(async () => {
+    setBulkValidating(true)
+    try {
+      const result = await bulkValidateInvoices(selectedIds)
+      setValidateResults(result.results)
+    } catch {
+      // ignore
+    } finally {
+      setBulkValidating(false)
+    }
+  }, [selectedIds])
 
   useEffect(() => {
     fetchInvoices()
@@ -363,6 +581,24 @@ export default function InvoicesPage() {
 
       {/* DATEV Export Dialog */}
       <DATEVExportDialog open={showDATEVExport} onOpenChange={setShowDATEVExport} />
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <DeleteConfirmDialog
+          count={selectedIds.length}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          loading={bulkDeleting}
+        />
+      )}
+
+      {/* Bulk validate results modal */}
+      {validateResults && (
+        <BulkValidateModal
+          results={validateResults}
+          onClose={() => setValidateResults(null)}
+        />
+      )}
 
       {/* ===== Page Header ===== */}
       <motion.div
@@ -599,9 +835,84 @@ export default function InvoicesPage() {
               status: inv.validation_status,
             }))}
             loading={loading}
+            selectionResetKey={selectionResetKey}
+            onSelectionChange={(invoiceIds) => {
+              // Map invoice_id strings back to numeric IDs via the invoice list
+              const numericIds = invoiceIds
+                .map((invId) => filtered.find((inv) => inv.invoice_id === invId)?.id)
+                .filter((id): id is number => id !== undefined)
+              setSelectedIds(numericIds)
+            }}
           />
         </motion.div>
       )}
+
+      {/* ===== Floating bulk action bar ===== */}
+      <AnimatePresence>
+        {selectedIds.length > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl"
+            style={{
+              backgroundColor: 'rgb(var(--card))',
+              borderColor: 'rgb(var(--border))',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            }}
+          >
+            {/* Count */}
+            <span
+              className="text-sm font-semibold px-2.5 py-1 rounded-lg"
+              style={{
+                backgroundColor: 'rgb(var(--primary-light))',
+                color: 'rgb(var(--primary))',
+              }}
+            >
+              {selectedIds.length} ausgewählt
+            </span>
+
+            {/* Validate button */}
+            <button
+              onClick={handleBulkValidate}
+              disabled={bulkValidating || bulkDeleting}
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors disabled:opacity-50"
+              style={{
+                borderColor: 'rgb(var(--border))',
+                color: 'rgb(var(--foreground))',
+                backgroundColor: 'rgb(var(--muted))',
+              }}
+            >
+              <ShieldCheck size={14} />
+              {bulkValidating ? 'Prüfe…' : 'Validieren'}
+            </button>
+
+            {/* Delete button */}
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={bulkDeleting || bulkValidating}
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50 text-white"
+              style={{ backgroundColor: 'rgb(239 68 68)' }}
+            >
+              <Trash2 size={14} />
+              Löschen
+            </button>
+
+            {/* Deselect link */}
+            <button
+              onClick={() => {
+                setSelectedIds([])
+                setSelectionResetKey((k) => k + 1)
+              }}
+              className="text-xs underline-offset-2 underline"
+              style={{ color: 'rgb(var(--foreground-muted))' }}
+            >
+              Auswahl aufheben
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

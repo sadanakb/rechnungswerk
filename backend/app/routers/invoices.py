@@ -322,6 +322,146 @@ async def create_invoice(
     return db_invoice
 
 
+@router.post("/invoices/bulk-delete")
+async def bulk_delete_invoices(
+    request: Request,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """
+    Bulk-delete invoices by integer DB id.
+
+    Body: {"ids": [1, 2, 3]}
+    Returns: {"deleted": N, "skipped": M}
+    Skipped = IDs not found or belonging to a different organisation.
+    """
+    ids = payload.get("ids", [])
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=422, detail="ids muss eine nicht-leere Liste sein")
+
+    org_id = current_user.get("org_id") if current_user else None
+
+    deleted = 0
+    skipped = 0
+
+    for inv_id in ids:
+        invoice = db.query(Invoice).filter(Invoice.id == inv_id).first()
+        if not invoice:
+            skipped += 1
+            continue
+
+        # Enforce tenant isolation when authenticated
+        if org_id and invoice.organization_id != int(org_id):
+            skipped += 1
+            continue
+
+        # Clean up XML file
+        if invoice.xrechnung_xml_path:
+            xml_real = os.path.realpath(invoice.xrechnung_xml_path)
+            if xml_real.startswith(_XML_BASE) and os.path.isfile(xml_real):
+                os.remove(xml_real)
+
+        # Clean up uploaded PDF
+        for log in db.query(UploadLog).filter(UploadLog.invoice_id == invoice.invoice_id).all():
+            pdf_path = os.path.join(UPLOAD_DIR, f"{log.upload_id}.pdf")
+            pdf_real = os.path.realpath(pdf_path)
+            if pdf_real.startswith(_UPLOAD_BASE) and os.path.isfile(pdf_real):
+                os.remove(pdf_real)
+            db.delete(log)
+
+        db.delete(invoice)
+        deleted += 1
+
+    db.commit()
+
+    # Audit log
+    if org_id and deleted > 0:
+        user_id = int(current_user["user_id"]) if current_user and current_user.get("user_id") else None
+        ip = request.client.host if request.client else None
+        log_action(
+            db,
+            org_id=int(org_id),
+            user_id=user_id,
+            action="invoices_bulk_deleted",
+            resource_type="invoice",
+            resource_id=None,
+            details={"deleted": deleted, "skipped": skipped},
+            ip_address=ip,
+        )
+
+    return {"deleted": deleted, "skipped": skipped}
+
+
+@router.post("/invoices/bulk-validate")
+async def bulk_validate_invoices(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """
+    Bulk-validate invoices by integer DB id.
+
+    Body: {"ids": [1, 2, 3]}
+    For each invoice, checks whether xml_content is present and whether
+    required fields (invoice_number, invoice_date, seller_name, buyer_name,
+    gross_amount) are populated.
+
+    Returns: {"results": [{"id": 1, "valid": true, "errors": []}]}
+    """
+    ids = payload.get("ids", [])
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=422, detail="ids muss eine nicht-leere Liste sein")
+
+    org_id = current_user.get("org_id") if current_user else None
+
+    results = []
+    for inv_id in ids:
+        invoice = db.query(Invoice).filter(Invoice.id == inv_id).first()
+
+        if not invoice:
+            results.append({"id": inv_id, "valid": False, "errors": ["Rechnung nicht gefunden"]})
+            continue
+
+        # Enforce tenant isolation when authenticated
+        if org_id and invoice.organization_id != int(org_id):
+            results.append({"id": inv_id, "valid": False, "errors": ["Zugriff verweigert"]})
+            continue
+
+        errors: List[str] = []
+
+        # Check required fields (basic EN 16931 presence validation)
+        REQUIRED_FIELDS = [
+            ("invoice_number", "Rechnungsnummer"),
+            ("invoice_date", "Rechnungsdatum"),
+            ("seller_name", "Verkäufername"),
+            ("buyer_name", "Käufername"),
+            ("gross_amount", "Bruttobetrag"),
+        ]
+        for field, label in REQUIRED_FIELDS:
+            val = getattr(invoice, field, None)
+            if val is None or (isinstance(val, str) and not val.strip()):
+                errors.append(f"Pflichtfeld fehlt: {label}")
+
+        # Check that XRechnung XML has been generated
+        if not invoice.xrechnung_xml_path:
+            errors.append("XRechnung XML wurde noch nicht generiert")
+        else:
+            xml_real = os.path.realpath(invoice.xrechnung_xml_path)
+            if not xml_real.startswith(_XML_BASE) or not os.path.isfile(xml_real):
+                errors.append("XRechnung XML-Datei nicht vorhanden")
+
+        results.append({
+            "id": inv_id,
+            "invoice_id": invoice.invoice_id,
+            "invoice_number": invoice.invoice_number,
+            "valid": len(errors) == 0,
+            "errors": errors,
+        })
+
+    return {"results": results}
+
+
 @router.post("/invoices/{invoice_id}/generate-xrechnung")
 @limiter.limit("20/minute")
 async def generate_xrechnung(
@@ -1057,6 +1197,166 @@ async def analytics_top_suppliers(
             "total_amount": round(float(row[2] or 0), 2),
         }
         for row in rows
+    ]
+
+
+@router.get("/analytics/tax-summary")
+async def analytics_tax_summary(
+    db: Session = Depends(get_db),
+    year: Optional[int] = Query(None, description="Filter by invoice year (e.g. 2026)"),
+):
+    """
+    Return tax summary grouped by tax rate for a given year.
+
+    For each tax rate group returns: count, net sum, VAT sum, gross sum.
+    """
+    from sqlalchemy import func, extract
+
+    query = db.query(
+        Invoice.tax_rate,
+        func.count(Invoice.id).label("count"),
+        func.sum(Invoice.net_amount).label("net"),
+        func.sum(Invoice.tax_amount).label("vat"),
+        func.sum(Invoice.gross_amount).label("gross"),
+    )
+
+    if year is not None:
+        query = query.filter(extract("year", Invoice.invoice_date) == year)
+
+    rows = (
+        query
+        .group_by(Invoice.tax_rate)
+        .order_by(Invoice.tax_rate.desc())
+        .all()
+    )
+
+    def tax_label(rate: float) -> str:
+        r = float(rate or 0)
+        if r == 19:
+            return "19% (Regelsteuersatz)"
+        elif r == 7:
+            return "7% (ermäßigter Steuersatz)"
+        elif r == 0:
+            return "0% (steuerfrei/reverse charge)"
+        else:
+            return f"{r}%"
+
+    return [
+        {
+            "tax_rate": str(int(float(row[0] or 0))) if float(row[0] or 0) == int(float(row[0] or 0)) else str(float(row[0] or 0)),
+            "label": tax_label(row[0]),
+            "count": row[1],
+            "net": round(float(row[2] or 0), 2),
+            "vat": round(float(row[3] or 0), 2),
+            "gross": round(float(row[4] or 0), 2),
+        }
+        for row in rows
+    ]
+
+
+@router.get("/analytics/cashflow")
+async def analytics_cashflow(
+    db: Session = Depends(get_db),
+    months: int = Query(default=6, ge=1, le=24, description="Number of months to look back"),
+):
+    """
+    Return monthly invoice totals for the last N months.
+
+    Groups invoices by invoice_date month and returns total amount and count.
+    """
+    from sqlalchemy import func
+
+    today = date.today()
+    monthly_data = []
+
+    for i in range(months - 1, -1, -1):
+        month = today.month - i
+        year = today.year
+        while month <= 0:
+            month += 12
+            year -= 1
+
+        month_start = date(year, month, 1)
+        if month == 12:
+            month_end = date(year + 1, 1, 1)
+        else:
+            month_end = date(year, month + 1, 1)
+
+        total = db.query(func.sum(Invoice.gross_amount)).filter(
+            Invoice.invoice_date >= month_start,
+            Invoice.invoice_date < month_end,
+        ).scalar() or 0
+
+        count = db.query(Invoice).filter(
+            Invoice.invoice_date >= month_start,
+            Invoice.invoice_date < month_end,
+        ).count()
+
+        monthly_data.append({
+            "month": month_start.strftime("%Y-%m"),
+            "label": month_start.strftime("%b %Y"),
+            "total_amount": round(float(total), 2),
+            "invoice_count": count,
+        })
+
+    return monthly_data
+
+
+@router.get("/analytics/overdue-aging")
+async def analytics_overdue_aging(
+    db: Session = Depends(get_db),
+):
+    """
+    Return overdue invoices grouped by aging buckets.
+
+    Buckets: 0-30, 31-60, 61-90, 90+ days past due_date.
+    Only includes invoices where due_date has passed.
+    """
+    today = date.today()
+
+    overdue = db.query(Invoice).filter(
+        Invoice.due_date.isnot(None),
+        Invoice.due_date < today,
+    ).all()
+
+    buckets = {
+        "0-30": {"count": 0, "total_amount": 0.0, "invoices": []},
+        "31-60": {"count": 0, "total_amount": 0.0, "invoices": []},
+        "61-90": {"count": 0, "total_amount": 0.0, "invoices": []},
+        "90+": {"count": 0, "total_amount": 0.0, "invoices": []},
+    }
+
+    for inv in overdue:
+        days_overdue = (today - inv.due_date).days
+        amount = float(inv.gross_amount or 0)
+
+        if days_overdue <= 30:
+            key = "0-30"
+        elif days_overdue <= 60:
+            key = "31-60"
+        elif days_overdue <= 90:
+            key = "61-90"
+        else:
+            key = "90+"
+
+        buckets[key]["count"] += 1
+        buckets[key]["total_amount"] += amount
+        buckets[key]["invoices"].append({
+            "id": inv.invoice_id,
+            "number": inv.invoice_number,
+            "amount": amount,
+            "days_overdue": days_overdue,
+        })
+
+    return [
+        {
+            "bucket": bucket,
+            "label": f"{bucket} Tage überfällig",
+            "count": data["count"],
+            "total_amount": round(data["total_amount"], 2),
+            "invoices": data["invoices"],
+        }
+        for bucket, data in buckets.items()
     ]
 
 
