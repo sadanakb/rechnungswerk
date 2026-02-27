@@ -380,6 +380,35 @@ export const getAnalyticsSummary = async (): Promise<AnalyticsSummary> => {
   return resp.data
 }
 
+export interface TopSupplier {
+  name: string
+  invoice_count: number
+  total_amount: number
+}
+
+export interface CategoryBreakdown {
+  tax_rate: number
+  label: string
+  invoice_count: number
+  total_amount: number
+}
+
+export const getTopSuppliers = async (from?: string, to?: string): Promise<TopSupplier[]> => {
+  const params: Record<string, string> = {}
+  if (from) params.from = from
+  if (to) params.to = to
+  const resp = await api.get<TopSupplier[]>('/api/analytics/top-suppliers', { params })
+  return resp.data
+}
+
+export const getCategoryBreakdown = async (from?: string, to?: string): Promise<CategoryBreakdown[]> => {
+  const params: Record<string, string> = {}
+  if (from) params.from = from
+  if (to) params.to = to
+  const resp = await api.get<CategoryBreakdown[]>('/api/analytics/category-breakdown', { params })
+  return resp.data
+}
+
 // ---------------------------------------------------------------------------
 // Suppliers
 // ---------------------------------------------------------------------------

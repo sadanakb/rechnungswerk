@@ -940,3 +940,131 @@ async def analytics_summary(
         "xrechnung_generated": xrechnung_count,
         "monthly_volumes": monthly_volumes,
     }
+
+
+@router.get("/analytics/top-suppliers")
+async def analytics_top_suppliers(
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    from_date: Optional[str] = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
+):
+    """
+    Return top 5 suppliers by invoice count and total amount.
+
+    Groups invoices by buyer_name (the counterpart on our invoices).
+    Accepts optional 'from' and 'to' date params for filtering.
+    """
+    from sqlalchemy import func, cast, Float as SAFloat
+
+    query = db.query(
+        Invoice.buyer_name,
+        func.count(Invoice.id).label("invoice_count"),
+        func.sum(Invoice.gross_amount).label("total_amount"),
+    )
+
+    # Tenant isolation
+    if current_user and current_user.get("org_id"):
+        query = query.filter(Invoice.organization_id == current_user["org_id"])
+
+    # Date filters
+    if from_date:
+        try:
+            parsed_from = date.fromisoformat(from_date)
+            query = query.filter(Invoice.invoice_date >= parsed_from)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Ungültiges Startdatum. Format: YYYY-MM-DD")
+
+    if to_date:
+        try:
+            parsed_to = date.fromisoformat(to_date)
+            query = query.filter(Invoice.invoice_date <= parsed_to)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Ungültiges Enddatum. Format: YYYY-MM-DD")
+
+    rows = (
+        query
+        .filter(Invoice.buyer_name.isnot(None))
+        .group_by(Invoice.buyer_name)
+        .order_by(func.count(Invoice.id).desc())
+        .limit(5)
+        .all()
+    )
+
+    return [
+        {
+            "name": row[0] or "Unbekannt",
+            "invoice_count": row[1],
+            "total_amount": round(float(row[2] or 0), 2),
+        }
+        for row in rows
+    ]
+
+
+@router.get("/analytics/category-breakdown")
+async def analytics_category_breakdown(
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    from_date: Optional[str] = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
+    to_date: Optional[str] = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
+):
+    """
+    Return revenue grouped by tax rate (0%, 7%, 19%).
+
+    Accepts optional 'from' and 'to' date params for filtering.
+    """
+    from sqlalchemy import func, case
+
+    query = db.query(
+        Invoice.tax_rate,
+        func.count(Invoice.id).label("invoice_count"),
+        func.sum(Invoice.gross_amount).label("total_amount"),
+    )
+
+    # Tenant isolation
+    if current_user and current_user.get("org_id"):
+        query = query.filter(Invoice.organization_id == current_user["org_id"])
+
+    # Date filters
+    if from_date:
+        try:
+            parsed_from = date.fromisoformat(from_date)
+            query = query.filter(Invoice.invoice_date >= parsed_from)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Ungültiges Startdatum. Format: YYYY-MM-DD")
+
+    if to_date:
+        try:
+            parsed_to = date.fromisoformat(to_date)
+            query = query.filter(Invoice.invoice_date <= parsed_to)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Ungültiges Enddatum. Format: YYYY-MM-DD")
+
+    rows = (
+        query
+        .group_by(Invoice.tax_rate)
+        .order_by(func.sum(Invoice.gross_amount).desc())
+        .all()
+    )
+
+    # Map tax rates to labels
+    def tax_label(rate: float) -> str:
+        r = float(rate or 0)
+        if r == 0:
+            return "0% (steuerfrei)"
+        elif r == 7:
+            return "7% (ermäßigt)"
+        elif r == 19:
+            return "19% (Regelsteuersatz)"
+        else:
+            return f"{r}%"
+
+    return [
+        {
+            "tax_rate": float(row[0] or 0),
+            "label": tax_label(row[0]),
+            "invoice_count": row[1],
+            "total_amount": round(float(row[2] or 0), 2),
+        }
+        for row in rows
+    ]
