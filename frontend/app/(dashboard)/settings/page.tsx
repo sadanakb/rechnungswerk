@@ -32,10 +32,15 @@ import {
   getSubscription,
   createCheckoutSession,
   createPortalSession,
+  listApiKeys,
+  createApiKey,
+  revokeApiKey,
   getErrorMessage,
   type UserProfile,
   type OnboardingStatus,
   type SubscriptionInfo,
+  type ApiKeyItem,
+  type ApiKeyCreateResult,
 } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -830,22 +835,227 @@ function AbonnementTab({
 }
 
 // ---------------------------------------------------------------------------
+// Available scopes
+// ---------------------------------------------------------------------------
+const AVAILABLE_SCOPES = [
+  { value: 'read:invoices',   label: 'Rechnungen lesen' },
+  { value: 'write:invoices',  label: 'Rechnungen schreiben' },
+  { value: 'read:suppliers',  label: 'Lieferanten lesen' },
+  { value: 'write:suppliers', label: 'Lieferanten schreiben' },
+]
+
+// ---------------------------------------------------------------------------
+// Sub-component: One-time key display box
+// ---------------------------------------------------------------------------
+function NewKeyBox({ fullKey, onDismiss }: { fullKey: string; onDismiss: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(fullKey)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20 p-4 space-y-3">
+      <div className="flex items-start gap-2">
+        <AlertCircle size={18} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+        <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+          Dieser Schluessel wird nur einmal angezeigt. Bitte jetzt kopieren und sicher speichern.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <code className={[
+          'flex-1 block rounded-md border bg-white dark:bg-slate-900 px-3 py-2',
+          'text-sm font-mono text-slate-800 dark:text-slate-200',
+          'border-slate-300 dark:border-slate-700 break-all',
+        ].join(' ')}>
+          {fullKey}
+        </code>
+        <Button variant="outline" size="sm" onClick={handleCopy} title="Kopieren">
+          {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+        </Button>
+      </div>
+      <Button variant="outline" size="sm" onClick={onDismiss}>
+        Verstanden, Schluessel gespeichert
+      </Button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: Create key modal
+// ---------------------------------------------------------------------------
+function CreateKeyModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void
+  onCreated: (result: ApiKeyCreateResult) => void
+}) {
+  const [name, setName] = useState('')
+  const [selectedScopes, setSelectedScopes] = useState<string[]>([])
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const toggleScope = (scope: string) => {
+    setSelectedScopes((prev) =>
+      prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]
+    )
+  }
+
+  const handleCreate = async () => {
+    setError(null)
+    if (!name.trim()) {
+      setError('Bitte einen Namen eingeben.')
+      return
+    }
+    if (selectedScopes.length === 0) {
+      setError('Bitte mindestens einen Scope auswaehlen.')
+      return
+    }
+    setCreating(true)
+    try {
+      const result = await createApiKey(name.trim(), selectedScopes, null)
+      onCreated(result)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Schluessel konnte nicht erstellt werden.'))
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className={[
+        'relative w-full max-w-md rounded-xl border shadow-lg p-6 space-y-5',
+        'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700',
+      ].join(' ')}>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Neuen API-Schluessel erstellen
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Vergeben Sie einen Namen und waehlen Sie die gewuenschten Berechtigungen.
+          </p>
+        </div>
+
+        {error && <FeedbackBanner type="error" message={error} />}
+
+        {/* Name */}
+        <Input
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="z.B. Produktion, CI/CD, Buchhaltungssystem"
+          autoFocus
+        />
+
+        {/* Scopes */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Berechtigungen (Scopes)
+          </label>
+          <div className="grid grid-cols-1 gap-2">
+            {AVAILABLE_SCOPES.map((scope) => (
+              <label
+                key={scope.value}
+                className={[
+                  'flex items-center gap-3 rounded-md border px-3 py-2 cursor-pointer transition-colors',
+                  selectedScopes.includes(scope.value)
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800',
+                ].join(' ')}
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  checked={selectedScopes.includes(scope.value)}
+                  onChange={() => toggleScope(scope.value)}
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-200">{scope.label}</span>
+                <code className="ml-auto text-xs text-slate-400 dark:text-slate-500 font-mono">
+                  {scope.value}
+                </code>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-1">
+          <Button variant="outline" onClick={onClose} disabled={creating}>
+            Abbrechen
+          </Button>
+          <Button onClick={handleCreate} disabled={creating}>
+            {creating ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Erstellen...
+              </>
+            ) : (
+              <>
+                <Key size={16} />
+                Schluessel erstellen
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tab: API-Schluessel (API Keys)
 // ---------------------------------------------------------------------------
 function ApiKeysTab({ plan }: { plan: string }) {
   const currentPlan = plan?.toLowerCase() ?? 'free'
   const isProfessional = currentPlan === 'professional'
 
-  const [apiKey] = useState('rw_live_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6')
-  const [showKey, setShowKey] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [keys, setKeys] = useState<ApiKeyItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newKeyResult, setNewKeyResult] = useState<ApiKeyCreateResult | null>(null)
+  const [revokingId, setRevokingId] = useState<number | null>(null)
 
-  const maskedKey = apiKey.slice(0, 12) + '...' + apiKey.slice(-4)
+  const fetchKeys = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await listApiKeys()
+      setKeys(data)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'API-Schluessel konnten nicht geladen werden.') })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  useEffect(() => {
+    if (isProfessional) fetchKeys()
+  }, [isProfessional, fetchKeys])
+
+  const handleRevoke = async (id: number) => {
+    if (!window.confirm('Diesen API-Schluessel wirklich widerrufen? Diese Aktion kann nicht rueckgaengig gemacht werden.')) return
+    setRevokingId(id)
+    try {
+      await revokeApiKey(id)
+      setKeys((prev) => prev.filter((k) => k.id !== id))
+      setFeedback({ type: 'success', message: 'API-Schluessel wurde widerrufen.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Widerrufen fehlgeschlagen.') })
+    } finally {
+      setRevokingId(null)
+    }
+  }
+
+  const handleCreated = (result: ApiKeyCreateResult) => {
+    setShowCreateModal(false)
+    setNewKeyResult(result)
+    setKeys((prev) => [result, ...prev])
+    setFeedback(null)
   }
 
   if (!isProfessional) {
@@ -856,12 +1066,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
           <CardDescription>Programmatischer Zugriff auf die RechnungsWerk API.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div
-            className="rounded-lg border-2 border-dashed p-8 text-center"
-            style={{
-              borderColor: 'rgb(var(--border))',
-            }}
-          >
+          <div className="rounded-lg border-2 border-dashed p-8 text-center border-slate-200 dark:border-slate-700">
             <Lock size={40} className="mx-auto mb-4 text-slate-400 dark:text-slate-500" />
             <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2">
               API-Zugriff ist im Professional-Plan verfuegbar
@@ -883,88 +1088,146 @@ function ApiKeysTab({ plan }: { plan: string }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>API-Schluessel</CardTitle>
-        <CardDescription>
-          Verwenden Sie diesen Schluessel fuer den programmatischen Zugriff auf die RechnungsWerk API.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* API key display */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Live API-Schluessel
-          </label>
-          <div className="flex items-center gap-2">
-            <div
-              className={[
-                'flex-1 flex items-center h-10 rounded-md border bg-slate-50 px-3 text-sm font-mono',
-                'text-slate-700 border-slate-300',
-                'dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700',
-              ].join(' ')}
-            >
-              {showKey ? apiKey : maskedKey}
+    <>
+      {showCreateModal && (
+        <CreateKeyModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
+      )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <CardTitle>API-Schluessel</CardTitle>
+              <CardDescription>
+                Verwenden Sie API-Schluessel fuer den programmatischen Zugriff auf die RechnungsWerk API.
+              </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowKey((s) => !s)}
-              title={showKey ? 'Schluessel verbergen' : 'Schluessel anzeigen'}
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              title="In Zwischenablage kopieren"
-            >
-              {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Key size={16} />
+              Neuen API-Schluessel erstellen
             </Button>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Feedback */}
+          {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
 
-        {/* Regenerate */}
-        <div
-          className="rounded-lg border p-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
-        >
-          <div className="flex items-start gap-3">
-            <Shield size={20} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                Schluessel neu generieren
-              </h4>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
-                Das Neugenerieren Ihres API-Schluessels macht den bisherigen Schluessel sofort
-                ungueltig. Alle Integrationen muessen aktualisiert werden.
+          {/* One-time key display after creation */}
+          {newKeyResult && (
+            <NewKeyBox
+              fullKey={newKeyResult.full_key}
+              onDismiss={() => setNewKeyResult(null)}
+            />
+          )}
+
+          {/* Keys table */}
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <RefreshCw size={20} className="animate-spin text-slate-400" />
+            </div>
+          ) : keys.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center">
+              <Key size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Noch keine API-Schluessel erstellt.
               </p>
-              <Button variant="outline" size="sm">
-                <RefreshCw size={14} />
-                Neuen Schluessel generieren
-              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Prefix</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Scopes</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Erstellt</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Zuletzt genutzt</th>
+                    <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {keys.map((key) => (
+                    <tr
+                      key={key.id}
+                      className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                        {key.name}
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="text-xs bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5 font-mono text-slate-700 dark:text-slate-300">
+                          {key.key_prefix}...
+                        </code>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(key.scopes ?? []).map((s) => (
+                            <span
+                              key={s}
+                              className="inline-block rounded-full px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-mono"
+                            >
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {key.created_at
+                          ? new Date(key.created_at).toLocaleDateString('de-DE')
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {key.last_used_at
+                          ? new Date(key.last_used_at).toLocaleDateString('de-DE')
+                          : 'Noch nie'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevoke(key.id)}
+                          disabled={revokingId === key.id}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          {revokingId === key.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            'Widerrufen'
+                          )}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Security hint */}
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+            <div className="flex items-start gap-3">
+              <Shield size={18} className="shrink-0 mt-0.5 text-slate-500 dark:text-slate-400" />
+              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                <p>
+                  <strong className="text-slate-700 dark:text-slate-300">Hinweis:</strong>{' '}
+                  Geben Sie Ihre API-Schluessel niemals weiter und speichern Sie sie nicht
+                  in oeffentlichen Repositories.
+                </p>
+                <p>
+                  Dokumentation:{' '}
+                  <Link href="/docs/api" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    API-Referenz ansehen
+                  </Link>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Usage hint */}
-        <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
-          <p>
-            <strong>Hinweis:</strong> Geben Sie Ihren API-Schluessel niemals weiter und speichern
-            Sie ihn nicht in oeffentlichen Repositories.
-          </p>
-          <p>
-            Dokumentation:{' '}
-            <Link
-              href="/docs/api"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              API-Referenz ansehen
-            </Link>
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   )
 }
 

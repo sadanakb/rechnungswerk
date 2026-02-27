@@ -771,3 +771,90 @@ export async function createPortalSession(): Promise<{ url: string }> {
   const resp = await api.post<{ url: string }>('/api/billing/portal')
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// API Key Management
+// ---------------------------------------------------------------------------
+
+export interface ApiKeyItem {
+  id: number
+  name: string
+  key_prefix: string
+  scopes: string[]
+  created_at: string | null
+  last_used_at: string | null
+  expires_at: string | null
+  is_active: boolean
+}
+
+export interface ApiKeyCreateResult extends ApiKeyItem {
+  full_key: string
+  warning: string
+}
+
+export async function listApiKeys(): Promise<ApiKeyItem[]> {
+  const resp = await api.get<ApiKeyItem[]>('/api/api-keys')
+  return resp.data
+}
+
+export async function createApiKey(
+  name: string,
+  scopes: string[],
+  expiresAt?: string | null,
+): Promise<ApiKeyCreateResult> {
+  const resp = await api.post<ApiKeyCreateResult>('/api/api-keys', {
+    name,
+    scopes,
+    expires_at: expiresAt ?? null,
+  })
+  return resp.data
+}
+
+export async function revokeApiKey(id: number): Promise<void> {
+  await api.delete(`/api/api-keys/${id}`)
+}
+
+// ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+
+export interface AuditLogEntry {
+  id: number
+  org_id: number
+  user_id: number | null
+  user_email: string | null
+  action: string
+  resource_type: string | null
+  resource_id: string | null
+  details: Record<string, unknown> | null
+  ip_address: string | null
+  created_at: string | null
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogEntry[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AuditLogParams {
+  page?: number
+  page_size?: number
+  action?: string
+  resource_type?: string
+  date_from?: string
+  date_to?: string
+}
+
+export async function getAuditLog(params?: AuditLogParams): Promise<AuditLogListResponse> {
+  const queryParams: Record<string, string | number> = {}
+  if (params?.page) queryParams.page = params.page
+  if (params?.page_size) queryParams.page_size = params.page_size
+  if (params?.action) queryParams.action = params.action
+  if (params?.resource_type) queryParams.resource_type = params.resource_type
+  if (params?.date_from) queryParams.date_from = params.date_from
+  if (params?.date_to) queryParams.date_to = params.date_to
+  const resp = await api.get<AuditLogListResponse>('/api/audit', { params: queryParams })
+  return resp.data
+}
