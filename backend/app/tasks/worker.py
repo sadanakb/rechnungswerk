@@ -11,6 +11,7 @@ Requires Redis: redis-server running on localhost:6379
 """
 import logging
 from typing import Dict
+from arq import cron
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,96 @@ async def webhook_retry_task(ctx: Dict, delivery_id: int):
         db.close()
 
 
+async def daily_recurring_check(ctx: Dict):
+    """Daily ARQ cron: auto-generate recurring invoices that are due."""
+    from app.database import SessionLocal
+    from app.models import RecurringInvoice, Invoice
+    from app.recurring.scheduler import RecurringScheduler
+    from datetime import date, datetime, timezone
+    import uuid
+
+    db = SessionLocal()
+    generated = 0
+    try:
+        active = db.query(RecurringInvoice).filter(RecurringInvoice.active == True).all()
+        templates_dicts = [
+            {
+                "template_id": t.template_id,
+                "active": t.active,
+                "frequency": t.frequency,
+                "next_date": t.next_date.isoformat() if t.next_date else None,
+                "number_prefix": t.number_prefix,
+                "payment_days": t.payment_days,
+                "seller_name": t.seller_name,
+                "seller_vat_id": t.seller_vat_id,
+                "seller_address": t.seller_address,
+                "buyer_name": t.buyer_name,
+                "buyer_vat_id": t.buyer_vat_id,
+                "buyer_address": t.buyer_address,
+                "line_items": t.line_items or [],
+                "tax_rate": float(t.tax_rate or 19),
+                "iban": t.iban,
+                "bic": t.bic,
+                "payment_account_name": t.payment_account_name,
+            }
+            for t in active
+        ]
+
+        due = RecurringScheduler.get_due_templates(templates_dicts)
+
+        for tmpl_dict in due:
+            template_rec = next(
+                (t for t in active if t.template_id == tmpl_dict["template_id"]), None
+            )
+            if not template_rec:
+                continue
+
+            today = date.today()
+            invoice_data = RecurringScheduler.generate_invoice_data(tmpl_dict, today)
+
+            net = sum(
+                float(li.get("quantity", 1)) * float(li.get("unit_price", li.get("price", 0)))
+                for li in (invoice_data.get("line_items") or [])
+            )
+            tax_rate = float(invoice_data.get("tax_rate", 19))
+            tax = round(net * tax_rate / 100, 2)
+            gross = round(net + tax, 2)
+
+            invoice = Invoice(
+                invoice_id=f"INV-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
+                invoice_number=invoice_data["invoice_number"],
+                invoice_date=date.fromisoformat(invoice_data["invoice_date"]),
+                due_date=date.fromisoformat(invoice_data["due_date"]) if invoice_data.get("due_date") else None,
+                seller_name=invoice_data.get("seller_name"),
+                seller_vat_id=invoice_data.get("seller_vat_id"),
+                seller_address=invoice_data.get("seller_address"),
+                buyer_name=invoice_data.get("buyer_name"),
+                buyer_vat_id=invoice_data.get("buyer_vat_id"),
+                buyer_address=invoice_data.get("buyer_address"),
+                net_amount=net,
+                tax_amount=tax,
+                gross_amount=gross,
+                tax_rate=tax_rate,
+                currency=invoice_data.get("currency", "EUR"),
+                line_items=invoice_data.get("line_items"),
+                source_type="recurring",
+                payment_status="unpaid",
+            )
+            db.add(invoice)
+
+            template_rec.last_generated = today
+            template_rec.next_date = RecurringScheduler.calculate_next_date(
+                today, template_rec.frequency
+            )
+            generated += 1
+
+        db.commit()
+        logger.info("daily_recurring_check: generated %d invoices", generated)
+        return {"generated": generated}
+    finally:
+        db.close()
+
+
 async def startup(ctx: Dict):
     """Worker startup hook."""
     logger.info("ARQ worker started")
@@ -192,6 +283,10 @@ class WorkerSettings:
         process_email_inbox,
         send_email_task,
         webhook_retry_task,
+        daily_recurring_check,
+    ]
+    cron_jobs = [
+        cron(daily_recurring_check, hour=6, minute=0),  # 06:00 UTC daily
     ]
     on_startup = startup
     on_shutdown = shutdown
