@@ -7,15 +7,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
+
+from app.rate_limiter import limiter
 
 from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +36,6 @@ async def lifespan(app: FastAPI):
     yield
 
 
-# Rate limiter (H9)
-limiter = Limiter(key_func=get_remote_address)
-
 # Initialize FastAPI app
 app = FastAPI(
     title=settings.app_name,
@@ -50,6 +49,7 @@ app = FastAPI(
 # Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware
 app.add_middleware(
@@ -83,6 +83,10 @@ app.include_router(api_keys.router, prefix="/api/api-keys", tags=["api-keys"])
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
 app.include_router(templates.router, prefix="/api/templates", tags=["templates"])
 app.include_router(notifications.router)
+app.include_router(contacts.router)
+app.include_router(invoice_sequences.router)
+app.include_router(import_invoices.router)
+app.include_router(contact_router.router)
 
 
 @app.get("/")

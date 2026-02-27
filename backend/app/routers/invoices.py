@@ -5,6 +5,7 @@ import logging
 import tempfile
 
 from fastapi import APIRouter, Depends, Path, Query, Request, UploadFile, File, HTTPException
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -29,6 +30,7 @@ from app.archive.gobd_archive import GoBDArchive
 from app.ai.categorizer import InvoiceCategorizer
 from app.auth import verify_api_key
 from app.auth_jwt import oauth2_scheme, decode_token
+from app.invoice_number_service import generate_next_invoice_number
 from app.config import settings
 from app.webhook_service import publish_event
 from app.audit_service import log_action
@@ -253,10 +255,15 @@ async def create_invoice(
     if current_user and current_user.get("org_id"):
         org_id = current_user["org_id"]
 
+    # Resolve invoice number: use provided value or generate from sequence
+    resolved_invoice_number = invoice.invoice_number
+    if not resolved_invoice_number and org_id:
+        resolved_invoice_number = generate_next_invoice_number(db, int(org_id))
+
     # Create invoice record
     db_invoice = Invoice(
         invoice_id=invoice_id,
-        invoice_number=invoice.invoice_number,
+        invoice_number=resolved_invoice_number,
         invoice_date=invoice.invoice_date,
         due_date=invoice.due_date,
         seller_name=invoice.seller_name,
@@ -554,6 +561,7 @@ async def list_invoices(
     date_to: Optional[str] = Query(None, description="Filter by invoice_date <= date_to (YYYY-MM-DD)"),
     amount_min: Optional[float] = Query(None, description="Filter by gross_amount >= amount_min"),
     amount_max: Optional[float] = Query(None, description="Filter by gross_amount <= amount_max"),
+    payment_status: Optional[str] = Query(None, description="Filter by payment_status (unpaid, paid, partial, overdue, cancelled)"),
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
@@ -584,6 +592,27 @@ async def list_invoices(
         query = query.filter(Invoice.gross_amount >= amount_min)
     if amount_max is not None:
         query = query.filter(Invoice.gross_amount <= amount_max)
+    if payment_status:
+        query = query.filter(Invoice.payment_status == payment_status)
+
+    # Auto-mark overdue invoices (lazy evaluation on every list request)
+    if current_user and current_user.get("org_id"):
+        org_id = current_user["org_id"]
+        from datetime import date as date_type
+        today_str = str(date_type.today())
+        try:
+            overdue_candidates = db.query(Invoice).filter(
+                Invoice.organization_id == org_id,
+                Invoice.payment_status == "unpaid",
+                Invoice.due_date.isnot(None),
+                Invoice.due_date < today_str,
+            ).all()
+            for inv in overdue_candidates:
+                inv.payment_status = "overdue"
+            if overdue_candidates:
+                db.commit()
+        except Exception:
+            pass  # If payment_status column doesn't exist yet, skip
 
     total = query.count()
     invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
@@ -653,6 +682,194 @@ async def export_datev_by_period(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+class PaymentStatusUpdate(BaseModel):
+    status: str  # unpaid, paid, partial, overdue, cancelled
+    paid_date: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_reference: Optional[str] = None
+
+
+@router.patch("/invoices/{invoice_id}/payment-status")
+async def update_payment_status(
+    body: PaymentStatusUpdate,
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Update the payment status of an invoice (paid, unpaid, partial, overdue, cancelled)."""
+    allowed = {"unpaid", "paid", "partial", "overdue", "cancelled"}
+    if body.status not in allowed:
+        raise HTTPException(400, detail=f"Ungültiger Status. Erlaubt: {', '.join(sorted(allowed))}")
+
+    invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation when authenticated
+    if current_user and current_user.get("org_id"):
+        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
+            raise HTTPException(404, detail="Rechnung nicht gefunden")
+
+    invoice.payment_status = body.status
+    if body.paid_date:
+        from datetime import date as date_type
+        invoice.paid_date = date_type.fromisoformat(body.paid_date)
+    if body.payment_method:
+        invoice.payment_method = body.payment_method
+    if body.payment_reference:
+        invoice.payment_reference = body.payment_reference
+
+    db.commit()
+    db.refresh(invoice)
+    return {"ok": True, "payment_status": invoice.payment_status}
+
+
+@router.get("/invoices/autocomplete")
+def autocomplete_invoices(
+    q: str = Query(""),
+    field: str = Query("buyer_name"),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    allowed_fields = {
+        "buyer_name": Invoice.buyer_name,
+        "invoice_number": Invoice.invoice_number,
+        "seller_name": Invoice.seller_name,
+    }
+    if not q or field not in allowed_fields:
+        return []
+    col = allowed_fields[field]
+    org_id = current_user.get("org_id") if current_user else None
+    query = db.query(col).filter(
+        col.ilike(f"{q}%"),
+        col.isnot(None),
+        col != "",
+    )
+    if org_id:
+        query = query.filter(Invoice.organization_id == int(org_id))
+    results = (
+        query
+        .distinct()
+        .order_by(col)
+        .limit(10)
+        .all()
+    )
+    return [r[0] for r in results if r[0]]
+
+
+@router.get("/invoices/stats")
+def get_invoice_stats(
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy import func
+    from datetime import date, timedelta
+    import calendar as cal
+
+    org_id = int(current_user["org_id"]) if current_user and current_user.get("org_id") else None
+    today = date.today()
+    first_of_month = today.replace(day=1)
+    prev_month_end = first_of_month - timedelta(days=1)
+    first_of_last_month = prev_month_end.replace(day=1)
+
+    def _base_q(query):
+        if org_id is not None:
+            return query.filter(Invoice.organization_id == org_id)
+        return query
+
+    total = _base_q(db.query(func.count(Invoice.id))).scalar() or 0
+
+    this_month_count = _base_q(db.query(func.count(Invoice.id))).filter(
+        Invoice.invoice_date >= str(first_of_month),
+    ).scalar() or 0
+
+    revenue_this_month = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+        Invoice.invoice_date >= str(first_of_month),
+    ).scalar() or 0)
+
+    revenue_last_month = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+        Invoice.invoice_date >= str(first_of_last_month),
+        Invoice.invoice_date < str(first_of_month),
+    ).scalar() or 0)
+
+    # Try payment_status columns (added in Phase 7 migration)
+    try:
+        overdue_count = _base_q(db.query(func.count(Invoice.id))).filter(
+            Invoice.payment_status == "overdue",
+        ).scalar() or 0
+        overdue_amount = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+            Invoice.payment_status == "overdue",
+        ).scalar() or 0)
+        paid_count = _base_q(db.query(func.count(Invoice.id))).filter(
+            Invoice.payment_status == "paid",
+        ).scalar() or 0
+        unpaid_count = _base_q(db.query(func.count(Invoice.id))).filter(
+            Invoice.payment_status.in_(["unpaid", "partial"]),
+        ).scalar() or 0
+    except Exception:
+        overdue_count = overdue_amount = paid_count = unpaid_count = 0
+
+    valid_count = _base_q(db.query(func.count(Invoice.id))).filter(
+        Invoice.validation_status == "valid",
+    ).scalar() or 0
+    validation_rate = round(valid_count / total, 2) if total > 0 else 0.0
+
+    monthly_revenue = []
+    for i in range(5, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_start = date(y, m, 1)
+        month_end = date(y, m, cal.monthrange(y, m)[1])
+        amount = float(_base_q(db.query(func.sum(Invoice.gross_amount))).filter(
+            Invoice.invoice_date >= str(month_start),
+            Invoice.invoice_date <= str(month_end),
+        ).scalar() or 0)
+        monthly_revenue.append({"month": f"{y}-{m:02d}", "amount": amount})
+
+    return {
+        "total_invoices": total,
+        "invoices_this_month": this_month_count,
+        "revenue_this_month": revenue_this_month,
+        "revenue_last_month": revenue_last_month,
+        "overdue_count": overdue_count,
+        "overdue_amount": overdue_amount,
+        "paid_count": paid_count,
+        "unpaid_count": unpaid_count,
+        "validation_rate": validation_rate,
+        "monthly_revenue": monthly_revenue,
+    }
+
+
+@router.get("/invoices/check-overdue")
+async def check_overdue_invoices(
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Mark all unpaid past-due invoices for the current org as overdue and return the count."""
+    from datetime import date as date_type
+    today_str = str(date_type.today())
+    try:
+        query = db.query(Invoice).filter(
+            Invoice.payment_status == "unpaid",
+            Invoice.due_date.isnot(None),
+            Invoice.due_date < today_str,
+        )
+        if current_user and current_user.get("org_id"):
+            query = query.filter(Invoice.organization_id == current_user["org_id"])
+        overdue = query.all()
+        count = len(overdue)
+        for inv in overdue:
+            inv.payment_status = "overdue"
+        if count:
+            db.commit()
+        return {"updated": count}
+    except Exception:
+        return {"updated": 0}
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)

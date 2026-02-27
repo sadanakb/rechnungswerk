@@ -206,6 +206,44 @@ def send_team_invite(
         return False
 
 
+def send_contact_email(name: str, email: str, subject: str, message: str) -> bool:
+    """Send contact form submission to admin. Silent if not configured."""
+    if not settings.brevo_api_key:
+        logger.warning("Brevo API key not configured, skipping contact email from %s", email)
+        return False
+
+    import sib_api_v3_sdk
+
+    api = _get_transactional_api()
+
+    html_content = (
+        "<html><body>"
+        "<h2>Neue Kontaktanfrage ueber RechnungsWerk</h2>"
+        f"<p><strong>Name:</strong> {name}</p>"
+        f"<p><strong>E-Mail:</strong> {email}</p>"
+        f"<p><strong>Betreff:</strong> {subject}</p>"
+        "<hr>"
+        f"<p>{message.replace(chr(10), '<br>')}</p>"
+        "</body></html>"
+    )
+
+    email_obj = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": "contact@rechnungswerk.de", "name": "RechnungsWerk Support"}],
+        reply_to={"email": email, "name": name},
+        sender=SENDER,
+        subject=f"[Kontaktformular] {subject} — von {name}",
+        html_content=html_content,
+    )
+
+    try:
+        api.send_transac_email(email_obj)
+        logger.info("Contact email sent from %s (%s)", name, email)
+        return True
+    except Exception as e:
+        logger.error("Failed to send contact email from %s: %s", email, e)
+        return False
+
+
 def send_mahnung_email(
     to_email: str,
     customer_name: str,

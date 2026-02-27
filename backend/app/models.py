@@ -127,6 +127,12 @@ class Invoice(Base):
     xrechnung_xml_path = Column(String)  # Path to generated XML
     zugferd_pdf_path = Column(String)    # Path to generated PDF/A-3
 
+    # Payment Status Lifecycle
+    payment_status = Column(String(20), default='unpaid', nullable=False)
+    paid_date = Column(Date, nullable=True)
+    payment_method = Column(String(50), nullable=True)
+    payment_reference = Column(String(255), nullable=True)
+
     # Timestamps — timezone-aware UTC (H2)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
@@ -390,4 +396,42 @@ class Notification(Base):
     message = Column(String(1000), nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     link = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Contact(Base):
+    """Customer or supplier contact scoped to an organization."""
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    org_id = Column(Integer, nullable=False, index=True)
+    type = Column(String(20), nullable=False, default='customer')  # customer | supplier
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    address_line1 = Column(String(255), nullable=True)
+    address_line2 = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    zip = Column(String(20), nullable=True)
+    country = Column(String(2), default='DE', nullable=False)
+    vat_id = Column(String(50), nullable=True)
+    payment_terms = Column(Integer, default=30)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class InvoiceNumberSequence(Base):
+    """Configurable invoice number sequence per organization."""
+    __tablename__ = "invoice_number_sequences"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    org_id = Column(Integer, nullable=False, unique=True, index=True)
+    prefix = Column(String(20), default='RE', nullable=False)
+    separator = Column(String(5), default='-', nullable=False)
+    year_format = Column(String(10), default='YYYY', nullable=False)
+    padding = Column(Integer, default=4, nullable=False)
+    current_counter = Column(Integer, default=0, nullable=False)
+    reset_yearly = Column(Boolean, default=True, nullable=False)
+    last_reset_year = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

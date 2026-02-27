@@ -16,6 +16,7 @@ import {
   PanelLeft,
   Monitor,
   Users,
+  Users2,
   UsersRound,
   Repeat,
   AlertTriangle,
@@ -23,6 +24,7 @@ import {
   ClipboardList,
   LayoutTemplate,
   Webhook,
+  FileInput,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -37,11 +39,13 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/ocr', label: 'OCR Upload', icon: Upload },
+  { href: '/import', label: 'Import', icon: FileInput },
   { href: '/manual', label: 'Manuelle Eingabe', icon: FileText },
   { href: '/invoices', label: 'Rechnungen', icon: List },
   { href: '/validator', label: 'Validator', icon: CheckCircle },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/suppliers', label: 'Lieferanten', icon: Users },
+  { href: '/contacts', label: 'Kontakte', icon: Users2 },
   { href: '/templates', label: 'Vorlagen', icon: LayoutTemplate },
   { href: '/recurring', label: 'Wiederkehrend', icon: Repeat },
   { href: '/mahnwesen', label: 'Mahnwesen', icon: AlertTriangle },

@@ -22,6 +22,7 @@ import {
   Calendar,
   Loader2,
   ArrowRight,
+  Hash,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import {
@@ -35,12 +36,15 @@ import {
   listApiKeys,
   createApiKey,
   revokeApiKey,
+  getInvoiceSequence,
+  saveInvoiceSequence,
   getErrorMessage,
   type UserProfile,
   type OnboardingStatus,
   type SubscriptionInfo,
   type ApiKeyItem,
   type ApiKeyCreateResult,
+  type SequenceInfo,
 } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -1232,6 +1236,234 @@ function ApiKeysTab({ plan }: { plan: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Tab: Nummernkreis (Invoice Number Sequence)
+// ---------------------------------------------------------------------------
+function NummernkreisTab() {
+  const [seq, setSeq] = useState<SequenceInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Form state
+  const [prefix, setPrefix] = useState('RE')
+  const [separator, setSeparator] = useState('-')
+  const [yearFormat, setYearFormat] = useState('YYYY')
+  const [padding, setPadding] = useState(4)
+  const [resetYearly, setResetYearly] = useState(true)
+
+  // Compute live preview
+  const livePreview = (() => {
+    const yearStr = yearFormat === 'YYYY' ? '2026' : '26'
+    const counterStr = '1'.padStart(padding, '0')
+    return [prefix, yearStr, counterStr].join(separator)
+  })()
+
+  const fetchSeq = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await getInvoiceSequence()
+      setSeq(data)
+      if (data.configured) {
+        setPrefix(data.prefix)
+        setSeparator(data.separator)
+        setYearFormat(data.year_format)
+        setPadding(data.padding)
+        setResetYearly(data.reset_yearly)
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Nummernkreis konnte nicht geladen werden.') })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSeq()
+  }, [fetchSeq])
+
+  const handleSave = async () => {
+    setFeedback(null)
+    if (!prefix.trim()) {
+      setFeedback({ type: 'error', message: 'Praefix darf nicht leer sein.' })
+      return
+    }
+    setSaving(true)
+    try {
+      await saveInvoiceSequence({
+        prefix: prefix.trim(),
+        separator,
+        year_format: yearFormat,
+        padding,
+        reset_yearly: resetYearly,
+      })
+      setFeedback({ type: 'success', message: 'Nummernkreis wurde gespeichert.' })
+      setTimeout(() => setFeedback(null), 4000)
+      fetchSeq()
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Speichern fehlgeschlagen.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const selectClass = [
+    'flex h-9 w-full rounded-md border bg-white px-3 py-2 text-sm',
+    'text-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-blue-500',
+    'border-slate-300 transition-colors duration-150',
+    'dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:focus:ring-blue-400',
+  ].join(' ')
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Rechnungsnummern-Kreise</CardTitle>
+        <CardDescription>
+          Konfigurieren Sie das Format Ihrer Rechnungsnummern. Aenderungen wirken sich nur auf neue Rechnungen aus.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Feedback */}
+        {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
+
+        {/* Live Preview */}
+        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 flex items-center gap-3">
+          <Hash size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
+          <div>
+            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wider mb-0.5">
+              Vorschau
+            </p>
+            <code className="text-lg font-mono font-bold text-blue-800 dark:text-blue-200">
+              {livePreview}
+            </code>
+          </div>
+          {seq?.configured && (
+            <div className="ml-auto text-right">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Aktuelle Nummer</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                {seq.current_counter ?? 0}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Prefix */}
+        <Input
+          label="Praefix"
+          value={prefix}
+          onChange={(e) => setPrefix(e.target.value.slice(0, 10))}
+          placeholder="RE"
+          hint="Bis zu 10 Zeichen, z.B. RE, RG, INV"
+        />
+
+        {/* Separator */}
+        <div className="flex flex-col gap-1.5 w-full">
+          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+            Trennzeichen
+          </label>
+          <select
+            className={selectClass}
+            value={separator}
+            onChange={(e) => setSeparator(e.target.value)}
+          >
+            <option value="-">Bindestrich ( - )</option>
+            <option value="/">Schraegstrich ( / )</option>
+            <option value="">Kein Trennzeichen</option>
+          </select>
+        </div>
+
+        {/* Year format */}
+        <div className="flex flex-col gap-1.5 w-full">
+          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+            Jahresformat
+          </label>
+          <select
+            className={selectClass}
+            value={yearFormat}
+            onChange={(e) => setYearFormat(e.target.value)}
+          >
+            <option value="YYYY">4-stellig (2026)</option>
+            <option value="YY">2-stellig (26)</option>
+          </select>
+        </div>
+
+        {/* Padding */}
+        <div className="flex flex-col gap-1.5 w-full">
+          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+            Nummerierung
+          </label>
+          <select
+            className={selectClass}
+            value={padding}
+            onChange={(e) => setPadding(Number(e.target.value))}
+          >
+            <option value={3}>3 Stellen (001)</option>
+            <option value={4}>4 Stellen (0001)</option>
+            <option value={5}>5 Stellen (00001)</option>
+            <option value={6}>6 Stellen (000001)</option>
+          </select>
+        </div>
+
+        {/* Reset yearly toggle */}
+        <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              Jaehrlicher Zaehler-Reset
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Setzt den Zaehler am 1. Januar jeden Jahres auf 1 zurueck.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={resetYearly}
+            onClick={() => setResetYearly((v) => !v)}
+            className={[
+              'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+              resetYearly ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200',
+                resetYearly ? 'translate-x-6' : 'translate-x-1',
+              ].join(' ')}
+            />
+          </button>
+        </div>
+
+        {/* Save */}
+        <div className="flex items-center gap-3 pt-2">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" />
+                Speichern...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Konfiguration speichern
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Settings Page
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
@@ -1277,6 +1509,10 @@ export default function SettingsPage() {
             <Key size={14} />
             <span className="hidden sm:inline">API-Schluessel</span>
           </TabsTrigger>
+          <TabsTrigger value="rechnungen" className="gap-1.5">
+            <Hash size={14} />
+            <span className="hidden sm:inline">Rechnungen</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="konto">
@@ -1293,6 +1529,10 @@ export default function SettingsPage() {
 
         <TabsContent value="api">
           <ApiKeysTab plan={plan} />
+        </TabsContent>
+
+        <TabsContent value="rechnungen">
+          <NummernkreisTab />
         </TabsContent>
       </Tabs>
     </div>

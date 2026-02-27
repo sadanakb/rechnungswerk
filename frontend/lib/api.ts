@@ -93,6 +93,11 @@ export interface InvoiceDetail {
   seller_endpoint_scheme?: string
   buyer_endpoint_id?: string
   buyer_endpoint_scheme?: string
+  // Payment status lifecycle
+  payment_status: string
+  paid_date?: string | null
+  payment_method?: string | null
+  payment_reference?: string | null
   // Status & meta
   source_type: string
   ocr_confidence?: number
@@ -149,6 +154,11 @@ export interface Invoice {
   seller_endpoint_scheme?: string
   buyer_endpoint_id?: string
   buyer_endpoint_scheme?: string
+  // Payment status lifecycle
+  payment_status: string
+  paid_date?: string | null
+  payment_method?: string | null
+  payment_reference?: string | null
   source_type: string
   ocr_confidence?: number
   validation_status: string
@@ -324,6 +334,7 @@ export interface InvoiceFilters {
   date_to?: string
   amount_min?: number
   amount_max?: number
+  payment_status?: string
 }
 
 export const listInvoices = async (
@@ -341,8 +352,24 @@ export const listInvoices = async (
   if (filters?.date_to) params.set('date_to', filters.date_to)
   if (filters?.amount_min != null) params.set('amount_min', String(filters.amount_min))
   if (filters?.amount_max != null) params.set('amount_max', String(filters.amount_max))
+  if (filters?.payment_status) params.set('payment_status', filters.payment_status)
   const response = await api.get<InvoiceListResponse>(`/api/invoices?${params.toString()}`)
   return response.data
+}
+
+export async function updatePaymentStatus(
+  id: string,
+  status: string,
+  paidDate?: string,
+  paymentMethod?: string,
+  paymentReference?: string,
+): Promise<void> {
+  await api.patch(`/api/invoices/${id}/payment-status`, {
+    status,
+    paid_date: paidDate,
+    payment_method: paymentMethod,
+    payment_reference: paymentReference,
+  })
 }
 
 export const getInvoice = async (invoiceId: string): Promise<InvoiceDetail> => {
@@ -1189,6 +1216,66 @@ export async function markNotificationsRead(ids?: number[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Contacts
+// ---------------------------------------------------------------------------
+
+export interface Contact {
+  id: number
+  org_id: number
+  type: 'customer' | 'supplier'
+  name: string
+  email: string | null
+  phone: string | null
+  address_line1: string | null
+  address_line2?: string | null
+  city: string | null
+  zip: string | null
+  country: string
+  vat_id: string | null
+  payment_terms: number
+  notes: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface ContactCreate {
+  type: string
+  name: string
+  email?: string
+  phone?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  zip?: string
+  country?: string
+  vat_id?: string
+  payment_terms?: number
+  notes?: string
+}
+
+export async function listContacts(params?: { type?: string; search?: string }): Promise<Contact[]> {
+  const p = new URLSearchParams()
+  if (params?.type) p.set('type', params.type)
+  if (params?.search) p.set('search', params.search)
+  const res = await api.get(`/api/contacts${p.toString() ? '?' + p : ''}`)
+  return res.data
+}
+
+export async function createContact(data: ContactCreate): Promise<Contact> {
+  const res = await api.post('/api/contacts', data)
+  return res.data
+}
+
+export async function updateContact(id: number, data: Partial<ContactCreate>): Promise<Contact> {
+  const res = await api.patch(`/api/contacts/${id}`, data)
+  return res.data
+}
+
+export async function deleteContact(id: number): Promise<void> {
+  await api.delete(`/api/contacts/${id}`)
+}
+
+// ---------------------------------------------------------------------------
 // Logo Upload
 // ---------------------------------------------------------------------------
 
@@ -1199,4 +1286,95 @@ export async function uploadLogo(file: File): Promise<{ logo_url: string }> {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return res.data
+}
+
+// ---------------------------------------------------------------------------
+// Invoice Number Sequences
+// ---------------------------------------------------------------------------
+
+export interface SequenceConfig {
+  prefix: string
+  separator: string
+  year_format: string
+  padding: number
+  reset_yearly: boolean
+}
+
+export interface SequenceInfo extends SequenceConfig {
+  configured: boolean
+  id?: number
+  org_id?: number
+  current_counter?: number
+  last_reset_year?: number | null
+  preview: string
+}
+
+export async function getInvoiceSequence(): Promise<SequenceInfo> {
+  const res = await api.get('/api/invoice-sequences')
+  return res.data
+}
+
+export async function saveInvoiceSequence(config: SequenceConfig): Promise<{ ok: boolean; preview: string }> {
+  const res = await api.post('/api/invoice-sequences', config)
+  return res.data
+}
+
+// ---------------------------------------------------------------------------
+// CSV Import
+// ---------------------------------------------------------------------------
+
+export interface ImportResult {
+  imported: number
+  skipped: number
+  errors: Array<{ row: number; error: string }>
+  total_rows: number
+}
+
+export async function importCsv(file: File): Promise<ImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post<ImportResult>('/api/import/csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
+export async function downloadImportTemplate(): Promise<void> {
+  const res = await api.get('/api/import/template', { responseType: 'blob' })
+  const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'rechnungswerk_import_vorlage.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export async function autocompleteInvoices(q: string, field: string = 'buyer_name'): Promise<string[]> {
+  if (!q || q.length < 1) return []
+  try {
+    const res = await api.get(`/api/invoices/autocomplete?q=${encodeURIComponent(q)}&field=${field}`)
+    return res.data
+  } catch { return [] }
+}
+
+export interface DashboardStats {
+  total_invoices: number
+  invoices_this_month: number
+  revenue_this_month: number
+  revenue_last_month: number
+  overdue_count: number
+  overdue_amount: number
+  paid_count: number
+  unpaid_count: number
+  validation_rate: number
+  monthly_revenue: Array<{ month: string; amount: number }>
+}
+
+export async function getDashboardStats(): Promise<DashboardStats | null> {
+  try {
+    const res = await api.get('/api/invoices/stats')
+    return res.data
+  } catch { return null }
 }

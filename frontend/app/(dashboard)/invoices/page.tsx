@@ -24,6 +24,7 @@ import {
   bulkDeleteInvoices,
   bulkValidateInvoices,
   downloadZugferd,
+  autocompleteInvoices,
   API_BASE,
   type Invoice,
   type BulkValidateEntry,
@@ -492,6 +493,8 @@ function InvoicesContent() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkValidating, setBulkValidating] = useState(false)
   const [validateResults, setValidateResults] = useState<BulkValidateEntry[] | null>(null)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   // Sync filter state to URL
   const syncToUrl = useCallback((overrides: Record<string, string>) => {
@@ -602,6 +605,21 @@ function InvoicesContent() {
   useEffect(() => {
     fetchInvoices()
   }, [fetchInvoices])
+
+  // Debounced autocomplete
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+    const timer = setTimeout(async () => {
+      const results = await autocompleteInvoices(searchQuery)
+      setSuggestions(results)
+      setShowSuggestions(results.length > 0)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // Client-side filtering — only source filter remains client-side (not sent to backend)
   const filtered = useMemo(() => {
@@ -765,6 +783,7 @@ function InvoicesContent() {
           {/* Search input */}
           <div
             className="relative flex-1 min-w-[200px]"
+            style={{ position: 'relative' }}
           >
             <Search
               size={15}
@@ -776,9 +795,28 @@ function InvoicesContent() {
               placeholder="Suchen nach Nummer, Verkäufer, Käufer..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+              onBlur={() => { setTimeout(() => setShowSuggestions(false), 200) }}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setShowSuggestions(false); setSuggestions([]) } }}
               className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
               style={selectStyle}
             />
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                backgroundColor: 'rgb(var(--card))', border: '1px solid rgb(var(--border))',
+                borderRadius: 8, boxShadow: '0 4px 16px rgb(0 0 0 / 0.1)', maxHeight: 240, overflowY: 'auto'
+              }}>
+                {suggestions.map(s => (
+                  <div key={s}
+                    onClick={() => { handleSearchChange(s); setShowSuggestions(false) }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 14 }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgb(var(--sidebar-item-hover))'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >{s}</div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Filter toggle */}
@@ -994,6 +1032,7 @@ function InvoicesContent() {
               buyer_name: inv.buyer_name,
               gross_amount: inv.gross_amount,
               status: inv.validation_status,
+              payment_status: inv.payment_status,
             }))}
             loading={loading}
             selectionResetKey={selectionResetKey}

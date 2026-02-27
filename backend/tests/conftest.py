@@ -20,6 +20,25 @@ from app.database import get_db
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset the slowapi in-memory rate-limit counters before every test.
+
+    Without this, the shared limiter accumulates hits across all tests in a
+    session.  After 5 POST /api/auth/register calls the limiter returns 429
+    for every subsequent test that calls that endpoint.
+
+    MemoryStorage.reset() clears the entire counter dict, which is exactly
+    what we need between isolated unit tests.  The test_rate_limiting.py tests
+    only check that a *single* request is NOT blocked (they never verify that
+    the 6th request IS blocked), so resetting here does not break them.
+    """
+    from app.rate_limiter import limiter
+    limiter._storage.reset()
+    yield
+    limiter._storage.reset()
+
+
 @pytest.fixture(scope="function")
 def db_engine():
     """Create a fresh in-memory SQLite engine for each test."""
