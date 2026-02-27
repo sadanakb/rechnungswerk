@@ -376,3 +376,18 @@ class InvoiceTemplate(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     organization = relationship("Organization")
+
+
+class Notification(Base):
+    """In-app notification for an organization or a specific user."""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    org_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, nullable=True)  # None = org-wide
+    type = Column(String(100), nullable=False)
+    title = Column(String(255), nullable=False)
+    message = Column(String(1000), nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    link = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

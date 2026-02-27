@@ -31,6 +31,7 @@ from app.auth_jwt import oauth2_scheme, decode_token
 from app.config import settings
 from app.webhook_service import publish_event
 from app.audit_service import log_action
+from app.notification_service import create_notification
 import uuid
 import os
 import io
@@ -317,6 +318,17 @@ async def create_invoice(
                 "invoice_number": db_invoice.invoice_number,
                 "gross_amount": float(db_invoice.gross_amount or 0),
             },
+        )
+
+    # In-app notification
+    if org_id:
+        create_notification(
+            db,
+            org_id=int(org_id),
+            type="invoice_created",
+            title="Neue Rechnung",
+            message=f"Rechnung {db_invoice.invoice_number} wurde erfolgreich erstellt.",
+            link=f"/invoices/{db_invoice.id}",
         )
 
     return db_invoice
