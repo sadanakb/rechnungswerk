@@ -89,6 +89,34 @@ async def process_email_inbox(ctx: Dict, config: Dict):
     return {"attachments_found": len(results), "results": results}
 
 
+async def send_email_task(ctx: Dict, task_type: str, **kwargs):
+    """Dispatch an email by task_type to the correct email_service function."""
+    from app import email_service
+    _known_types = [
+        "password_reset",
+        "email_verification",
+        "team_invite",
+        "mahnung",
+        "contact",
+        "invoice_portal",
+    ]
+    _func_map = {
+        "password_reset": "send_password_reset_email",
+        "email_verification": "send_email_verification",
+        "team_invite": "send_team_invite",
+        "mahnung": "send_mahnung_email",
+        "contact": "send_contact_email",
+        "invoice_portal": "send_invoice_portal_email",
+    }
+    func_name = _func_map.get(task_type)
+    handler = getattr(email_service, func_name, None) if func_name else None
+    if not handler:
+        logger.error("Unknown email task_type: %s", task_type)
+        return {"error": f"Unknown task_type: {task_type}"}
+    result = handler(**kwargs)
+    return {"task_type": task_type, "success": result}
+
+
 async def startup(ctx: Dict):
     """Worker startup hook."""
     logger.info("ARQ worker started")
@@ -105,6 +133,7 @@ class WorkerSettings:
         process_ocr_batch,
         generate_zugferd_task,
         process_email_inbox,
+        send_email_task,
     ]
     on_startup = startup
     on_shutdown = shutdown

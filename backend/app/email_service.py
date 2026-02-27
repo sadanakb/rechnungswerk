@@ -305,3 +305,22 @@ def send_mahnung_email(
     except Exception as e:
         logger.error("Failed to send Mahnung email (level %d) to %s: %s", level, to_email, e)
         return False
+
+
+async def enqueue_email(arq_pool, task_type: str, **kwargs) -> bool:
+    """Enqueue an email task via ARQ if pool is available, else send synchronously."""
+    if arq_pool is not None:
+        await arq_pool.enqueue_job("send_email_task", task_type, **kwargs)
+        return True
+    # Synchronous fallback
+    handlers = {
+        "password_reset": send_password_reset_email,
+        "email_verification": send_email_verification,
+        "team_invite": send_team_invite,
+        "mahnung": send_mahnung_email,
+        "contact": send_contact_email,
+    }
+    handler = handlers.get(task_type)
+    if handler:
+        return handler(**kwargs)
+    return False
