@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -466,7 +466,7 @@ function DeleteConfirmDialog({
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
-export default function InvoicesPage() {
+function InvoicesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -1075,5 +1075,13 @@ export default function InvoicesPage() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+export default function InvoicesPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 32, color: 'rgb(var(--foreground-muted))' }}>Lädt…</div>}>
+      <InvoicesContent />
+    </Suspense>
   )
 }

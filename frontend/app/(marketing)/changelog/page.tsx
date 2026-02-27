@@ -29,6 +29,23 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: 'v0.6.0',
+    title: 'Phase 6: UX Hardening & Production Polish',
+    date: '27.02.2026',
+    items: [
+      { text: 'Rechnungsdetailseite: alle Felder, Positionen, Aktionen', tag: 'feature' },
+      { text: 'ZUGFeRD PDF Export: Button in Rechnungsliste und Detailansicht', tag: 'feature' },
+      { text: 'Druckansicht: A4-Layout mit @media print CSS', tag: 'feature' },
+      { text: 'In-App Benachrichtigungen: Glocke, Ungelesen-Badge, Polling', tag: 'feature' },
+      { text: 'Onboarding Flow komplett: 4 Schritte, Logo-Upload, CSS-Konfetti', tag: 'feature' },
+      { text: 'DATEV Export UI: Jahr/Quartal-Auswahl in Berichte-Seite', tag: 'feature' },
+      { text: 'E-Rechnung Landing Page: Timeline 2025-2028, Vergleichstabelle, FAQ', tag: 'seo' },
+      { text: 'PWA: erweiterte Shortcuts, Offline-Seite, Service Worker Caching', tag: 'infra' },
+      { text: 'Rechnungsfilter: Status, Suche, Datumsbereich, Betrag (URL-synchronisiert)', tag: 'feature' },
+      { text: 'Alembic-Migration Phase 6: Notifications-Tabelle', tag: 'infra' },
+    ],
+  },
+  {
     version: 'v0.5.0',
     title: 'Phase 5: Integrations, Compliance & Growth',
     date: '27.02.2026',

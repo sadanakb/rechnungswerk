@@ -15,8 +15,8 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
       {
@@ -39,7 +39,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/screenshots/dashboard.png',
         sizes: '1280x800',
         type: 'image/png',
-        // @ts-expect-error — 'label' is valid per the Web App Manifest spec but not yet in TS types
         label: 'Dashboard Übersicht',
       },
     ],
