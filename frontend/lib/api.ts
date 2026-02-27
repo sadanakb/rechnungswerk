@@ -636,3 +636,62 @@ export async function getMe(): Promise<{
   const resp = await api.get('/api/auth/me')
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// User Profile
+// ---------------------------------------------------------------------------
+
+export interface UserProfile {
+  id: number
+  email: string
+  full_name: string | null
+  is_verified: boolean
+  created_at: string | null
+  organization: { id: number; name: string } | null
+}
+
+export interface UserProfileUpdateData {
+  full_name?: string
+  current_password?: string
+  new_password?: string
+}
+
+export async function getUserProfile(): Promise<UserProfile> {
+  const resp = await api.get<UserProfile>('/api/users/me')
+  return resp.data
+}
+
+export async function updateUserProfile(data: UserProfileUpdateData): Promise<UserProfile> {
+  const resp = await api.patch<UserProfile>('/api/users/me', data)
+  return resp.data
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding / Company Info
+// ---------------------------------------------------------------------------
+
+export interface OnboardingStatus {
+  completed: boolean
+  org_name: string
+  has_vat_id: boolean
+  has_address: boolean
+  vat_id: string | null
+  address: string | null
+}
+
+export interface CompanyUpdateData {
+  name?: string
+  vat_id?: string
+  address?: string
+  logo_url?: string
+}
+
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  const resp = await api.get<OnboardingStatus>('/api/onboarding/status')
+  return resp.data
+}
+
+export async function updateCompanyInfo(data: CompanyUpdateData): Promise<OnboardingStatus> {
+  const resp = await api.post<OnboardingStatus>('/api/onboarding/company', data)
+  return resp.data
+}

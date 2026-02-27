@@ -19,9 +19,12 @@ class OnboardingStatus(BaseModel):
     org_name: str
     has_vat_id: bool
     has_address: bool
+    vat_id: str | None = None
+    address: str | None = None
 
 
 class CompanyUpdate(BaseModel):
+    name: str | None = None
     vat_id: str | None = None
     address: str | None = None
     logo_url: str | None = None
@@ -72,6 +75,8 @@ def get_onboarding_status(
         org_name=org.name,
         has_vat_id=bool(org.vat_id),
         has_address=bool(org.address),
+        vat_id=org.vat_id,
+        address=org.address,
     )
 
 
@@ -84,6 +89,8 @@ def update_company_info(
     """Update organization company info (vat_id, address, logo_url)."""
     org = _get_org(current_user, db)
 
+    if payload.name is not None:
+        org.name = payload.name
     if payload.vat_id is not None:
         org.vat_id = payload.vat_id
     if payload.address is not None:
@@ -99,6 +106,8 @@ def update_company_info(
         org_name=org.name,
         has_vat_id=bool(org.vat_id),
         has_address=bool(org.address),
+        vat_id=org.vat_id,
+        address=org.address,
     )
 
 

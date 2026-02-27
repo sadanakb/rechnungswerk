@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   User,
@@ -18,8 +18,18 @@ import {
   Crown,
   Zap,
   Shield,
+  AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import {
+  getUserProfile,
+  updateUserProfile,
+  getOnboardingStatus,
+  updateCompanyInfo,
+  getErrorMessage,
+  type UserProfile,
+  type OnboardingStatus,
+} from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -62,27 +72,134 @@ const PLAN_LABELS: Record<string, string> = {
 }
 
 // ---------------------------------------------------------------------------
+// Feedback banner component
+// ---------------------------------------------------------------------------
+function FeedbackBanner({
+  type,
+  message,
+}: {
+  type: 'success' | 'error'
+  message: string
+}) {
+  if (!message) return null
+
+  const isError = type === 'error'
+  return (
+    <div
+      className={[
+        'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
+        isError
+          ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
+      ].join(' ')}
+    >
+      {isError ? <AlertCircle size={16} /> : <Check size={16} />}
+      {message}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tab: Konto (Account)
 // ---------------------------------------------------------------------------
-function KontoTab({ user }: { user: { email: string; full_name: string } | null }) {
-  const [fullName, setFullName] = useState(user?.full_name ?? '')
+function KontoTab() {
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
+  const [fullName, setFullName] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const passwordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword
 
+  // Fetch profile on mount
+  const fetchProfile = useCallback(async () => {
+    setLoadingProfile(true)
+    try {
+      const data = await getUserProfile()
+      setProfile(data)
+      setFullName(data.full_name ?? '')
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Profildaten konnten nicht geladen werden.') })
+    } finally {
+      setLoadingProfile(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
+
   const handleSave = async () => {
+    setFeedback(null)
+
+    // Validate password fields if user is trying to change password
+    if (newPassword || currentPassword) {
+      if (!currentPassword) {
+        setFeedback({ type: 'error', message: 'Bitte geben Sie Ihr aktuelles Passwort ein.' })
+        return
+      }
+      if (!newPassword) {
+        setFeedback({ type: 'error', message: 'Bitte geben Sie ein neues Passwort ein.' })
+        return
+      }
+      if (newPassword.length < 8) {
+        setFeedback({ type: 'error', message: 'Das neue Passwort muss mindestens 8 Zeichen lang sein.' })
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setFeedback({ type: 'error', message: 'Die Passwoerter stimmen nicht ueberein.' })
+        return
+      }
+    }
+
     setSaving(true)
-    // TODO: call PATCH /api/users/me
-    await new Promise((r) => setTimeout(r, 600))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      const payload: { full_name?: string; current_password?: string; new_password?: string } = {}
+
+      // Always send full_name if it changed
+      if (fullName !== (profile?.full_name ?? '')) {
+        payload.full_name = fullName
+      }
+
+      // Only send password fields if user filled them in
+      if (currentPassword && newPassword) {
+        payload.current_password = currentPassword
+        payload.new_password = newPassword
+      }
+
+      // Only call API if there are changes
+      if (Object.keys(payload).length > 0) {
+        const updated = await updateUserProfile(payload)
+        setProfile(updated)
+        setFullName(updated.full_name ?? '')
+      }
+
+      // Clear password fields on success
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setFeedback({ type: 'success', message: 'Aenderungen wurden erfolgreich gespeichert.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Speichern fehlgeschlagen.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loadingProfile) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -92,10 +209,13 @@ function KontoTab({ user }: { user: { email: string; full_name: string } | null 
         <CardDescription>Verwalten Sie Ihre persoenlichen Daten und Ihr Passwort.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Feedback */}
+        {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
+
         {/* Email (read-only) */}
         <Input
           label="E-Mail-Adresse"
-          value={user?.email ?? ''}
+          value={profile?.email ?? ''}
           disabled
           hint="Die E-Mail-Adresse kann nicht geaendert werden."
         />
@@ -169,11 +289,6 @@ function KontoTab({ user }: { user: { email: string; full_name: string } | null 
                 <RefreshCw size={16} className="animate-spin" />
                 Speichern...
               </>
-            ) : saved ? (
-              <>
-                <Check size={16} />
-                Gespeichert
-              </>
             ) : (
               <>
                 <Save size={16} />
@@ -190,24 +305,76 @@ function KontoTab({ user }: { user: { email: string; full_name: string } | null 
 // ---------------------------------------------------------------------------
 // Tab: Organisation
 // ---------------------------------------------------------------------------
-function OrganisationTab({
-  user,
-}: {
-  user: { organization: { name: string; plan: string } } | null
-}) {
-  const [companyName, setCompanyName] = useState(user?.organization?.name ?? '')
+function OrganisationTab() {
+  const [orgStatus, setOrgStatus] = useState<OnboardingStatus | null>(null)
+  const [loadingOrg, setLoadingOrg] = useState(true)
+  const [companyName, setCompanyName] = useState('')
   const [ustIdNr, setUstIdNr] = useState('')
   const [address, setAddress] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Fetch org data on mount
+  const fetchOrgData = useCallback(async () => {
+    setLoadingOrg(true)
+    try {
+      const data = await getOnboardingStatus()
+      setOrgStatus(data)
+      setCompanyName(data.org_name ?? '')
+      setUstIdNr(data.vat_id ?? '')
+      setAddress(data.address ?? '')
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Organisationsdaten konnten nicht geladen werden.') })
+    } finally {
+      setLoadingOrg(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOrgData()
+  }, [fetchOrgData])
 
   const handleSave = async () => {
+    setFeedback(null)
     setSaving(true)
-    // TODO: call PATCH /api/onboarding/company
-    await new Promise((r) => setTimeout(r, 600))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      const payload: { name?: string; vat_id?: string; address?: string } = {}
+
+      if (companyName !== (orgStatus?.org_name ?? '')) {
+        payload.name = companyName
+      }
+      if (ustIdNr !== (orgStatus?.vat_id ?? '')) {
+        payload.vat_id = ustIdNr
+      }
+      if (address !== (orgStatus?.address ?? '')) {
+        payload.address = address
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const updated = await updateCompanyInfo(payload)
+        setOrgStatus(updated)
+        setCompanyName(updated.org_name ?? '')
+        setUstIdNr(updated.vat_id ?? '')
+        setAddress(updated.address ?? '')
+      }
+
+      setFeedback({ type: 'success', message: 'Organisationsdaten wurden erfolgreich gespeichert.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Speichern fehlgeschlagen.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loadingOrg) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -217,6 +384,9 @@ function OrganisationTab({
         <CardDescription>Firmendaten und Steuernummer fuer Ihre Rechnungen.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Feedback */}
+        {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
+
         <Input
           label="Firmenname"
           value={companyName}
@@ -264,11 +434,6 @@ function OrganisationTab({
                 <RefreshCw size={16} className="animate-spin" />
                 Speichern...
               </>
-            ) : saved ? (
-              <>
-                <Check size={16} />
-                Gespeichert
-              </>
             ) : (
               <>
                 <Save size={16} />
@@ -291,18 +456,6 @@ function AbonnementTab({
   plan: string
 }) {
   const currentPlan = plan?.toLowerCase() ?? 'free'
-  const [portalLoading, setPortalLoading] = useState(false)
-
-  const handleManageSubscription = async () => {
-    setPortalLoading(true)
-    try {
-      // TODO: call POST /api/billing/portal to get Stripe portal URL
-      await new Promise((r) => setTimeout(r, 600))
-      // window.location.href = data.url
-    } finally {
-      setPortalLoading(false)
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -328,7 +481,8 @@ function AbonnementTab({
           {currentPlan === 'free' ? (
             <div className="flex items-center gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
-                Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen.
+                Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen wie
+                Analytics, Lieferanten-Verwaltung und wiederkehrende Rechnungen.
               </p>
               <Button asChild>
                 <Link href="/preise">
@@ -342,16 +496,42 @@ function AbonnementTab({
               <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
                 Verwalten Sie Ihr Abonnement, Zahlungsmethode oder kuendigen Sie ueber das Kundenportal.
               </p>
-              <Button variant="outline" onClick={handleManageSubscription} disabled={portalLoading}>
-                {portalLoading ? (
-                  <RefreshCw size={16} className="animate-spin" />
-                ) : (
+              <Button variant="outline" asChild>
+                <Link href="/preise">
                   <ExternalLink size={16} />
-                )}
-                Abo verwalten
+                  Abo verwalten
+                </Link>
               </Button>
             </div>
           )}
+
+          {/* Plan info summary */}
+          <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Plan</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {PLAN_LABELS[currentPlan] ?? currentPlan}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Rechnungen/Monat</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {currentPlan === 'professional' ? 'Unbegrenzt' : currentPlan === 'starter' ? '100' : '10'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Preis</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {currentPlan === 'professional' ? '49 EUR/Monat' : currentPlan === 'starter' ? '19 EUR/Monat' : 'Kostenlos'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
+                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Aktiv</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -601,11 +781,11 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="konto">
-          <KontoTab user={user} />
+          <KontoTab />
         </TabsContent>
 
         <TabsContent value="organisation">
-          <OrganisationTab user={user} />
+          <OrganisationTab />
         </TabsContent>
 
         <TabsContent value="abonnement">
