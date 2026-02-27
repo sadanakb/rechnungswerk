@@ -117,6 +117,63 @@ async def send_email_task(ctx: Dict, task_type: str, **kwargs):
     return {"task_type": task_type, "success": result}
 
 
+RETRY_DELAYS = [60, 300, 1800, 7200, 86400]  # 1m, 5m, 30m, 2h, 24h
+
+
+async def webhook_retry_task(ctx: Dict, delivery_id: int):
+    """Retry a failed webhook delivery with exponential backoff."""
+    from app.database import SessionLocal
+    from app.models import WebhookDelivery, WebhookSubscription
+    from app.webhook_service import _deliver
+    from datetime import datetime, timezone
+
+    db = SessionLocal()
+    try:
+        delivery = db.query(WebhookDelivery).filter(
+            WebhookDelivery.id == delivery_id
+        ).first()
+        if not delivery or delivery.status == "success":
+            return {"skipped": True}
+
+        sub = db.query(WebhookSubscription).filter(
+            WebhookSubscription.id == delivery.subscription_id
+        ).first()
+        if not sub:
+            return {"error": "subscription not found"}
+
+        if delivery.attempts >= 5:
+            delivery.status = "failed"
+            db.commit()
+            return {"final_failure": True, "delivery_id": delivery_id}
+
+        success, code, body = await _deliver(
+            sub.url,
+            delivery.payload,
+            sub.secret,
+            event_type=delivery.event_type,
+        )
+        delivery.attempts += 1
+        delivery.response_code = code
+        delivery.response_body = body[:500] if body else None
+        delivery.last_attempted_at = datetime.now(timezone.utc)
+
+        if success:
+            delivery.status = "success"
+            db.commit()
+            return {"success": True, "delivery_id": delivery_id}
+        else:
+            delivery.status = "pending"
+            db.commit()
+            if delivery.attempts < 5 and ctx.get("redis"):
+                delay = RETRY_DELAYS[delivery.attempts - 1]
+                await ctx["redis"].enqueue_job(
+                    "webhook_retry_task", delivery_id, _defer_by=delay
+                )
+            return {"retrying": True, "attempt": delivery.attempts}
+    finally:
+        db.close()
+
+
 async def startup(ctx: Dict):
     """Worker startup hook."""
     logger.info("ARQ worker started")
@@ -134,6 +191,7 @@ class WorkerSettings:
         generate_zugferd_task,
         process_email_inbox,
         send_email_task,
+        webhook_retry_task,
     ]
     on_startup = startup
     on_shutdown = shutdown
