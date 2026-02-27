@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Printer,
 } from 'lucide-react'
 import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, type InvoiceDetail } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -384,6 +385,18 @@ export default function InvoiceDetailPage() {
               XRechnung herunterladen
             </a>
           )}
+          <button
+            onClick={() => router.push(`/invoices/${invoice.invoice_id}/print`)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors"
+            style={{
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+              backgroundColor: 'rgb(var(--card))',
+            }}
+          >
+            <Printer size={14} />
+            Druckansicht
+          </button>
           <Link
             href={`/validator?id=${invoice.invoice_id}`}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors"
