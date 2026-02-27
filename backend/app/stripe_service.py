@@ -50,9 +50,32 @@ def create_checkout_session(
     return session.url
 
 
-def create_portal_session(customer_id: str) -> str:
+def create_portal_session(
+    customer_id: str,
+    return_url: str = "https://rechnungswerk.de/dashboard",
+) -> str:
+    """Create a Stripe Customer Portal session and return the URL."""
     session = stripe.billing_portal.Session.create(
         customer=customer_id,
-        return_url="https://rechnungswerk.de/dashboard",
+        return_url=return_url,
     )
     return session.url
+
+
+def get_subscription(subscription_id: str) -> dict:
+    """Retrieve subscription details from Stripe."""
+    sub = stripe.Subscription.retrieve(subscription_id)
+    return {
+        "id": sub.id,
+        "status": sub.status,
+        "current_period_end": sub.current_period_end,
+        "current_period_start": sub.current_period_start,
+        "cancel_at_period_end": sub.cancel_at_period_end,
+        "items": [
+            {
+                "price_id": item.price.id,
+                "product_id": item.price.product,
+            }
+            for item in sub["items"]["data"]
+        ],
+    }
