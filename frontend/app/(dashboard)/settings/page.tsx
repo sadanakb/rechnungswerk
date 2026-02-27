@@ -19,6 +19,9 @@ import {
   Zap,
   Shield,
   AlertCircle,
+  Calendar,
+  Loader2,
+  ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import {
@@ -26,9 +29,13 @@ import {
   updateUserProfile,
   getOnboardingStatus,
   updateCompanyInfo,
+  getSubscription,
+  createCheckoutSession,
+  createPortalSession,
   getErrorMessage,
   type UserProfile,
   type OnboardingStatus,
+  type SubscriptionInfo,
 } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -448,59 +455,185 @@ function OrganisationTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Tab: Abonnement (Subscription)
+// Tab: Abonnement (Subscription) — live Stripe integration
 // ---------------------------------------------------------------------------
+
+/** Map plan_status to UI badge colour / label */
+const STATUS_CONFIG: Record<string, { color: string; darkColor: string; bgColor: string; darkBgColor: string; label: string }> = {
+  active:    { color: 'text-emerald-700', darkColor: 'dark:text-emerald-400', bgColor: 'bg-emerald-50', darkBgColor: 'dark:bg-emerald-900/20', label: 'Aktiv' },
+  trialing:  { color: 'text-blue-700',    darkColor: 'dark:text-blue-400',    bgColor: 'bg-blue-50',    darkBgColor: 'dark:bg-blue-900/20',    label: 'Testphase' },
+  past_due:  { color: 'text-amber-700',   darkColor: 'dark:text-amber-400',   bgColor: 'bg-amber-50',   darkBgColor: 'dark:bg-amber-900/20',   label: 'Zahlung ausstehend' },
+  cancelled: { color: 'text-red-700',     darkColor: 'dark:text-red-400',     bgColor: 'bg-red-50',     darkBgColor: 'dark:bg-red-900/20',     label: 'Gekuendigt' },
+}
+
+function formatBillingDate(unixTimestamp: number | null): string {
+  if (!unixTimestamp) return '—'
+  const date = new Date(unixTimestamp * 1000)
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 function AbonnementTab({
-  plan,
+  plan: orgPlan,
 }: {
   plan: string
 }) {
-  const currentPlan = plan?.toLowerCase() ?? 'free'
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Fetch subscription info on mount
+  const fetchSubscription = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await getSubscription()
+      setSubscription(data)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Abonnement-Daten konnten nicht geladen werden.') })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSubscription()
+  }, [fetchSubscription])
+
+  // Determine current plan from live subscription data, fall back to org prop
+  const currentPlan = (subscription?.plan ?? orgPlan)?.toLowerCase() ?? 'free'
+  const planStatus = subscription?.plan_status ?? 'active'
+  const statusCfg = STATUS_CONFIG[planStatus] ?? STATUS_CONFIG.active
+
+  // Handle "Jetzt upgraden" — redirect to Stripe Checkout
+  const handleUpgrade = async (selectedPlan: 'starter' | 'professional') => {
+    setActionLoading(true)
+    setFeedback(null)
+    try {
+      const { url } = await createCheckoutSession(selectedPlan)
+      window.location.href = url
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Checkout konnte nicht gestartet werden.') })
+      setActionLoading(false)
+    }
+  }
+
+  // Handle "Abo verwalten" — redirect to Stripe Customer Portal
+  const handleManage = async () => {
+    setActionLoading(true)
+    setFeedback(null)
+    try {
+      const { url } = await createPortalSession()
+      window.location.href = url
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Portal konnte nicht geoeffnet werden.') })
+      setActionLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
+      {/* Feedback */}
+      {feedback && (
+        <FeedbackBanner type={feedback.type} message={feedback.message} />
+      )}
+
       {/* Current plan */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <CardTitle>Aktueller Plan</CardTitle>
               <CardDescription>Ihr derzeitiges Abonnement und dessen Leistungsumfang.</CardDescription>
             </div>
-            <Badge
-              variant={PLAN_BADGE_VARIANT[currentPlan] ?? 'secondary'}
-              className="text-sm px-3 py-1"
-            >
-              {currentPlan === 'professional' && <Crown size={14} className="mr-1" />}
-              {currentPlan === 'starter' && <Zap size={14} className="mr-1" />}
-              {PLAN_LABELS[currentPlan] ?? currentPlan}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {/* Status badge */}
+              <span
+                className={[
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  statusCfg.bgColor,
+                  statusCfg.darkBgColor,
+                  statusCfg.color,
+                  statusCfg.darkColor,
+                ].join(' ')}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className={[
+                    'absolute inline-flex h-full w-full rounded-full opacity-75',
+                    planStatus === 'active' ? 'animate-ping bg-emerald-400' : '',
+                    planStatus === 'trialing' ? 'animate-ping bg-blue-400' : '',
+                    planStatus === 'past_due' ? 'bg-amber-400' : '',
+                    planStatus === 'cancelled' ? 'bg-red-400' : '',
+                  ].join(' ')} />
+                  <span className={[
+                    'relative inline-flex h-2 w-2 rounded-full',
+                    planStatus === 'active' ? 'bg-emerald-500' : '',
+                    planStatus === 'trialing' ? 'bg-blue-500' : '',
+                    planStatus === 'past_due' ? 'bg-amber-500' : '',
+                    planStatus === 'cancelled' ? 'bg-red-500' : '',
+                  ].join(' ')} />
+                </span>
+                {statusCfg.label}
+              </span>
+              {/* Plan badge */}
+              <Badge
+                variant={PLAN_BADGE_VARIANT[currentPlan] ?? 'secondary'}
+                className="text-sm px-3 py-1"
+              >
+                {currentPlan === 'professional' && <Crown size={14} className="mr-1" />}
+                {currentPlan === 'starter' && <Zap size={14} className="mr-1" />}
+                {PLAN_LABELS[currentPlan] ?? currentPlan}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {currentPlan === 'free' ? (
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
                 Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen wie
                 Analytics, Lieferanten-Verwaltung und wiederkehrende Rechnungen.
               </p>
-              <Button asChild>
-                <Link href="/preise">
-                  <Zap size={16} />
-                  Jetzt upgraden
-                </Link>
+              <Button onClick={() => handleUpgrade('starter')} disabled={actionLoading}>
+                {actionLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Weiterleitung...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={16} />
+                    Jetzt upgraden
+                  </>
+                )}
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
                 Verwalten Sie Ihr Abonnement, Zahlungsmethode oder kuendigen Sie ueber das Kundenportal.
               </p>
-              <Button variant="outline" asChild>
-                <Link href="/preise">
-                  <ExternalLink size={16} />
-                  Abo verwalten
-                </Link>
+              <Button variant="outline" onClick={handleManage} disabled={actionLoading}>
+                {actionLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Weiterleitung...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink size={16} />
+                    Abo verwalten
+                  </>
+                )}
               </Button>
             </div>
           )}
@@ -527,13 +660,101 @@ function AbonnementTab({
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
-                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Aktiv</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {subscription?.period_end ? 'Naechste Abrechnung' : 'Status'}
+                </p>
+                <p className={[
+                  'text-sm font-semibold',
+                  statusCfg.color,
+                  statusCfg.darkColor,
+                ].join(' ')}>
+                  {subscription?.period_end ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar size={13} className="shrink-0" />
+                      {formatBillingDate(subscription.period_end)}
+                    </span>
+                  ) : (
+                    statusCfg.label
+                  )}
+                </p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Upgrade cards for free users */}
+      {currentPlan === 'free' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Starter */}
+          <Card className="relative overflow-hidden border-blue-200 dark:border-blue-800">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  <Zap size={18} className="inline mr-1.5 text-blue-500" />
+                  Starter
+                </CardTitle>
+                <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  19 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> 100 Rechnungen/Monat</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Analytics Dashboard</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Lieferanten-Verwaltung</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Wiederkehrende Rechnungen</li>
+              </ul>
+              <Button className="w-full" onClick={() => handleUpgrade('starter')} disabled={actionLoading}>
+                {actionLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    Starter waehlen
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Professional */}
+          <Card className="relative overflow-hidden border-emerald-200 dark:border-emerald-800">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  <Crown size={18} className="inline mr-1.5 text-emerald-500" />
+                  Professional
+                </CardTitle>
+                <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  49 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Unbegrenzte Rechnungen</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Mahnwesen</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> API-Zugriff</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Prioritaets-Support</li>
+              </ul>
+              <Button className="w-full" variant="outline" onClick={() => handleUpgrade('professional')} disabled={actionLoading}>
+                {actionLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    Professional waehlen
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Feature comparison */}
       <Card>
@@ -549,15 +770,24 @@ function AbonnementTab({
                   <th className="text-left py-3 pr-4 font-medium text-slate-600 dark:text-slate-400">
                     Funktion
                   </th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
-                    Free
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
-                    Starter
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
-                    Professional
-                  </th>
+                  {(['free', 'starter', 'professional'] as const).map((tier) => (
+                    <th
+                      key={tier}
+                      className={[
+                        'text-center py-3 px-4 font-medium',
+                        tier === currentPlan
+                          ? 'text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 rounded-t-md'
+                          : 'text-slate-600 dark:text-slate-400',
+                      ].join(' ')}
+                    >
+                      {tier === currentPlan && (
+                        <span className="block text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-0.5">
+                          Ihr Plan
+                        </span>
+                      )}
+                      {tier === 'free' ? 'Free' : tier === 'starter' ? 'Starter' : 'Professional'}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -570,7 +800,13 @@ function AbonnementTab({
                       {feature.label}
                     </td>
                     {(['free', 'starter', 'professional'] as const).map((tier) => (
-                      <td key={tier} className="text-center py-3 px-4">
+                      <td
+                        key={tier}
+                        className={[
+                          'text-center py-3 px-4',
+                          tier === currentPlan ? 'bg-slate-50 dark:bg-slate-800/50' : '',
+                        ].join(' ')}
+                      >
                         {typeof feature[tier] === 'string' ? (
                           <span className="text-slate-700 dark:text-slate-300 font-medium">
                             {feature[tier]}

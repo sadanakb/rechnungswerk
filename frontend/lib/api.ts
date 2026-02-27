@@ -703,3 +703,42 @@ export async function updateCompanyInfo(data: CompanyUpdateData): Promise<Onboar
   const resp = await api.post<OnboardingStatus>('/api/onboarding/company', data)
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// Billing / Stripe
+// ---------------------------------------------------------------------------
+
+export interface SubscriptionInfo {
+  plan: string
+  plan_status: 'active' | 'trialing' | 'past_due' | 'cancelled'
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  /** Unix timestamp (seconds) — end of current billing period */
+  period_end: number | null
+}
+
+export interface CheckoutSessionRequest {
+  plan: 'starter' | 'professional'
+  billing_cycle?: 'monthly' | 'yearly'
+}
+
+export async function getSubscription(): Promise<SubscriptionInfo> {
+  const resp = await api.get<SubscriptionInfo>('/api/billing/subscription')
+  return resp.data
+}
+
+export async function createCheckoutSession(
+  plan: 'starter' | 'professional',
+  billingCycle: 'monthly' | 'yearly' = 'monthly',
+): Promise<{ url: string }> {
+  const resp = await api.post<{ url: string }>('/api/billing/checkout', {
+    plan,
+    billing_cycle: billingCycle,
+  })
+  return resp.data
+}
+
+export async function createPortalSession(): Promise<{ url: string }> {
+  const resp = await api.post<{ url: string }>('/api/billing/portal')
+  return resp.data
+}
