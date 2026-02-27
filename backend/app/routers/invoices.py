@@ -595,6 +595,25 @@ async def list_invoices(
     if payment_status:
         query = query.filter(Invoice.payment_status == payment_status)
 
+    # Auto-mark overdue invoices (lazy evaluation on every list request)
+    if current_user and current_user.get("org_id"):
+        org_id = current_user["org_id"]
+        from datetime import date as date_type
+        today_str = str(date_type.today())
+        try:
+            overdue_candidates = db.query(Invoice).filter(
+                Invoice.organization_id == org_id,
+                Invoice.payment_status == "unpaid",
+                Invoice.due_date.isnot(None),
+                Invoice.due_date < today_str,
+            ).all()
+            for inv in overdue_candidates:
+                inv.payment_status = "overdue"
+            if overdue_candidates:
+                db.commit()
+        except Exception:
+            pass  # If payment_status column doesn't exist yet, skip
+
     total = query.count()
     invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
     return InvoiceListResponse(items=invoices, total=total, skip=skip, limit=limit)
@@ -824,6 +843,33 @@ def get_invoice_stats(
         "validation_rate": validation_rate,
         "monthly_revenue": monthly_revenue,
     }
+
+
+@router.get("/invoices/check-overdue")
+async def check_overdue_invoices(
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Mark all unpaid past-due invoices for the current org as overdue and return the count."""
+    from datetime import date as date_type
+    today_str = str(date_type.today())
+    try:
+        query = db.query(Invoice).filter(
+            Invoice.payment_status == "unpaid",
+            Invoice.due_date.isnot(None),
+            Invoice.due_date < today_str,
+        )
+        if current_user and current_user.get("org_id"):
+            query = query.filter(Invoice.organization_id == current_user["org_id"])
+        overdue = query.all()
+        count = len(overdue)
+        for inv in overdue:
+            inv.payment_status = "overdue"
+        if count:
+            db.commit()
+        return {"updated": count}
+    except Exception:
+        return {"updated": 0}
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
