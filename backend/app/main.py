@@ -17,7 +17,7 @@ from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ app.include_router(notifications.router)
 app.include_router(contacts.router)
 app.include_router(invoice_sequences.router)
 app.include_router(import_invoices.router)
+app.include_router(contact_router.router)
 
 
 @app.get("/")
