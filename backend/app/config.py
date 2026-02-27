@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     allowed_extensions: List[str] = [".pdf", ".xml"]
 
     # Deployment mode
-    cloud_mode: bool = True  # False for self-hosted, True for SaaS
+    cloud_mode: bool = False  # False for self-hosted (default), True for SaaS
 
     # AI API Keys
     anthropic_api_key: str = ""

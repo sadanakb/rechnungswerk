@@ -19,6 +19,7 @@ from app.database import get_db
 from app.models import Invoice, Mahnung
 from app.schemas_mahnwesen import MahnungResponse, OverdueInvoiceResponse
 from app.auth_jwt import get_current_user
+from app.feature_gate import require_feature
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ MAHNUNG_CONFIG = {
 @router.get("/overdue", response_model=List[OverdueInvoiceResponse])
 def list_overdue_invoices(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_feature("mahnwesen")),
 ):
     """List all overdue invoices for the current user's organization."""
     org_id = current_user.get("org_id")
@@ -94,7 +95,7 @@ def list_mahnungen(
 def create_mahnung(
     invoice_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_feature("mahnwesen")),
 ):
     """
     Create the next dunning level for an overdue invoice.

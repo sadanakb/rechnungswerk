@@ -1,6 +1,11 @@
 """Feature gating for Free/Starter/Professional tiers."""
-from fastapi import HTTPException, Depends
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 from app.auth_jwt import get_current_user
+from app.models import Organization, OrganizationMember
+from app.config import settings
 
 
 PLAN_LIMITS = {
@@ -51,4 +56,39 @@ def require_plan(feature: str):
                 detail=f"Feature '{feature}' erfordert ein Upgrade. Aktueller Plan: {plan}",
             )
         return current_user
+    return dependency
+
+
+def require_feature(feature_name: str):
+    """FastAPI dependency that gates endpoints by organization plan.
+    In self-hosted mode (cloud_mode=False), all features are unlocked.
+    """
+    def dependency(
+        current_user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ):
+        # Self-hosted: all features available
+        if not settings.cloud_mode:
+            return current_user
+
+        # Find org plan
+        member = db.query(OrganizationMember).filter(
+            OrganizationMember.user_id == int(current_user["user_id"])
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="Keine Organisation gefunden")
+
+        org = db.query(Organization).filter(Organization.id == member.organization_id).first()
+        plan = org.plan if org else "free"
+
+        # Check feature access
+        plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+        if not plan_limits.get(feature_name, False):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Feature '{feature_name}' erfordert ein Upgrade. Aktueller Plan: {plan}",
+            )
+
+        return current_user
+
     return dependency
