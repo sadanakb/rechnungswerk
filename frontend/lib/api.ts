@@ -467,6 +467,20 @@ export const exportDATEV = (format: 'buchungsstapel' | 'csv' = 'buchungsstapel',
   return `${API_BASE}/api/export/datev?format=${format}&kontenrahmen=${kontenrahmen}`
 }
 
+export async function exportDatev(year: number, quarter?: number): Promise<void> {
+  const params = new URLSearchParams({ year: String(year) })
+  if (quarter) params.set('quarter', String(quarter))
+  const res = await api.get(`/api/invoices/export-datev?${params}`, { responseType: 'blob' })
+  const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `DATEV_${year}${quarter ? `_Q${quarter}` : ''}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ---------------------------------------------------------------------------
 // Analytics
 // ---------------------------------------------------------------------------

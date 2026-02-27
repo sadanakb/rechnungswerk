@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { Download, BarChart3, Calendar, AlertTriangle } from 'lucide-react'
 import {
-  getTaxSummary, getCashflow, getOverdueAging,
+  getTaxSummary, getCashflow, getOverdueAging, exportDatev,
   type TaxSummaryRow, type CashflowMonth, type OverdueAgingBucket,
 } from '@/lib/api'
 
@@ -390,6 +390,108 @@ function OverdueAgingSection() {
 }
 
 // ---------------------------------------------------------------------------
+// DATEV Export Section
+// ---------------------------------------------------------------------------
+
+const QUARTER_OPTIONS = [
+  { label: 'Gesamtes Jahr', value: '' },
+  { label: 'Q1 (Jan–Mrz)', value: '1' },
+  { label: 'Q2 (Apr–Jun)', value: '2' },
+  { label: 'Q3 (Jul–Sep)', value: '3' },
+  { label: 'Q4 (Okt–Dez)', value: '4' },
+]
+
+function DATEVExportSection() {
+  const currentYear = new Date().getFullYear()
+  const [year, setYear] = useState(2026)
+  const [quarter, setQuarter] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const yearOptions = [2024, 2025, 2026]
+
+  const handleExport = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await exportDatev(year, quarter ? Number(quarter) : undefined)
+    } catch {
+      setError('Export fehlgeschlagen. Bitte erneut versuchen.')
+    } finally {
+      setLoading(false)
+    }
+  }, [year, quarter])
+
+  return (
+    <SectionCard title="DATEV-Export" icon={Download}>
+      <p className="text-sm mb-4" style={{ color: 'rgb(var(--foreground-muted))' }}>
+        DATEV-kompatible Buchungssätze für Ihren Steuerberater
+      </p>
+
+      <div className="flex flex-wrap gap-3 mb-4">
+        {/* Year selector */}
+        <div className="flex items-center gap-2">
+          <Calendar size={14} style={{ color: 'rgb(var(--foreground-muted))' }} />
+          <span className="text-xs" style={{ color: 'rgb(var(--foreground-muted))' }}>Jahr:</span>
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="rounded-lg border px-2 py-1 text-sm"
+            style={{
+              backgroundColor: 'rgb(var(--background))',
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+            }}
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Quarter selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: 'rgb(var(--foreground-muted))' }}>Quartal:</span>
+          <select
+            value={quarter}
+            onChange={(e) => setQuarter(e.target.value)}
+            className="rounded-lg border px-2 py-1 text-sm"
+            style={{
+              backgroundColor: 'rgb(var(--background))',
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+            }}
+          >
+            {QUARTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-xs mb-3" style={{ color: 'rgb(var(--danger, 239 68 68))' }}>
+          {error}
+        </p>
+      )}
+
+      <button
+        onClick={handleExport}
+        disabled={loading}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          backgroundColor: 'rgb(var(--primary))',
+          color: '#ffffff',
+        }}
+      >
+        <Download size={14} />
+        {loading ? 'Exportiere…' : 'DATEV exportieren'}
+      </button>
+    </SectionCard>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -406,7 +508,7 @@ export default function BerichtePage() {
         </p>
       </div>
 
-      {/* 3-section grid */}
+      {/* 4-section grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Tax Summary — full width on first row */}
         <div className="xl:col-span-2">
@@ -418,6 +520,9 @@ export default function BerichtePage() {
 
         {/* Overdue Aging */}
         <OverdueAgingSection />
+
+        {/* DATEV Export */}
+        <DATEVExportSection />
       </div>
     </div>
   )

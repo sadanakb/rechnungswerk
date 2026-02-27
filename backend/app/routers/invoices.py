@@ -561,6 +561,71 @@ async def list_invoices(
     return InvoiceListResponse(items=invoices, total=total, skip=skip, limit=limit)
 
 
+@router.get("/invoices/export-datev")
+async def export_datev_by_period(
+    year: int = Query(2026),
+    quarter: Optional[int] = Query(None),  # 1-4, None = full year
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Export invoices as DATEV Buchungsstapel CSV, filtered by year and optional quarter."""
+    import calendar as cal_module
+    from datetime import date as date_type
+
+    if quarter:
+        month_start = (quarter - 1) * 3 + 1
+        date_from = date_type(year, month_start, 1)
+        month_end = month_start + 2
+        date_to = date_type(year, month_end, cal_module.monthrange(year, month_end)[1])
+    else:
+        date_from = date_type(year, 1, 1)
+        date_to = date_type(year, 12, 31)
+
+    query = db.query(Invoice).filter(
+        Invoice.invoice_date >= date_from,
+        Invoice.invoice_date <= date_to,
+    )
+
+    org_id = current_user.get("org_id") if current_user else None
+    if org_id:
+        query = query.filter(Invoice.organization_id == int(org_id))
+
+    invoices = query.all()
+
+    exporter = DATEVExporter(kontenrahmen="SKR03")
+    invoice_dicts = []
+    for inv in invoices:
+        invoice_dicts.append({
+            "invoice_number": inv.invoice_number,
+            "invoice_date": str(inv.invoice_date),
+            "due_date": str(inv.due_date) if inv.due_date else "",
+            "seller_name": inv.seller_name or "",
+            "buyer_name": inv.buyer_name or "",
+            "net_amount": float(inv.net_amount or 0),
+            "tax_rate": float(inv.tax_rate or 19),
+            "tax_amount": float(inv.tax_amount or 0),
+            "gross_amount": float(inv.gross_amount or 0),
+            "currency": getattr(inv, "currency", "EUR") or "EUR",
+            "iban": inv.iban or "",
+            "bic": inv.bic or "",
+            "source_type": inv.source_type or "",
+            "validation_status": inv.validation_status or "",
+        })
+
+    content = exporter.export_buchungsstapel(invoice_dicts)
+
+    filename = f"DATEV_{year}"
+    if quarter:
+        filename += f"_Q{quarter}"
+    filename += ".csv"
+
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
 async def get_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
