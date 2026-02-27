@@ -29,6 +29,23 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: 'v0.4.0',
+    title: 'Phase 4: Completeness & Polish',
+    date: '27.02.2026',
+    items: [
+      { text: 'Benutzerprofil-Verwaltung (Name, Passwort aendern)', tag: 'feature' },
+      { text: 'Passwort-vergessen & Zuruecksetzen-Flow', tag: 'feature' },
+      { text: 'E-Mail-Verifizierung bei Registrierung', tag: 'security' },
+      { text: 'Stripe-Billing: Webhooks, Abo-Status, Kundenportal', tag: 'feature' },
+      { text: 'Mahnwesen: E-Mail-Versand, Status-Verwaltung', tag: 'feature' },
+      { text: 'Team-Verwaltung: Mitglieder einladen, Rollen verwalten', tag: 'feature' },
+      { text: 'Einstellungen vollstaendig mit Backend verbunden', tag: 'feature' },
+      { text: 'Manuelle Rechnungserstellung mit Validierung', tag: 'feature' },
+      { text: 'Analytics: Top-Lieferanten, Kategorie-Aufschluesselung, CSV-Export', tag: 'feature' },
+      { text: 'Alembic-Migration fuer alle Phase-4-Modelle', tag: 'infra' },
+    ],
+  },
+  {
     version: 'v0.3.0',
     title: 'Phase 3: Launch-Readiness',
     date: 'Februar 2026',

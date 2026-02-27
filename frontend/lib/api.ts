@@ -380,6 +380,35 @@ export const getAnalyticsSummary = async (): Promise<AnalyticsSummary> => {
   return resp.data
 }
 
+export interface TopSupplier {
+  name: string
+  invoice_count: number
+  total_amount: number
+}
+
+export interface CategoryBreakdown {
+  tax_rate: number
+  label: string
+  invoice_count: number
+  total_amount: number
+}
+
+export const getTopSuppliers = async (from?: string, to?: string): Promise<TopSupplier[]> => {
+  const params: Record<string, string> = {}
+  if (from) params.from = from
+  if (to) params.to = to
+  const resp = await api.get<TopSupplier[]>('/api/analytics/top-suppliers', { params })
+  return resp.data
+}
+
+export const getCategoryBreakdown = async (from?: string, to?: string): Promise<CategoryBreakdown[]> => {
+  const params: Record<string, string> = {}
+  if (from) params.from = from
+  if (to) params.to = to
+  const resp = await api.get<CategoryBreakdown[]>('/api/analytics/category-breakdown', { params })
+  return resp.data
+}
+
 // ---------------------------------------------------------------------------
 // Suppliers
 // ---------------------------------------------------------------------------
@@ -592,6 +621,14 @@ export async function createMahnung(invoiceId: string): Promise<MahnungRecord> {
   return resp.data
 }
 
+export async function updateMahnungStatus(
+  mahnungId: string,
+  status: 'paid' | 'cancelled',
+): Promise<MahnungRecord> {
+  const resp = await api.patch<MahnungRecord>(`/api/mahnwesen/${mahnungId}/status`, { status })
+  return resp.data
+}
+
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
@@ -634,5 +671,103 @@ export async function getMe(): Promise<{
   role: string
 }> {
   const resp = await api.get('/api/auth/me')
+  return resp.data
+}
+
+// ---------------------------------------------------------------------------
+// User Profile
+// ---------------------------------------------------------------------------
+
+export interface UserProfile {
+  id: number
+  email: string
+  full_name: string | null
+  is_verified: boolean
+  created_at: string | null
+  organization: { id: number; name: string } | null
+}
+
+export interface UserProfileUpdateData {
+  full_name?: string
+  current_password?: string
+  new_password?: string
+}
+
+export async function getUserProfile(): Promise<UserProfile> {
+  const resp = await api.get<UserProfile>('/api/users/me')
+  return resp.data
+}
+
+export async function updateUserProfile(data: UserProfileUpdateData): Promise<UserProfile> {
+  const resp = await api.patch<UserProfile>('/api/users/me', data)
+  return resp.data
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding / Company Info
+// ---------------------------------------------------------------------------
+
+export interface OnboardingStatus {
+  completed: boolean
+  org_name: string
+  has_vat_id: boolean
+  has_address: boolean
+  vat_id: string | null
+  address: string | null
+}
+
+export interface CompanyUpdateData {
+  name?: string
+  vat_id?: string
+  address?: string
+  logo_url?: string
+}
+
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  const resp = await api.get<OnboardingStatus>('/api/onboarding/status')
+  return resp.data
+}
+
+export async function updateCompanyInfo(data: CompanyUpdateData): Promise<OnboardingStatus> {
+  const resp = await api.post<OnboardingStatus>('/api/onboarding/company', data)
+  return resp.data
+}
+
+// ---------------------------------------------------------------------------
+// Billing / Stripe
+// ---------------------------------------------------------------------------
+
+export interface SubscriptionInfo {
+  plan: string
+  plan_status: 'active' | 'trialing' | 'past_due' | 'cancelled'
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  /** Unix timestamp (seconds) — end of current billing period */
+  period_end: number | null
+}
+
+export interface CheckoutSessionRequest {
+  plan: 'starter' | 'professional'
+  billing_cycle?: 'monthly' | 'yearly'
+}
+
+export async function getSubscription(): Promise<SubscriptionInfo> {
+  const resp = await api.get<SubscriptionInfo>('/api/billing/subscription')
+  return resp.data
+}
+
+export async function createCheckoutSession(
+  plan: 'starter' | 'professional',
+  billingCycle: 'monthly' | 'yearly' = 'monthly',
+): Promise<{ url: string }> {
+  const resp = await api.post<{ url: string }>('/api/billing/checkout', {
+    plan,
+    billing_cycle: billingCycle,
+  })
+  return resp.data
+}
+
+export async function createPortalSession(): Promise<{ url: string }> {
+  const resp = await api.post<{ url: string }>('/api/billing/portal')
   return resp.data
 }

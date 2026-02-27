@@ -17,9 +17,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Invoice, Mahnung
-from app.schemas_mahnwesen import MahnungResponse, OverdueInvoiceResponse
+from app.schemas_mahnwesen import MahnungResponse, MahnungStatusUpdate, OverdueInvoiceResponse
 from app.auth_jwt import get_current_user
 from app.feature_gate import require_feature
+from app.email_service import send_mahnung_email
 
 logger = logging.getLogger(__name__)
 
@@ -155,4 +156,80 @@ def create_mahnung(
         mahnung.mahnung_id, next_level, invoice_id,
     )
 
+    # Attempt to send dunning email if buyer email is available
+    buyer_email = _extract_buyer_email(invoice)
+    if buyer_email:
+        email_sent = send_mahnung_email(
+            to_email=buyer_email,
+            customer_name=invoice.buyer_name or "Kunde",
+            invoice_number=invoice.invoice_number or invoice_id,
+            level=next_level,
+            amount=float(gross_amount),
+            due_date=str(invoice.due_date) if invoice.due_date else "",
+            fees=float(fee + interest),
+        )
+        if email_sent:
+            mahnung.status = "sent"
+            mahnung.sent_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(mahnung)
+            logger.info("Mahnung %s email sent to %s", mahnung.mahnung_id, buyer_email)
+    else:
+        logger.info(
+            "No buyer email found for invoice %s — Mahnung %s stays in 'created' status",
+            invoice_id, mahnung.mahnung_id,
+        )
+
+    return mahnung
+
+
+def _extract_buyer_email(invoice: Invoice) -> str | None:
+    """Extract buyer email from invoice data.
+
+    Checks buyer_endpoint_id (BT-49) if scheme indicates email,
+    then falls back to buyer_address for an embedded email pattern.
+    """
+    # BT-49 electronic address with email scheme
+    if invoice.buyer_endpoint_id and invoice.buyer_endpoint_scheme in ("EM", "em", None):
+        endpoint = invoice.buyer_endpoint_id.strip()
+        if "@" in endpoint:
+            return endpoint
+
+    # Fallback: check buyer_address for an email pattern
+    if invoice.buyer_address:
+        import re
+        match = re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', invoice.buyer_address)
+        if match:
+            return match.group(0)
+
+    return None
+
+
+@router.patch("/{mahnung_id}/status", response_model=MahnungResponse)
+def update_mahnung_status(
+    mahnung_id: str,
+    body: MahnungStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_feature("mahnwesen")),
+):
+    """Update the status of a Mahnung (e.g. mark as paid or cancelled).
+
+    Only 'paid' and 'cancelled' are valid target statuses.
+    """
+    mahnung = db.query(Mahnung).filter(Mahnung.mahnung_id == mahnung_id).first()
+    if not mahnung:
+        raise HTTPException(status_code=404, detail="Mahnung nicht gefunden")
+
+    allowed_statuses = ("paid", "cancelled")
+    if body.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltiger Status. Erlaubt: {', '.join(allowed_statuses)}",
+        )
+
+    mahnung.status = body.status
+    db.commit()
+    db.refresh(mahnung)
+
+    logger.info("Mahnung %s status updated to '%s'", mahnung_id, body.status)
     return mahnung

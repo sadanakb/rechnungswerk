@@ -16,6 +16,7 @@ import {
   PanelLeft,
   Monitor,
   Users,
+  UsersRound,
   Repeat,
   AlertTriangle,
   Settings,
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/suppliers', label: 'Lieferanten', icon: Users },
   { href: '/recurring', label: 'Wiederkehrend', icon: Repeat },
   { href: '/mahnwesen', label: 'Mahnwesen', icon: AlertTriangle },
+  { href: '/team', label: 'Team', icon: UsersRound },
   { href: '/settings', label: 'Einstellungen', icon: Settings },
 ]
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   User,
@@ -18,8 +18,25 @@ import {
   Crown,
   Zap,
   Shield,
+  AlertCircle,
+  Calendar,
+  Loader2,
+  ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import {
+  getUserProfile,
+  updateUserProfile,
+  getOnboardingStatus,
+  updateCompanyInfo,
+  getSubscription,
+  createCheckoutSession,
+  createPortalSession,
+  getErrorMessage,
+  type UserProfile,
+  type OnboardingStatus,
+  type SubscriptionInfo,
+} from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -62,27 +79,134 @@ const PLAN_LABELS: Record<string, string> = {
 }
 
 // ---------------------------------------------------------------------------
+// Feedback banner component
+// ---------------------------------------------------------------------------
+function FeedbackBanner({
+  type,
+  message,
+}: {
+  type: 'success' | 'error'
+  message: string
+}) {
+  if (!message) return null
+
+  const isError = type === 'error'
+  return (
+    <div
+      className={[
+        'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
+        isError
+          ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
+      ].join(' ')}
+    >
+      {isError ? <AlertCircle size={16} /> : <Check size={16} />}
+      {message}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tab: Konto (Account)
 // ---------------------------------------------------------------------------
-function KontoTab({ user }: { user: { email: string; full_name: string } | null }) {
-  const [fullName, setFullName] = useState(user?.full_name ?? '')
+function KontoTab() {
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
+  const [fullName, setFullName] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const passwordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword
 
+  // Fetch profile on mount
+  const fetchProfile = useCallback(async () => {
+    setLoadingProfile(true)
+    try {
+      const data = await getUserProfile()
+      setProfile(data)
+      setFullName(data.full_name ?? '')
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Profildaten konnten nicht geladen werden.') })
+    } finally {
+      setLoadingProfile(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
+
   const handleSave = async () => {
+    setFeedback(null)
+
+    // Validate password fields if user is trying to change password
+    if (newPassword || currentPassword) {
+      if (!currentPassword) {
+        setFeedback({ type: 'error', message: 'Bitte geben Sie Ihr aktuelles Passwort ein.' })
+        return
+      }
+      if (!newPassword) {
+        setFeedback({ type: 'error', message: 'Bitte geben Sie ein neues Passwort ein.' })
+        return
+      }
+      if (newPassword.length < 8) {
+        setFeedback({ type: 'error', message: 'Das neue Passwort muss mindestens 8 Zeichen lang sein.' })
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setFeedback({ type: 'error', message: 'Die Passwoerter stimmen nicht ueberein.' })
+        return
+      }
+    }
+
     setSaving(true)
-    // TODO: call PATCH /api/users/me
-    await new Promise((r) => setTimeout(r, 600))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      const payload: { full_name?: string; current_password?: string; new_password?: string } = {}
+
+      // Always send full_name if it changed
+      if (fullName !== (profile?.full_name ?? '')) {
+        payload.full_name = fullName
+      }
+
+      // Only send password fields if user filled them in
+      if (currentPassword && newPassword) {
+        payload.current_password = currentPassword
+        payload.new_password = newPassword
+      }
+
+      // Only call API if there are changes
+      if (Object.keys(payload).length > 0) {
+        const updated = await updateUserProfile(payload)
+        setProfile(updated)
+        setFullName(updated.full_name ?? '')
+      }
+
+      // Clear password fields on success
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setFeedback({ type: 'success', message: 'Aenderungen wurden erfolgreich gespeichert.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Speichern fehlgeschlagen.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loadingProfile) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -92,10 +216,13 @@ function KontoTab({ user }: { user: { email: string; full_name: string } | null 
         <CardDescription>Verwalten Sie Ihre persoenlichen Daten und Ihr Passwort.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Feedback */}
+        {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
+
         {/* Email (read-only) */}
         <Input
           label="E-Mail-Adresse"
-          value={user?.email ?? ''}
+          value={profile?.email ?? ''}
           disabled
           hint="Die E-Mail-Adresse kann nicht geaendert werden."
         />
@@ -169,11 +296,6 @@ function KontoTab({ user }: { user: { email: string; full_name: string } | null 
                 <RefreshCw size={16} className="animate-spin" />
                 Speichern...
               </>
-            ) : saved ? (
-              <>
-                <Check size={16} />
-                Gespeichert
-              </>
             ) : (
               <>
                 <Save size={16} />
@@ -190,24 +312,76 @@ function KontoTab({ user }: { user: { email: string; full_name: string } | null 
 // ---------------------------------------------------------------------------
 // Tab: Organisation
 // ---------------------------------------------------------------------------
-function OrganisationTab({
-  user,
-}: {
-  user: { organization: { name: string; plan: string } } | null
-}) {
-  const [companyName, setCompanyName] = useState(user?.organization?.name ?? '')
+function OrganisationTab() {
+  const [orgStatus, setOrgStatus] = useState<OnboardingStatus | null>(null)
+  const [loadingOrg, setLoadingOrg] = useState(true)
+  const [companyName, setCompanyName] = useState('')
   const [ustIdNr, setUstIdNr] = useState('')
   const [address, setAddress] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Fetch org data on mount
+  const fetchOrgData = useCallback(async () => {
+    setLoadingOrg(true)
+    try {
+      const data = await getOnboardingStatus()
+      setOrgStatus(data)
+      setCompanyName(data.org_name ?? '')
+      setUstIdNr(data.vat_id ?? '')
+      setAddress(data.address ?? '')
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Organisationsdaten konnten nicht geladen werden.') })
+    } finally {
+      setLoadingOrg(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOrgData()
+  }, [fetchOrgData])
 
   const handleSave = async () => {
+    setFeedback(null)
     setSaving(true)
-    // TODO: call PATCH /api/onboarding/company
-    await new Promise((r) => setTimeout(r, 600))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      const payload: { name?: string; vat_id?: string; address?: string } = {}
+
+      if (companyName !== (orgStatus?.org_name ?? '')) {
+        payload.name = companyName
+      }
+      if (ustIdNr !== (orgStatus?.vat_id ?? '')) {
+        payload.vat_id = ustIdNr
+      }
+      if (address !== (orgStatus?.address ?? '')) {
+        payload.address = address
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const updated = await updateCompanyInfo(payload)
+        setOrgStatus(updated)
+        setCompanyName(updated.org_name ?? '')
+        setUstIdNr(updated.vat_id ?? '')
+        setAddress(updated.address ?? '')
+      }
+
+      setFeedback({ type: 'success', message: 'Organisationsdaten wurden erfolgreich gespeichert.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Speichern fehlgeschlagen.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loadingOrg) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -217,6 +391,9 @@ function OrganisationTab({
         <CardDescription>Firmendaten und Steuernummer fuer Ihre Rechnungen.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Feedback */}
+        {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
+
         <Input
           label="Firmenname"
           value={companyName}
@@ -264,11 +441,6 @@ function OrganisationTab({
                 <RefreshCw size={16} className="animate-spin" />
                 Speichern...
               </>
-            ) : saved ? (
-              <>
-                <Check size={16} />
-                Gespeichert
-              </>
             ) : (
               <>
                 <Save size={16} />
@@ -283,77 +455,306 @@ function OrganisationTab({
 }
 
 // ---------------------------------------------------------------------------
-// Tab: Abonnement (Subscription)
+// Tab: Abonnement (Subscription) — live Stripe integration
 // ---------------------------------------------------------------------------
+
+/** Map plan_status to UI badge colour / label */
+const STATUS_CONFIG: Record<string, { color: string; darkColor: string; bgColor: string; darkBgColor: string; label: string }> = {
+  active:    { color: 'text-emerald-700', darkColor: 'dark:text-emerald-400', bgColor: 'bg-emerald-50', darkBgColor: 'dark:bg-emerald-900/20', label: 'Aktiv' },
+  trialing:  { color: 'text-blue-700',    darkColor: 'dark:text-blue-400',    bgColor: 'bg-blue-50',    darkBgColor: 'dark:bg-blue-900/20',    label: 'Testphase' },
+  past_due:  { color: 'text-amber-700',   darkColor: 'dark:text-amber-400',   bgColor: 'bg-amber-50',   darkBgColor: 'dark:bg-amber-900/20',   label: 'Zahlung ausstehend' },
+  cancelled: { color: 'text-red-700',     darkColor: 'dark:text-red-400',     bgColor: 'bg-red-50',     darkBgColor: 'dark:bg-red-900/20',     label: 'Gekuendigt' },
+}
+
+function formatBillingDate(unixTimestamp: number | null): string {
+  if (!unixTimestamp) return '—'
+  const date = new Date(unixTimestamp * 1000)
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 function AbonnementTab({
-  plan,
+  plan: orgPlan,
 }: {
   plan: string
 }) {
-  const currentPlan = plan?.toLowerCase() ?? 'free'
-  const [portalLoading, setPortalLoading] = useState(false)
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  const handleManageSubscription = async () => {
-    setPortalLoading(true)
+  // Fetch subscription info on mount
+  const fetchSubscription = useCallback(async () => {
+    setLoading(true)
     try {
-      // TODO: call POST /api/billing/portal to get Stripe portal URL
-      await new Promise((r) => setTimeout(r, 600))
-      // window.location.href = data.url
+      const data = await getSubscription()
+      setSubscription(data)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Abonnement-Daten konnten nicht geladen werden.') })
     } finally {
-      setPortalLoading(false)
+      setLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
+    fetchSubscription()
+  }, [fetchSubscription])
+
+  // Determine current plan from live subscription data, fall back to org prop
+  const currentPlan = (subscription?.plan ?? orgPlan)?.toLowerCase() ?? 'free'
+  const planStatus = subscription?.plan_status ?? 'active'
+  const statusCfg = STATUS_CONFIG[planStatus] ?? STATUS_CONFIG.active
+
+  // Handle "Jetzt upgraden" — redirect to Stripe Checkout
+  const handleUpgrade = async (selectedPlan: 'starter' | 'professional') => {
+    setActionLoading(true)
+    setFeedback(null)
+    try {
+      const { url } = await createCheckoutSession(selectedPlan)
+      window.location.href = url
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Checkout konnte nicht gestartet werden.') })
+      setActionLoading(false)
+    }
+  }
+
+  // Handle "Abo verwalten" — redirect to Stripe Customer Portal
+  const handleManage = async () => {
+    setActionLoading(true)
+    setFeedback(null)
+    try {
+      const { url } = await createPortalSession()
+      window.location.href = url
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Portal konnte nicht geoeffnet werden.') })
+      setActionLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw size={20} className="animate-spin text-slate-400" />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <div className="space-y-6">
+      {/* Feedback */}
+      {feedback && (
+        <FeedbackBanner type={feedback.type} message={feedback.message} />
+      )}
+
       {/* Current plan */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <CardTitle>Aktueller Plan</CardTitle>
               <CardDescription>Ihr derzeitiges Abonnement und dessen Leistungsumfang.</CardDescription>
             </div>
-            <Badge
-              variant={PLAN_BADGE_VARIANT[currentPlan] ?? 'secondary'}
-              className="text-sm px-3 py-1"
-            >
-              {currentPlan === 'professional' && <Crown size={14} className="mr-1" />}
-              {currentPlan === 'starter' && <Zap size={14} className="mr-1" />}
-              {PLAN_LABELS[currentPlan] ?? currentPlan}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {/* Status badge */}
+              <span
+                className={[
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  statusCfg.bgColor,
+                  statusCfg.darkBgColor,
+                  statusCfg.color,
+                  statusCfg.darkColor,
+                ].join(' ')}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className={[
+                    'absolute inline-flex h-full w-full rounded-full opacity-75',
+                    planStatus === 'active' ? 'animate-ping bg-emerald-400' : '',
+                    planStatus === 'trialing' ? 'animate-ping bg-blue-400' : '',
+                    planStatus === 'past_due' ? 'bg-amber-400' : '',
+                    planStatus === 'cancelled' ? 'bg-red-400' : '',
+                  ].join(' ')} />
+                  <span className={[
+                    'relative inline-flex h-2 w-2 rounded-full',
+                    planStatus === 'active' ? 'bg-emerald-500' : '',
+                    planStatus === 'trialing' ? 'bg-blue-500' : '',
+                    planStatus === 'past_due' ? 'bg-amber-500' : '',
+                    planStatus === 'cancelled' ? 'bg-red-500' : '',
+                  ].join(' ')} />
+                </span>
+                {statusCfg.label}
+              </span>
+              {/* Plan badge */}
+              <Badge
+                variant={PLAN_BADGE_VARIANT[currentPlan] ?? 'secondary'}
+                className="text-sm px-3 py-1"
+              >
+                {currentPlan === 'professional' && <Crown size={14} className="mr-1" />}
+                {currentPlan === 'starter' && <Zap size={14} className="mr-1" />}
+                {PLAN_LABELS[currentPlan] ?? currentPlan}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {currentPlan === 'free' ? (
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
-                Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen.
+                Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen wie
+                Analytics, Lieferanten-Verwaltung und wiederkehrende Rechnungen.
               </p>
-              <Button asChild>
-                <Link href="/preise">
-                  <Zap size={16} />
-                  Jetzt upgraden
-                </Link>
+              <Button onClick={() => handleUpgrade('starter')} disabled={actionLoading}>
+                {actionLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Weiterleitung...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={16} />
+                    Jetzt upgraden
+                  </>
+                )}
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
                 Verwalten Sie Ihr Abonnement, Zahlungsmethode oder kuendigen Sie ueber das Kundenportal.
               </p>
-              <Button variant="outline" onClick={handleManageSubscription} disabled={portalLoading}>
-                {portalLoading ? (
-                  <RefreshCw size={16} className="animate-spin" />
+              <Button variant="outline" onClick={handleManage} disabled={actionLoading}>
+                {actionLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Weiterleitung...
+                  </>
                 ) : (
-                  <ExternalLink size={16} />
+                  <>
+                    <ExternalLink size={16} />
+                    Abo verwalten
+                  </>
                 )}
-                Abo verwalten
               </Button>
             </div>
           )}
+
+          {/* Plan info summary */}
+          <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Plan</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {PLAN_LABELS[currentPlan] ?? currentPlan}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Rechnungen/Monat</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {currentPlan === 'professional' ? 'Unbegrenzt' : currentPlan === 'starter' ? '100' : '10'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Preis</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {currentPlan === 'professional' ? '49 EUR/Monat' : currentPlan === 'starter' ? '19 EUR/Monat' : 'Kostenlos'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {subscription?.period_end ? 'Naechste Abrechnung' : 'Status'}
+                </p>
+                <p className={[
+                  'text-sm font-semibold',
+                  statusCfg.color,
+                  statusCfg.darkColor,
+                ].join(' ')}>
+                  {subscription?.period_end ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar size={13} className="shrink-0" />
+                      {formatBillingDate(subscription.period_end)}
+                    </span>
+                  ) : (
+                    statusCfg.label
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Upgrade cards for free users */}
+      {currentPlan === 'free' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Starter */}
+          <Card className="relative overflow-hidden border-blue-200 dark:border-blue-800">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  <Zap size={18} className="inline mr-1.5 text-blue-500" />
+                  Starter
+                </CardTitle>
+                <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  19 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> 100 Rechnungen/Monat</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Analytics Dashboard</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Lieferanten-Verwaltung</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Wiederkehrende Rechnungen</li>
+              </ul>
+              <Button className="w-full" onClick={() => handleUpgrade('starter')} disabled={actionLoading}>
+                {actionLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    Starter waehlen
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Professional */}
+          <Card className="relative overflow-hidden border-emerald-200 dark:border-emerald-800">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  <Crown size={18} className="inline mr-1.5 text-emerald-500" />
+                  Professional
+                </CardTitle>
+                <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  49 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Unbegrenzte Rechnungen</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Mahnwesen</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> API-Zugriff</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Prioritaets-Support</li>
+              </ul>
+              <Button className="w-full" variant="outline" onClick={() => handleUpgrade('professional')} disabled={actionLoading}>
+                {actionLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    Professional waehlen
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Feature comparison */}
       <Card>
@@ -369,15 +770,24 @@ function AbonnementTab({
                   <th className="text-left py-3 pr-4 font-medium text-slate-600 dark:text-slate-400">
                     Funktion
                   </th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
-                    Free
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
-                    Starter
-                  </th>
-                  <th className="text-center py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
-                    Professional
-                  </th>
+                  {(['free', 'starter', 'professional'] as const).map((tier) => (
+                    <th
+                      key={tier}
+                      className={[
+                        'text-center py-3 px-4 font-medium',
+                        tier === currentPlan
+                          ? 'text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 rounded-t-md'
+                          : 'text-slate-600 dark:text-slate-400',
+                      ].join(' ')}
+                    >
+                      {tier === currentPlan && (
+                        <span className="block text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-0.5">
+                          Ihr Plan
+                        </span>
+                      )}
+                      {tier === 'free' ? 'Free' : tier === 'starter' ? 'Starter' : 'Professional'}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -390,7 +800,13 @@ function AbonnementTab({
                       {feature.label}
                     </td>
                     {(['free', 'starter', 'professional'] as const).map((tier) => (
-                      <td key={tier} className="text-center py-3 px-4">
+                      <td
+                        key={tier}
+                        className={[
+                          'text-center py-3 px-4',
+                          tier === currentPlan ? 'bg-slate-50 dark:bg-slate-800/50' : '',
+                        ].join(' ')}
+                      >
                         {typeof feature[tier] === 'string' ? (
                           <span className="text-slate-700 dark:text-slate-300 font-medium">
                             {feature[tier]}
@@ -601,11 +1017,11 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="konto">
-          <KontoTab user={user} />
+          <KontoTab />
         </TabsContent>
 
         <TabsContent value="organisation">
-          <OrganisationTab user={user} />
+          <OrganisationTab />
         </TabsContent>
 
         <TabsContent value="abonnement">

@@ -19,6 +19,10 @@ class MahnungResponse(BaseModel):
         from_attributes = True
 
 
+class MahnungStatusUpdate(BaseModel):
+    status: str  # "paid" or "cancelled"
+
+
 class OverdueInvoiceResponse(BaseModel):
     invoice_id: str
     invoice_number: str
