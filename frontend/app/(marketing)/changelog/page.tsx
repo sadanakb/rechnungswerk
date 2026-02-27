@@ -29,6 +29,24 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: 'v0.7.0',
+    title: 'Phase 7: Business Logic & Performance Hardening',
+    date: '27.02.2026',
+    items: [
+      { text: 'Rechnungs-Zahlungsstatus: bezahlt/offen/teilweise/ueberfaellig mit Bezahlformular', tag: 'feature' },
+      { text: 'Kontaktverwaltung: Kunden & Lieferanten, CRUD, Suche, Typen-Filter', tag: 'feature' },
+      { text: 'Konfigurierbare Rechnungsnummernkreise: Praefix, Trennzeichen, jaehrlicher Reset', tag: 'feature' },
+      { text: 'Globales Rate Limiting: slowapi Middleware, 200/min global, 5/min Registrierung', tag: 'security' },
+      { text: 'CSV-Rechnungsimport: Upload, Duplikat-Erkennung, Vorlagen-Download', tag: 'feature' },
+      { text: 'Autocomplete-Suche: Echtzeit-Vorschlaege mit 300ms Debounce', tag: 'feature' },
+      { text: 'Dashboard Aggregat-Statistiken: KPI-Karten, Umsatz-Chart, Ueberfaellig-Alert', tag: 'feature' },
+      { text: 'Ueberfaellige Rechnungen: automatische Erkennung beim Auflisten (Lazy Evaluation)', tag: 'feature' },
+      { text: 'Marketing-Seiten: Kontakt mit Formular, Ueber uns mit Team-Bereich', tag: 'content' },
+      { text: 'Performance-Indizes: ix_invoices_org_created, ix_invoices_org_status, ix_invoices_buyer', tag: 'infra' },
+      { text: 'Alembic-Migration Phase 7: Contacts, InvoiceNumberSequences, Payment-Spalten', tag: 'infra' },
+    ],
+  },
+  {
     version: 'v0.6.0',
     title: 'Phase 6: UX Hardening & Production Polish',
     date: '27.02.2026',
