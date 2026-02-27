@@ -1115,3 +1115,39 @@ export async function getWebhookDeliveries(id: number): Promise<WebhookDelivery[
   const resp = await api.get<WebhookDelivery[]>(`/api/webhooks/${id}/deliveries`)
   return resp.data
 }
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export interface AppNotification {
+  id: number
+  type: string
+  title: string
+  message: string
+  is_read: boolean
+  link: string | null
+  created_at: string
+}
+
+export async function getNotifications(): Promise<AppNotification[]> {
+  try {
+    const resp = await api.get<AppNotification[]>('/api/notifications')
+    return resp.data
+  } catch {
+    return []
+  }
+}
+
+export async function getUnreadCount(): Promise<number> {
+  try {
+    const resp = await api.get<{ count: number }>('/api/notifications/unread-count')
+    return resp.data.count
+  } catch {
+    return 0
+  }
+}
+
+export async function markNotificationsRead(ids?: number[]): Promise<void> {
+  await api.post('/api/notifications/mark-read', ids ? { ids } : { all: true })
+}
