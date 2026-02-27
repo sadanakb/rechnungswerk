@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, UploadFile, File, 
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Invoice, UploadLog
@@ -546,18 +547,46 @@ async def generate_xrechnung(
 async def list_invoices(
     skip: int = Query(default=0, ge=0, description="Anzahl zu überspringender Einträge"),
     limit: int = Query(default=50, ge=1, le=500, description="Max. Einträge (1-500)"),
+    status: Optional[str] = Query(None, description="Filter by validation_status (e.g. valid, invalid, pending)"),
+    supplier: Optional[str] = Query(None, description="Partial match on buyer_name"),
+    search: Optional[str] = Query(None, description="Search invoice_number and buyer_name"),
+    date_from: Optional[str] = Query(None, description="Filter by invoice_date >= date_from (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Filter by invoice_date <= date_to (YYYY-MM-DD)"),
+    amount_min: Optional[float] = Query(None, description="Filter by gross_amount >= amount_min"),
+    amount_max: Optional[float] = Query(None, description="Filter by gross_amount <= amount_max"),
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
-    """List all invoices with pagination (filtered by org if authenticated)"""
+    """List all invoices with pagination and optional filters (filtered by org if authenticated)"""
     query = db.query(Invoice)
 
     # Tenant isolation: filter by organization_id if authenticated
     if current_user and current_user.get("org_id"):
         query = query.filter(Invoice.organization_id == current_user["org_id"])
 
+    # Optional filters
+    if status:
+        query = query.filter(Invoice.validation_status == status)
+    if supplier:
+        query = query.filter(Invoice.buyer_name.ilike(f"%{supplier}%"))
+    if search:
+        query = query.filter(
+            or_(
+                Invoice.invoice_number.ilike(f"%{search}%"),
+                Invoice.buyer_name.ilike(f"%{search}%"),
+            )
+        )
+    if date_from:
+        query = query.filter(Invoice.invoice_date >= date_from)
+    if date_to:
+        query = query.filter(Invoice.invoice_date <= date_to)
+    if amount_min is not None:
+        query = query.filter(Invoice.gross_amount >= amount_min)
+    if amount_max is not None:
+        query = query.filter(Invoice.gross_amount <= amount_max)
+
     total = query.count()
-    invoices = query.offset(skip).limit(limit).all()
+    invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
     return InvoiceListResponse(items=invoices, total=total, skip=skip, limit=limit)
 
 
