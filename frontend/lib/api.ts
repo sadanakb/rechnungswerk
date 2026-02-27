@@ -54,6 +54,54 @@ export interface LineItem {
   unit_price: number
   net_amount: number
   tax_rate: number
+  unit?: string
+}
+
+/**
+ * Extended invoice detail — includes all fields returned by
+ * GET /api/invoices/{invoice_id} (line items, addresses, VAT IDs, etc.)
+ */
+export interface InvoiceDetail {
+  id: number
+  invoice_id: string
+  invoice_number: string
+  invoice_date: string
+  due_date?: string
+  // Seller
+  seller_name: string
+  seller_vat_id?: string
+  seller_address?: string
+  // Buyer
+  buyer_name: string
+  buyer_vat_id?: string
+  buyer_address?: string
+  // Amounts
+  net_amount: number
+  tax_amount: number
+  gross_amount: number
+  tax_rate?: number
+  currency: string
+  // Line items
+  line_items: LineItem[]
+  // Payment details (BG-16)
+  iban?: string
+  bic?: string
+  payment_account_name?: string
+  // Routing & Reference
+  buyer_reference?: string
+  seller_endpoint_id?: string
+  seller_endpoint_scheme?: string
+  buyer_endpoint_id?: string
+  buyer_endpoint_scheme?: string
+  // Status & meta
+  source_type: string
+  ocr_confidence?: number
+  validation_status: string
+  validation_errors?: Array<{ code?: string; message: string; location?: string }>
+  xrechnung_available: boolean
+  zugferd_available: boolean
+  created_at: string
+  org_id?: number
 }
 
 export interface InvoiceCreate {
@@ -275,8 +323,8 @@ export const listInvoices = async (skip = 0, limit = 50): Promise<InvoiceListRes
   return response.data
 }
 
-export const getInvoice = async (invoiceId: string): Promise<Invoice> => {
-  const response = await api.get<Invoice>(`/api/invoices/${invoiceId}`)
+export const getInvoice = async (invoiceId: string): Promise<InvoiceDetail> => {
+  const response = await api.get<InvoiceDetail>(`/api/invoices/${invoiceId}`)
   return response.data
 }
 

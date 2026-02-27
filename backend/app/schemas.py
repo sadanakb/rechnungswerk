@@ -109,6 +109,61 @@ class InvoiceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class InvoiceDetailResponse(InvoiceResponse):
+    """Extended response schema for single invoice detail view — includes all fields."""
+    seller_vat_id: Optional[str] = None
+    seller_address: Optional[str] = None
+    buyer_vat_id: Optional[str] = None
+    buyer_address: Optional[str] = None
+    tax_rate: Optional[float] = None
+    currency: str = "EUR"
+    line_items: Optional[List[dict]] = None
+    validation_errors: Optional[List[dict]] = None
+    org_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @classmethod
+    def from_orm_with_extras(cls, invoice) -> "InvoiceDetailResponse":
+        """Build response from ORM object, parsing JSON fields as needed."""
+        data = {
+            "id": invoice.id,
+            "invoice_id": invoice.invoice_id,
+            "invoice_number": invoice.invoice_number,
+            "invoice_date": invoice.invoice_date,
+            "due_date": invoice.due_date,
+            "seller_name": invoice.seller_name,
+            "seller_vat_id": invoice.seller_vat_id,
+            "seller_address": invoice.seller_address,
+            "buyer_name": invoice.buyer_name,
+            "buyer_vat_id": invoice.buyer_vat_id,
+            "buyer_address": invoice.buyer_address,
+            "net_amount": float(invoice.net_amount) if invoice.net_amount is not None else 0.0,
+            "tax_amount": float(invoice.tax_amount) if invoice.tax_amount is not None else 0.0,
+            "gross_amount": float(invoice.gross_amount) if invoice.gross_amount is not None else 0.0,
+            "tax_rate": float(invoice.tax_rate) if invoice.tax_rate is not None else None,
+            "currency": invoice.currency or "EUR",
+            "iban": invoice.iban,
+            "bic": invoice.bic,
+            "payment_account_name": invoice.payment_account_name,
+            "buyer_reference": invoice.buyer_reference,
+            "seller_endpoint_id": invoice.seller_endpoint_id,
+            "seller_endpoint_scheme": invoice.seller_endpoint_scheme,
+            "buyer_endpoint_id": invoice.buyer_endpoint_id,
+            "buyer_endpoint_scheme": invoice.buyer_endpoint_scheme,
+            "line_items": invoice.line_items if isinstance(invoice.line_items, list) else [],
+            "validation_errors": invoice.validation_errors if isinstance(invoice.validation_errors, list) else [],
+            "source_type": invoice.source_type,
+            "ocr_confidence": invoice.ocr_confidence,
+            "validation_status": invoice.validation_status,
+            "xrechnung_available": bool(invoice.xrechnung_xml_path),
+            "zugferd_available": bool(invoice.zugferd_pdf_path),
+            "created_at": invoice.created_at,
+            "org_id": invoice.organization_id,
+        }
+        return cls(**data)
+
+
 class InvoiceListResponse(BaseModel):
     """Paginated invoice list"""
     items: List[InvoiceResponse]

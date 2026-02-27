@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Invoice, UploadLog
 from app.schemas import (
-    InvoiceCreate, InvoiceResponse, InvoiceListResponse, OCRResult,
+    InvoiceCreate, InvoiceResponse, InvoiceDetailResponse, InvoiceListResponse, OCRResult,
     BatchJobResponse, BatchFileResult,
 )
 from app.ocr_pipeline import OCRPipeline
@@ -549,16 +549,23 @@ async def list_invoices(
     return InvoiceListResponse(items=invoices, total=total, skip=skip, limit=limit)
 
 
-@router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
+@router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
 async def get_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
-    """Get single invoice by ID"""
+    """Get single invoice by ID — returns full detail including line items."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
-    return invoice
+
+    # Tenant isolation: if authenticated, enforce org scope
+    if current_user and current_user.get("org_id"):
+        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
+            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    return InvoiceDetailResponse.from_orm_with_extras(invoice)
 
 
 @router.delete("/invoices/{invoice_id}")
