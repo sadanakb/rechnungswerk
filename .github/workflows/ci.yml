@@ -56,6 +56,12 @@ jobs:
           KOSIT_DOCKER: "false"
         run: pytest tests/ -q --tb=short
 
+      - name: Security audit (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --desc || echo "::warning::pip-audit found vulnerabilities"
+        continue-on-error: true
+
       - name: Cleanup test database
         if: always()
         run: rm -f data/test.db
@@ -92,6 +98,10 @@ jobs:
           else
             echo "vitest nicht in package.json — Schritt übersprungen"
           fi
+
+      - name: Security audit (npm)
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
   # ─── Job 3: Lint ───────────────────────────────────────────────────
   lint:

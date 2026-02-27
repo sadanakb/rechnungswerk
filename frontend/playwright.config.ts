@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './playwright/e2e',
+  testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -9,8 +9,14 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
     trace: 'on-first-retry',
+  },
+
+  webServer: {
+    command: 'npm run dev',
+    port: 3001,
+    reuseExistingServer: !process.env.CI,
   },
 
   projects: [

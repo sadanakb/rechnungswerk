@@ -1,0 +1,125 @@
+---
+title: "sevDesk Alternative: Warum Open-Source E-Rechnungssoftware die bessere Wahl ist"
+description: "Vergleich zwischen sevDesk und Open-Source E-Rechnungssoftware: Datensouveraenitaet, Kosten, Features und warum RechnungsWerk die bessere Alternative fuer KMUs ist."
+date: "2026-02-27"
+author: "RechnungsWerk Team"
+---
+
+## sevDesk im Ueberblick
+
+sevDesk ist eine der bekanntesten Cloud-Buchhaltungsloesungen in Deutschland. Das 2013 gegruendete Unternehmen aus Offenburg bietet eine SaaS-Plattform fuer Rechnungserstellung, Buchhaltung und Belegerfassung. Mit Preisen ab 8,90 Euro pro Monat richtet sich sevDesk vor allem an Selbststaendige, Freiberufler und kleine Unternehmen.
+
+Die Kernfunktionen umfassen:
+
+- **Rechnungserstellung:** Erstellung von Angeboten, Rechnungen und Mahnungen mit verschiedenen Templates
+- **Belegerfassung:** Automatische Texterkennung (OCR) fuer eingehende Belege
+- **Banking:** Anbindung an Bankkonten fuer automatischen Zahlungsabgleich
+- **DATEV-Export:** Uebermittlung von Buchungsdaten an den Steuerberater
+- **USt-Voranmeldung:** Direkte Uebermittlung an ELSTER
+
+Soweit klingt das solide. Doch bei genauerem Hinsehen zeigen sich fundamentale Probleme, die viele Nutzer erst bemerken, wenn es zu spaet ist.
+
+## Das Problem mit SaaS Lock-in
+
+### Ihre Daten gehoeren nicht wirklich Ihnen
+
+Bei sevDesk — wie bei allen geschlossenen SaaS-Plattformen — liegen Ihre Geschaeftsdaten auf den Servern des Anbieters. Sie haben zwar Zugriff ueber die Weboberflaeche, aber keinen vollstaendigen Export aller Daten in einem offenen Format. Wenn sevDesk den Betrieb einstellt, den Preis verdoppelt oder Features entfernt, stehen Sie vor einem Problem.
+
+Die Abhaengigkeit von einem einzelnen Anbieter (Vendor Lock-in) ist eines der groessten Risiken fuer Unternehmen. Ihre Rechnungsdaten, Kundenstammdaten und Buchungssaetze sind geschaeftskritische Informationen. Sie sollten jederzeit vollstaendig exportierbar und in anderen Systemen nutzbar sein.
+
+### Preiserhoehungen ohne Alternative
+
+SaaS-Anbieter erhoehen regelmaessig ihre Preise. Was heute 8,90 Euro kostet, kann in zwei Jahren 14,90 Euro kosten — und Sie haben keine Alternative, weil Ihre gesamten Daten und Workflows auf der Plattform liegen. sevDesk hat in der Vergangenheit bereits mehrfach seine Preisstruktur angepasst, und Bestandskunden mussten die Erhoehungen hinnehmen oder mit erheblichem Aufwand migrieren.
+
+### Keine Self-Hosted Option
+
+Mit sevDesk gibt es genau eine Deployment-Option: die Cloud des Anbieters. Fuer Unternehmen mit besonderen Datenschutzanforderungen, regulatorischen Vorgaben oder dem Wunsch nach vollstaendiger Kontrolle ueber ihre Infrastruktur ist das ein Ausschlusskriterium. Gerade im Kontext der E-Rechnungspflicht, wo steuerrelevante Daten verarbeitet werden, ist die Frage der Datensouveraenitaet von zentraler Bedeutung.
+
+## Warum Open-Source die bessere Wahl ist
+
+### Datensouveraenitaet
+
+Bei Open-Source-Software haben Sie die volle Kontrolle ueber Ihre Daten. Sie entscheiden, wo die Daten gespeichert werden — auf Ihrem eigenen Server, bei einem europaeischen Cloud-Anbieter Ihrer Wahl oder lokal in Ihrem Buero. Niemand kann Ihnen den Zugang zu Ihren eigenen Geschaeftsdaten entziehen.
+
+### AGPL-Lizenz: Freiheit mit Garantie
+
+RechnungsWerk steht unter der AGPL-Lizenz (GNU Affero General Public License). Das bedeutet: Der gesamte Quellcode ist einsehbar, pruefbar und veraenderbar. Die AGPL stellt sicher, dass alle Weiterentwicklungen — auch bei Nutzung als Webservice — der Community zurueckgegeben werden muessen. Das verhindert, dass ein Anbieter den Code nimmt, proprietaer macht und die Community aussperrt.
+
+### Community und Transparenz
+
+Open-Source-Projekte profitieren von der kollektiven Intelligenz einer Entwickler-Community. Sicherheitsluecken werden schneller gefunden und behoben, Features werden von echten Nutzern vorgeschlagen und priorisiert. Und das Wichtigste: Sie koennen den Code selbst pruefen und sicherstellen, dass er tut, was er verspricht — keine Black Box, keine versteckten Datensammlungen.
+
+### Keine kuenstlichen Beschraenkungen
+
+Waehrend SaaS-Anbieter Features hinter Preisstufen verstecken, stehen bei Open-Source-Software alle Funktionen jedem Nutzer zur Verfuegung. Sie zahlen nicht fuer die Software selbst, sondern — wenn gewuenscht — fuer Support, Hosting oder Premium-Features, die ueber den Kern hinausgehen.
+
+## Feature-Vergleich: sevDesk vs. RechnungsWerk
+
+### XRechnung-Unterstuetzung
+
+| Feature | sevDesk | RechnungsWerk |
+|---------|---------|---------------|
+| XRechnung erstellen | Ja (ab Buchhaltung-Tarif) | Ja (kostenlos) |
+| XRechnung validieren | Eingeschraenkt | Ja, gegen offizielle Schematron-Regeln |
+| XRechnung Version | 3.0 | 3.0.2 (aktuellste) |
+| Leitweg-ID Unterstuetzung | Ja | Ja |
+
+### ZUGFeRD-Unterstuetzung
+
+| Feature | sevDesk | RechnungsWerk |
+|---------|---------|---------------|
+| ZUGFeRD erstellen | Ja | Ja |
+| ZUGFeRD-Profile | Comfort | Alle Profile (Minimum bis Extended) |
+| ZUGFeRD-Version | 2.2 | 2.3.3 (aktuellste) |
+| PDF/A-3 konform | Ja | Ja |
+
+### OCR und Belegerfassung
+
+sevDesk bietet eine integrierte OCR-Funktion fuer eingehende Belege. RechnungsWerk setzt auf eine modulare Architektur, bei der OCR als optionales Modul integriert werden kann — entweder mit Open-Source-OCR-Engines wie Tesseract oder ueber API-Anbindungen an spezialisierte Dienste.
+
+### DATEV-Export
+
+Beide Loesungen bieten DATEV-kompatible Exports. RechnungsWerk unterstuetzt sowohl SKR03 als auch SKR04 und generiert Buchungsstapel im DATEV-CSV-Format, die direkt in DATEV Unternehmen online importiert werden koennen.
+
+### API und Integrationen
+
+| Feature | sevDesk | RechnungsWerk |
+|---------|---------|---------------|
+| REST API | Ja | Ja |
+| API-Dokumentation | Gut | Vollstaendig (OpenAPI) |
+| Webhooks | Eingeschraenkt | Ja |
+| Self-Hosted API | Nein | Ja |
+| Rate Limits | Ja (je nach Tarif) | Keine (self-hosted) |
+
+## RechnungsWerk als Alternative
+
+RechnungsWerk ist eine Open-Source E-Rechnungssoftware, die speziell fuer den deutschen Markt entwickelt wurde. Der Fokus liegt auf der vollstaendigen Unterstuetzung der E-Rechnungspflicht — von XRechnung ueber ZUGFeRD bis hin zu Peppol.
+
+### Kostenlos starten
+
+Sie koennen RechnungsWerk sofort und kostenlos nutzen. Es gibt keinen kuenstlichen "Free Tier" mit eingeschraenkten Funktionen. Der vollstaendige Funktionsumfang steht jedem Nutzer zur Verfuegung.
+
+### Self-Hosted: Volle Kontrolle
+
+Installieren Sie RechnungsWerk auf Ihrem eigenen Server — ob Linux-Server im Rechenzentrum, Docker-Container oder lokaler Rechner. Ihre Daten verlassen nie Ihre Infrastruktur, wenn Sie das nicht wollen.
+
+### Cloud-Option: Komfort ohne Kompromisse
+
+Fuer Unternehmen, die keinen eigenen Server betreiben moechten, bietet RechnungsWerk eine optionale Cloud-Version. Der Unterschied zu sevDesk: Sie koennen jederzeit zur Self-Hosted-Variante wechseln und Ihre Daten vollstaendig mitnehmen. Kein Lock-in, kein Datenverlust.
+
+### E-Rechnungspflicht ab 2025
+
+RechnungsWerk wurde von Grund auf fuer die neue E-Rechnungspflicht entwickelt:
+
+- **Empfang:** Importieren und validieren Sie eingehende XRechnung- und ZUGFeRD-Dateien
+- **Erstellung:** Generieren Sie konforme E-Rechnungen in allen zugelassenen Formaten
+- **Archivierung:** GoBD-konforme Aufbewahrung fuer 10 Jahre
+- **Versand:** Direkter Versand per E-Mail oder ueber das Peppol-Netzwerk
+
+## Fazit: Datensouveraenitaet schlaegt Bequemlichkeit
+
+sevDesk ist ein solides Produkt — aber es ist ein geschlossenes System, das Sie in die Abhaengigkeit eines einzelnen Anbieters bringt. In einer Zeit, in der die E-Rechnungspflicht alle Unternehmen betrifft und steuerrelevante Daten zuverlaessig und langfristig archiviert werden muessen, ist Datensouveraenitaet kein Luxus, sondern eine Notwendigkeit.
+
+Open-Source-Software wie RechnungsWerk gibt Ihnen die Kontrolle zurueck: ueber Ihre Daten, ueber Ihre Infrastruktur und ueber Ihre Kosten. Sie sind nicht von Preiserhoehungen, Feature-Aenderungen oder Geschaeftsentscheidungen eines einzelnen Anbieters abhaengig.
+
+**Testen Sie RechnungsWerk jetzt kostenlos** und ueberzeugen Sie sich selbst, dass E-Rechnungssoftware keine monatliche Gebuehr kosten muss — und dass Ihre Geschaeftsdaten in Ihre Haende gehoeren.
