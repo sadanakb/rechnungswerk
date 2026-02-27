@@ -1318,3 +1318,35 @@ export async function saveInvoiceSequence(config: SequenceConfig): Promise<{ ok:
   const res = await api.post('/api/invoice-sequences', config)
   return res.data
 }
+
+// ---------------------------------------------------------------------------
+// CSV Import
+// ---------------------------------------------------------------------------
+
+export interface ImportResult {
+  imported: number
+  skipped: number
+  errors: Array<{ row: number; error: string }>
+  total_rows: number
+}
+
+export async function importCsv(file: File): Promise<ImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post<ImportResult>('/api/import/csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
+export async function downloadImportTemplate(): Promise<void> {
+  const res = await api.get('/api/import/template', { responseType: 'blob' })
+  const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'rechnungswerk_import_vorlage.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

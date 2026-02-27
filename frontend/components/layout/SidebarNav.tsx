@@ -24,6 +24,7 @@ import {
   ClipboardList,
   LayoutTemplate,
   Webhook,
+  FileInput,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -38,6 +39,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/ocr', label: 'OCR Upload', icon: Upload },
+  { href: '/import', label: 'Import', icon: FileInput },
   { href: '/manual', label: 'Manuelle Eingabe', icon: FileText },
   { href: '/invoices', label: 'Rechnungen', icon: List },
   { href: '/validator', label: 'Validator', icon: CheckCircle },
