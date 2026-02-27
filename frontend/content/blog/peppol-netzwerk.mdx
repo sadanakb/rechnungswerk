@@ -1,0 +1,170 @@
+---
+title: "Peppol Netzwerk: So versenden Sie E-Rechnungen europaweit"
+description: "Alles ueber das Peppol-Netzwerk: Wie das 4-Corner-Modell funktioniert, wie Sie sich registrieren und warum Peppol der Standard fuer den europaeischen E-Rechnungsversand wird."
+date: "2026-02-21"
+author: "RechnungsWerk Team"
+---
+
+## Was ist Peppol?
+
+Peppol steht fuer "Pan-European Public Procurement Online" und ist ein internationales Netzwerk fuer den standardisierten Austausch von Geschaeftsdokumenten — insbesondere E-Rechnungen. Was urspruenglich als EU-Projekt fuer die oeffentliche Beschaffung begann, hat sich laengst zum globalen Standard fuer den elektronischen Rechnungsaustausch entwickelt.
+
+Das Peppol-Netzwerk verbindet Unternehmen, Behoerden und Organisationen in ueber 40 Laendern miteinander. Statt bilaterale Schnittstellen zwischen jedem Sender und jedem Empfaenger aufzubauen, nutzen alle Teilnehmer ein gemeinsames Netzwerk mit einheitlichen Regeln und Formaten. Das Prinzip ist vergleichbar mit dem Telefonnetz: Sie muessen nicht wissen, welchen Telefonanbieter Ihr Gespraechspartner nutzt — Sie waehlen die Nummer und werden verbunden.
+
+### Die Organisation hinter Peppol
+
+Das Netzwerk wird von OpenPeppol verwaltet, einer internationalen Non-Profit-Organisation mit Sitz in Bruessel. OpenPeppol definiert die technischen Standards, zertifiziert Access Point Provider und stellt die Governance-Struktur sicher. Deutschland ist ueber die KoSIT (Koordinierungsstelle fuer IT-Standards) als nationale Peppol-Authority vertreten.
+
+### Wer nutzt Peppol?
+
+- **Oeffentliche Auftraggeber:** In vielen EU-Laendern ist Peppol der vorgeschriebene Kanal fuer E-Rechnungen an Behoerden
+- **Grossunternehmen:** Konzerne nutzen Peppol fuer den automatisierten Rechnungsaustausch mit Zulieferern und Partnern
+- **KMU:** Kleine und mittlere Unternehmen profitieren von der einheitlichen Infrastruktur, die den Rechnungsversand an verschiedene Empfaenger vereinfacht
+- **Steuerbehoerden:** Mehrere Laender (darunter Italien und Frankreich) nutzen Peppol-basierte Systeme fuer die steuerliche Rechnungsueberwachung
+
+## Das 4-Corner-Modell
+
+Das Herzstueck von Peppol ist das sogenannte 4-Corner-Modell. Es beschreibt, wie E-Rechnungen ueber das Netzwerk vom Sender zum Empfaenger gelangen — aehnlich wie ein Brief ueber zwei Postunternehmen von Absender zu Empfaenger transportiert wird.
+
+### Die vier Ecken
+
+1. **Ecke 1 — Sender:** Das Unternehmen, das die E-Rechnung erstellt und versendet. Der Sender erzeugt die Rechnung in seiner Software (z.B. RechnungsWerk) und uebergibt sie an seinen Access Point.
+
+2. **Ecke 2 — Access Point des Senders (C2):** Der Peppol Access Point des Senders nimmt die Rechnung entgegen, validiert sie gegen die Peppol-Spezifikationen und leitet sie an den Access Point des Empfaengers weiter. Der Access Point uebernimmt die sichere Uebertragung ueber das Peppol-Netzwerk.
+
+3. **Ecke 3 — Access Point des Empfaengers (C3):** Der Access Point des Empfaengers empfaengt die Rechnung, prueft die Integritaet und stellt sie dem Empfaenger zur Verfuegung. Sender und Empfaenger muessen nicht denselben Access Point Provider nutzen.
+
+4. **Ecke 4 — Empfaenger:** Das Unternehmen oder die Behoerde, die die E-Rechnung empfaengt. Die Rechnung wird automatisch in das Empfangssystem uebernommen und kann dort weiterverarbeitet werden.
+
+### Wie findet der Access Point den richtigen Empfaenger?
+
+Das Peppol-Netzwerk nutzt zwei zentrale Verzeichnisdienste:
+
+- **SML (Service Metadata Locator):** Ein globales Verzeichnis, das fuer eine bestimmte Teilnehmer-ID den zustaendigen SMP-Server ermittelt. Vergleichbar mit einem DNS-System fuer Peppol-Teilnehmer.
+- **SMP (Service Metadata Publisher):** Ein Verzeichnis, das fuer einen bestimmten Teilnehmer die technischen Details bereitstellt: Welche Dokumenttypen kann der Empfaenger verarbeiten? Ueber welchen Access Point ist er erreichbar? Welche Prozesse unterstuetzt er?
+
+Wenn Sie eine E-Rechnung ueber Peppol versenden, fragt Ihr Access Point automatisch den SML und SMP ab, um den korrekten Empfaenger-Access-Point zu ermitteln. Das geschieht vollautomatisch im Hintergrund — Sie muessen nur die Empfaenger-ID kennen.
+
+## Registrierung als Peppol-Teilnehmer
+
+Um E-Rechnungen ueber Peppol versenden und empfangen zu koennen, muessen Sie sich als Peppol-Teilnehmer registrieren. Die Registrierung erfolgt nicht direkt bei OpenPeppol, sondern ueber einen zertifizierten Access Point Provider.
+
+### Schritt 1: Access Point Provider waehlen
+
+Ein Peppol Access Point Provider ist ein Dienstleister, der die technische Anbindung an das Peppol-Netzwerk bereitstellt. In Deutschland gibt es mehrere zertifizierte Anbieter. RechnungsWerk bietet eine integrierte Peppol-Anbindung, sodass Sie keinen separaten Access Point Provider beauftragen muessen.
+
+Bei der Auswahl eines Access Point Providers sollten Sie auf folgende Kriterien achten:
+
+- **Zertifizierung:** Ist der Anbieter offiziell von OpenPeppol zertifiziert?
+- **Laenderabdeckung:** Unterstuetzt der Anbieter den Versand in alle Laender, in die Sie Rechnungen senden?
+- **Dokumenttypen:** Werden neben Rechnungen auch Gutschriften, Bestellungen und andere Dokumenttypen unterstuetzt?
+- **Integration:** Laesst sich der Access Point nahtlos in Ihre bestehende Software integrieren?
+- **Kosten:** Welches Preismodell gilt — pro Dokument, monatliche Pauschale oder Kombination?
+
+### Schritt 2: Peppol-Teilnehmer-ID erhalten
+
+Jeder Teilnehmer im Peppol-Netzwerk wird ueber eine eindeutige Peppol Participant ID identifiziert. In Deutschland basiert diese ID in der Regel auf einem der folgenden Schemata:
+
+- **GLN (Global Location Number):** Eine 13-stellige Nummer, die ueber GS1 vergeben wird
+- **Leitweg-ID:** Die deutsche Leitweg-ID, die fuer Rechnungen an oeffentliche Auftraggeber genutzt wird
+- **USt-ID:** In einigen Faellen kann die Umsatzsteuer-Identifikationsnummer als Teilnehmer-ID verwendet werden
+- **DUNS-Nummer:** Eine von Dun & Bradstreet vergebene Unternehmensnummer
+
+Ihr Access Point Provider registriert Ihre Teilnehmer-ID im SMP und macht Sie damit im Peppol-Netzwerk auffindbar.
+
+### Schritt 3: SMP-Eintrag konfigurieren
+
+Nach der Registrierung wird ein SMP-Eintrag fuer Ihre Teilnehmer-ID erstellt. Dieser Eintrag definiert:
+
+- Welche Dokumenttypen Sie empfangen koennen (z.B. Peppol BIS Billing 3.0 Invoice, Credit Note)
+- Ueber welchen Access Point die Dokumente zugestellt werden sollen
+- Welche Prozesse Sie unterstuetzen
+
+RechnungsWerk konfiguriert diese Einstellungen automatisch bei der Ersteinrichtung. Sie muessen lediglich bestaetigen, welche Dokumenttypen Sie empfangen moechten.
+
+## Peppol in Deutschland
+
+### Oeffentliche Auftraggeber
+
+In Deutschland ist Peppol bereits fuer die Rechnungsstellung an Bundesbehoerden relevant. Ueber die Zentrale Rechnungseingangsplattform des Bundes (ZRE) und die OZG-konforme Rechnungseingangsplattform (OZG-RE) koennen E-Rechnungen im XRechnung-Format ueber das Peppol-Netzwerk an oeffentliche Auftraggeber uebermittelt werden.
+
+### Peppol BIS Billing 3.0
+
+Peppol BIS Billing 3.0 ist die aktuelle Spezifikation fuer den Rechnungsaustausch ueber das Peppol-Netzwerk. Sie basiert auf der europaeischen Norm EN 16931 und definiert:
+
+- Das Dokumentenformat (UBL 2.1 Invoice und Credit Note)
+- Die Geschaeftsregeln und Validierungen
+- Die Prozessbeschreibung fuer den Rechnungsaustausch
+
+Da sowohl XRechnung als auch Peppol BIS Billing 3.0 auf der EN 16931 basieren, sind die Formate weitgehend kompatibel. Rechnungen, die den XRechnung-Standard erfuellen, koennen — mit geringfuegigen Anpassungen — auch ueber das Peppol-Netzwerk versendet werden.
+
+### Die Rolle der KoSIT
+
+Die KoSIT (Koordinierungsstelle fuer IT-Standards) ist die nationale Peppol-Authority fuer Deutschland. Sie vertritt deutsche Interessen bei OpenPeppol, stellt die Kompatibilitaet zwischen XRechnung und Peppol sicher und betreibt den deutschen SMP-Dienst.
+
+## XRechnung via Peppol versenden
+
+### Leitweg-ID als Empfaengeradresse
+
+Wenn Sie eine E-Rechnung an einen oeffentlichen Auftraggeber in Deutschland ueber Peppol versenden, verwenden Sie die Leitweg-ID als Empfaengeradresse. Die Leitweg-ID ist eine hierarchisch aufgebaute Kennung, die den Empfaenger eindeutig identifiziert:
+
+```
+[Grobadressierung]-[Feinadressierung]-[Pruefziffer]
+Beispiel: 991-12345-67
+```
+
+Die Leitweg-ID finden Sie in der Regel in den Vertrags- oder Bestellunterlagen des oeffentlichen Auftraggebers. Sie ist Pflichtbestandteil jeder XRechnung an Bundesbehoerden.
+
+### Der Versandprozess
+
+1. **Rechnung erstellen:** Erstellen Sie in RechnungsWerk eine XRechnung mit allen Pflichtfeldern, einschliesslich der Leitweg-ID des Empfaengers.
+2. **Versandkanal waehlen:** Waehlen Sie "Peppol" als Versandkanal. RechnungsWerk prueft automatisch, ob der Empfaenger im Peppol-Netzwerk registriert ist.
+3. **Validierung:** RechnungsWerk validiert die Rechnung gegen die XRechnung-Schematron-Regeln und die Peppol BIS Billing 3.0 Spezifikation.
+4. **Versand:** Die Rechnung wird ueber Ihren Access Point an den Access Point des Empfaengers uebermittelt.
+5. **Zustellbestaetigung:** Sie erhalten eine Zustellbestaetigung (Message Level Response), sobald der Empfaenger-Access-Point die Rechnung erfolgreich empfangen hat.
+
+### Auch fuer B2B-Rechnungen
+
+Peppol ist nicht auf oeffentliche Auftraggeber beschraenkt. Immer mehr private Unternehmen registrieren sich im Peppol-Netzwerk, um E-Rechnungen automatisiert auszutauschen. Wenn Ihr Geschaeftspartner im Peppol-Netzwerk registriert ist, koennen Sie ihm Rechnungen genauso unkompliziert ueber Peppol senden wie an eine Behoerde.
+
+## Vorteile gegenueber E-Mail-Versand
+
+Viele Unternehmen versenden E-Rechnungen derzeit per E-Mail — als XML-Anhang oder ZUGFeRD-PDF. Das funktioniert, hat aber erhebliche Nachteile im Vergleich zum Peppol-Versand.
+
+### Zustellgarantie
+
+Bei E-Mail gibt es keine zuverlaessige Zustellbestaetigung. E-Mails koennen im Spam-Filter landen, vom Mailserver abgelehnt werden oder in ueberfuellten Postfaechern untergehen. Peppol bietet eine technische Zustellbestaetigung auf Netzwerkebene: Sie wissen mit Sicherheit, dass die Rechnung den Empfaenger erreicht hat.
+
+### Automatisierung
+
+E-Mails muessen manuell oder mit fehleranfaelligen Parsing-Regeln verarbeitet werden. Peppol liefert strukturierte Daten ueber eine standardisierte Schnittstelle — ideal fuer die automatische Weiterverarbeitung in der Buchhaltung. Kein manuelles Oeffnen von E-Mails, kein Herunterladen von Anhaengen, kein Copy-Paste.
+
+### Compliance
+
+Peppol stellt sicher, dass nur valide Dokumente uebertragen werden. Der Access Point validiert jede Rechnung gegen die geltenden Spezifikationen, bevor sie ins Netzwerk eingespeist wird. Fehlerhafte Rechnungen werden zurueckgewiesen, bevor sie den Empfaenger erreichen. Das spart beiden Seiten Korrekturaufwand.
+
+### Sicherheit
+
+Die Kommunikation im Peppol-Netzwerk ist durch TLS-Verschluesselung und digitale Zertifikate abgesichert. Jeder Access Point muss sich gegenueber dem Netzwerk authentifizieren. Das bietet ein deutlich hoeheres Sicherheitsniveau als unverschluesselte E-Mails.
+
+### Skalierbarkeit
+
+Wenn Sie Rechnungen an Hunderte von Empfaengern versenden, skaliert Peppol besser als E-Mail. Sie benoetigen keine Verteilerlisten, keine individuellen E-Mail-Adressen und keine manuelle Zuordnung. Die Peppol Participant ID des Empfaengers genuegt — das Netzwerk erledigt den Rest.
+
+### Interoperabilitaet in Europa
+
+Peppol ist der einzige Uebertragungskanal, der europaweit einheitlich funktioniert. Ob Ihr Empfaenger in Deutschland, Frankreich, Italien, Norwegen oder Australien sitzt — das Peppol-Netzwerk stellt die Interoperabilitaet sicher. Mit E-Mail muessten Sie fuer jedes Land und jeden Empfaenger individuelle Vereinbarungen treffen.
+
+## Peppol und die E-Rechnungspflicht ab 2025
+
+Mit der E-Rechnungspflicht ab 2025 wird Peppol in Deutschland an Bedeutung gewinnen. Zwar ist Peppol derzeit nicht der einzige zulaessige Uebertragungsweg fuer B2B-E-Rechnungen — auch der Versand per E-Mail bleibt zulaessig. Doch die Vorteile von Peppol in Bezug auf Automatisierung, Zustellsicherheit und europaeische Interoperabilitaet machen es zum bevorzugten Kanal fuer Unternehmen, die den Rechnungsaustausch professionell aufstellen moechten.
+
+Es wird erwartet, dass ein meldesystem-aehnliches Reporting-System auf Basis von Peppol in Deutschland eingefuehrt wird. Unternehmen, die fruehzeitig auf Peppol setzen, sind fuer diese Entwicklung bestens vorbereitet.
+
+## Fazit
+
+Peppol ist mehr als nur ein weiterer Versandkanal fuer E-Rechnungen. Es ist eine europaeische Infrastruktur, die den Rechnungsaustausch standardisiert, automatisiert und absichert. Mit dem 4-Corner-Modell, der Zustellgarantie und der laenderuebergreifenden Interoperabilitaet bietet Peppol Vorteile, die kein E-Mail-basierter Workflow erreichen kann.
+
+Fuer Unternehmen in Deutschland ist jetzt der richtige Zeitpunkt, sich mit Peppol zu beschaeftigen. Die E-Rechnungspflicht schafft den gesetzlichen Rahmen, und die Infrastruktur steht bereit. RechnungsWerk bietet eine integrierte Peppol-Anbindung, die den Einstieg so einfach wie moeglich macht — von der Registrierung bis zum ersten Rechnungsversand.
+
+**Starten Sie jetzt kostenlos mit RechnungsWerk** und versenden Sie Ihre E-Rechnungen ueber das Peppol-Netzwerk — sicher, automatisiert und europaweit.

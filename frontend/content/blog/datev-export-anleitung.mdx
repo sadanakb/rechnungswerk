@@ -1,0 +1,206 @@
+---
+title: "DATEV Export aus RechnungsWerk: Schritt-fuer-Schritt Anleitung"
+description: "Erfahren Sie, wie Sie Ihre Rechnungsdaten aus RechnungsWerk im DATEV-kompatiblen Format exportieren — von der Kontenrahmen-Wahl bis zum Import in DATEV Unternehmen online."
+date: "2026-02-22"
+author: "RechnungsWerk Team"
+---
+
+## Warum DATEV Export?
+
+In Deutschland arbeiten rund 90 Prozent aller steuerberatenden Berufe mit DATEV-Software. Wenn Sie einen Steuerberater beauftragen, ist die Wahrscheinlichkeit hoch, dass Ihre Buchhaltungsdaten am Ende in DATEV Unternehmen online oder DATEV Kanzlei-Rechnungswesen landen. Das bedeutet: Ihre Rechnungssoftware muss Daten so exportieren koennen, dass Ihr Steuerberater sie ohne manuellen Aufwand importieren kann.
+
+Genau hier setzt der DATEV-Export in RechnungsWerk an. Anstatt Rechnungen einzeln per Hand in die Finanzbuchhaltung einzutippen, exportieren Sie alle Buchungssaetze gesammelt in einem DATEV-kompatiblen Format. Ihr Steuerberater importiert die Datei mit wenigen Klicks — fertig. Kein Abtippen, keine Uebertragungsfehler, kein Zeitverlust.
+
+### Die Vorteile im Ueberblick
+
+- **Zeitersparnis:** Statt einzelner Belege uebergeben Sie einen fertigen Buchungsstapel
+- **Fehlerreduktion:** Automatisierte Uebernahme eliminiert Tippfehler bei Betraegen, Kontonummern und Steuersaetzen
+- **Kostenersparnis:** Weniger manueller Aufwand beim Steuerberater bedeutet geringere Honorarkosten
+- **Nachvollziehbarkeit:** Jeder Buchungssatz ist eindeutig einer Rechnung zugeordnet
+- **Aktualitaet:** Monatliche oder quartalsweise Exports halten die Finanzbuchhaltung auf dem neuesten Stand
+
+## SKR03 vs. SKR04: Welchen Kontenrahmen brauchen Sie?
+
+Bevor Sie Ihren ersten DATEV-Export starten, muessen Sie wissen, welchen Standardkontenrahmen (SKR) Ihr Steuerberater verwendet. In Deutschland sind zwei Kontenrahmen verbreitet: SKR03 und SKR04.
+
+### SKR03 — Der Prozessgliederungskontenrahmen
+
+SKR03 ist der in Deutschland am haeufigsten verwendete Kontenrahmen. Er gliedert die Konten nach betrieblichen Prozessen und Funktionen:
+
+- **Klasse 0:** Anlage- und Kapitalkonten (Grundstuecke, Maschinen, Eigenkapital)
+- **Klasse 1:** Finanz- und Privatkonten (Bank, Kasse, Privatentnahmen)
+- **Klasse 2:** Abgrenzungskonten (Rueckstellungen, aktive/passive Rechnungsabgrenzung)
+- **Klasse 3:** Wareneingang und Bestandskonten
+- **Klasse 4:** Betriebliche Aufwendungen (Personal, Miete, Versicherungen)
+- **Klasse 8:** Erloeskonten (Umsatzerloese, sonstige Ertraege)
+
+**Typisches Erloeskonto im SKR03:** 8400 (Erloese 19% USt) oder 8300 (Erloese 7% USt).
+
+SKR03 eignet sich besonders fuer Unternehmen, die ihre Buchfuehrung prozessorientiert aufbauen moechten. Die Struktur folgt dem betrieblichen Ablauf: Beschaffung, Produktion, Absatz.
+
+### SKR04 — Der Abschlussgliederungskontenrahmen
+
+SKR04 orientiert sich an der Gliederung des Jahresabschlusses (Bilanz und GuV). Das macht die Erstellung des Jahresabschlusses besonders uebersichtlich:
+
+- **Klasse 0:** Anlagevermoegen
+- **Klasse 1:** Umlaufvermoegen und aktive Rechnungsabgrenzung
+- **Klasse 2:** Eigenkapital und Verbindlichkeiten
+- **Klasse 3:** Fremdkapital
+- **Klasse 4:** Erloeskonten (Umsatzerloese)
+- **Klasse 5-7:** Aufwandskonten
+
+**Typisches Erloeskonto im SKR04:** 4400 (Erloese 19% USt) oder 4300 (Erloese 7% USt).
+
+SKR04 wird haeufig von groesseren Unternehmen und Kapitalgesellschaften gewaehlt, da die Kontengliederung die Erstellung von Bilanz und GuV erleichtert.
+
+### Welchen waehlen?
+
+Fragen Sie Ihren Steuerberater. In den meisten Faellen wird er Ihnen sagen, ob er SKR03 oder SKR04 fuer Ihr Unternehmen eingerichtet hat. Wenn Sie sich unsicher sind: SKR03 ist der Standard fuer die Mehrheit der kleinen und mittleren Unternehmen in Deutschland. RechnungsWerk unterstuetzt beide Kontenrahmen vollstaendig.
+
+## Export-Formate
+
+RechnungsWerk exportiert Ihre Buchungsdaten im DATEV-Buchungsstapel-Format (CSV). Dieses Format ist der De-facto-Standard fuer den Datenaustausch mit DATEV-Programmen.
+
+### Was enthaelt der Buchungsstapel?
+
+Jede Zeile im Buchungsstapel repraesentiert einen Buchungssatz mit folgenden Feldern:
+
+- **Umsatz:** Der Brutto- oder Nettobetrag der Buchung
+- **Soll/Haben-Kennzeichen:** S fuer Soll, H fuer Haben
+- **Konto:** Das Sachkonto (z.B. 8400 fuer Erloese 19% USt im SKR03)
+- **Gegenkonto:** Das Gegenkonto (z.B. 1200 fuer Bank im SKR03)
+- **Buchungsschluessel:** Der Steuerschluessel (z.B. 3 fuer 19% USt)
+- **Belegdatum:** Das Rechnungsdatum
+- **Belegnummer:** Die Rechnungsnummer als eindeutige Referenz
+- **Buchungstext:** Beschreibung der Buchung (z.B. Kundenname und Rechnungsnummer)
+
+### Zeichencodierung und Trennzeichen
+
+DATEV erwartet Dateien in der Zeichencodierung Windows-1252 (ANSI) mit Semikolon als Trennzeichen. RechnungsWerk generiert die Export-Datei automatisch in diesem Format — Sie muessen sich um Encoding-Details keine Gedanken machen.
+
+## Schritt-fuer-Schritt: DATEV-Export durchfuehren
+
+### Schritt 1: Rechnungen pruefen
+
+Bevor Sie exportieren, stellen Sie sicher, dass alle Rechnungen im gewuenschten Zeitraum vollstaendig und korrekt sind.
+
+Pruefen Sie insbesondere:
+
+- **Rechnungsnummern:** Sind alle Nummern fortlaufend und eindeutig?
+- **Steuersaetze:** Sind die korrekten Umsatzsteuersaetze (0%, 7%, 19%) hinterlegt?
+- **Kontozuordnungen:** Sind die Erloeskonten korrekt zugewiesen? RechnungsWerk ordnet Standard-Erloeskonten automatisch zu, aber bei besonderen Erloesarten (z.B. steuerfreie innergemeinschaftliche Lieferungen) sollten Sie die Zuordnung pruefen.
+- **Kundendaten:** Sind USt-ID-Nummern bei EU-Geschaeftspartnern hinterlegt?
+- **Rechnungsstatus:** Nur finalisierte Rechnungen sollten exportiert werden. Entwuerfe und stornierte Rechnungen gehoeren nicht in den Buchungsstapel.
+
+### Schritt 2: Zeitraum waehlen
+
+Navigieren Sie in RechnungsWerk zum Bereich "DATEV-Export" und waehlen Sie den Zeitraum, fuer den Sie Buchungssaetze exportieren moechten. Uebliche Intervalle sind:
+
+- **Monatlich:** Ideal fuer die monatliche Umsatzsteuer-Voranmeldung
+- **Quartalsweise:** Fuer Unternehmen mit quartalsweiser USt-Voranmeldung
+- **Jaehrlich:** Fuer den Jahresabschluss
+
+RechnungsWerk zeigt Ihnen eine Vorschau aller Rechnungen im gewaehlten Zeitraum mit der Anzahl der resultierenden Buchungssaetze.
+
+### Schritt 3: Kontenrahmen waehlen
+
+Waehlen Sie den Kontenrahmen, den Ihr Steuerberater verwendet — SKR03 oder SKR04. RechnungsWerk passt die Kontonummern im Export automatisch an den gewaehlten Kontenrahmen an.
+
+Wenn Sie sich nicht sicher sind: Ihr Steuerberater kann Ihnen die Information in wenigen Sekunden geben. Alternativ finden Sie die Angabe haeufig auf Ihren letzten Steuerunterlagen oder in der Betriebswirtschaftlichen Auswertung (BWA).
+
+### Schritt 4: Export starten
+
+Klicken Sie auf "Export starten". RechnungsWerk generiert die DATEV-Buchungsstapel-Datei und stellt sie zum Download bereit. Die Datei traegt die Endung `.csv` und enthaelt:
+
+- Einen Header mit Metadaten (Beraternummer, Mandantennummer, Wirtschaftsjahr, Buchungszeitraum)
+- Die einzelnen Buchungssaetze im DATEV-CSV-Format
+
+Speichern Sie die Datei an einem sicheren Ort und benennen Sie sie eindeutig, z.B. `DATEV_Export_2026_01.csv` fuer den Export des Januars 2026.
+
+### Schritt 5: In DATEV importieren
+
+Senden Sie die exportierte Datei an Ihren Steuerberater oder importieren Sie sie selbst in DATEV Unternehmen online:
+
+1. Melden Sie sich bei DATEV Unternehmen online an
+2. Navigieren Sie zu "Belege" → "Buchungsstapel importieren"
+3. Waehlen Sie die exportierte CSV-Datei aus
+4. DATEV prueft die Datei auf formale Korrektheit
+5. Bei erfolgreicher Validierung werden die Buchungssaetze in die Finanzbuchhaltung uebernommen
+6. Pruefen Sie die importierten Buchungen stichprobenartig
+
+Ihr Steuerberater kann die Buchungssaetze nach dem Import in DATEV Kanzlei-Rechnungswesen weiterverarbeiten, kontrollieren und fuer die Umsatzsteuer-Voranmeldung oder den Jahresabschluss verwenden.
+
+## Haeufige Probleme und Loesungen
+
+### Problem: Falsche Kontozuordnung
+
+**Symptom:** DATEV meldet beim Import ungueltige Kontonummern oder Buchungen landen auf den falschen Sachkonten.
+
+**Ursache:** Der Export wurde mit dem falschen Kontenrahmen erstellt (z.B. SKR03 statt SKR04) oder individuelle Konten weichen vom Standard ab.
+
+**Loesung:** Pruefen Sie in den RechnungsWerk-Einstellungen, ob der korrekte Kontenrahmen hinterlegt ist. Wenn Ihr Steuerberater abweichende Kontonummern verwendet (z.B. individuelle Erloeskonten), koennen Sie in RechnungsWerk die Kontozuordnungstabelle anpassen.
+
+### Problem: Fehlende USt-ID bei EU-Geschaeften
+
+**Symptom:** Innergemeinschaftliche Lieferungen werden mit deutschem Steuersatz exportiert, obwohl sie steuerfrei sein sollten.
+
+**Ursache:** Bei EU-Geschaeftspartnern ist keine gueltige USt-ID hinterlegt, weshalb RechnungsWerk die Rechnung nicht als steuerfreie innergemeinschaftliche Lieferung erkennt.
+
+**Loesung:** Hinterlegen Sie bei allen EU-Geschaeftspartnern die USt-ID-Nummer im Kundenstamm. RechnungsWerk validiert das Format der USt-ID automatisch. Anschliessend werden die betroffenen Rechnungen beim naechsten Export korrekt als steuerfreie Umsaetze gebucht.
+
+### Problem: Zeichencodierung (Encoding)
+
+**Symptom:** Umlaute und Sonderzeichen (ae, oe, ue, ss) werden nach dem Import in DATEV falsch dargestellt.
+
+**Ursache:** Die Export-Datei wurde versehentlich mit einer falschen Zeichencodierung geoeffnet und neu gespeichert. DATEV erwartet Windows-1252.
+
+**Loesung:** Oeffnen Sie die exportierte CSV-Datei nicht in Excel oder einem Texteditor, bevor Sie sie in DATEV importieren. Falls Sie die Datei pruefen muessen, achten Sie darauf, beim Speichern die Codierung Windows-1252 beizubehalten. RechnungsWerk liefert die Datei standardmaessig im korrekten Encoding aus.
+
+### Problem: Doppelte Buchungen
+
+**Symptom:** Buchungssaetze erscheinen doppelt in DATEV.
+
+**Ursache:** Der gleiche Zeitraum wurde versehentlich mehrfach exportiert und importiert.
+
+**Loesung:** RechnungsWerk kennzeichnet bereits exportierte Rechnungen. Beim erneuten Export desselben Zeitraums erscheint eine Warnung. Pruefen Sie vor jedem Import, ob der Zeitraum in DATEV bereits verbucht wurde.
+
+## Automatisierung ueber die API
+
+Fuer Unternehmen mit hohem Rechnungsvolumen bietet RechnungsWerk eine REST-API, ueber die DATEV-Exports programmatisch ausgeloest werden koennen. Das ermoeglicht:
+
+### Regelmaessige automatische Exports
+
+Richten Sie einen Cronjob oder eine Automatisierung ein, die am Monatsende automatisch den DATEV-Export fuer den abgelaufenen Monat erstellt. Der API-Endpunkt akzeptiert den gewuenschten Zeitraum und Kontenrahmen als Parameter und liefert die fertige CSV-Datei zurueck.
+
+### Integration in bestehende Workflows
+
+Wenn Sie bereits Tools wie Zapier, Make (ehemals Integromat) oder eigene Skripte fuer Ihre Buchhaltungsprozesse nutzen, koennen Sie den DATEV-Export nahtlos in Ihre bestehende Automatisierung einbinden. Der Export kann beispielsweise automatisch per E-Mail an Ihren Steuerberater versendet oder in einem geteilten Cloud-Ordner abgelegt werden.
+
+### Webhook-Benachrichtigungen
+
+RechnungsWerk kann bei jedem abgeschlossenen Export einen Webhook ausloesen, der Ihr Buchhaltungssystem oder Ihren Steuerberater ueber den neuen Datensatz informiert. So stellen Sie sicher, dass niemand einen Export verpasst.
+
+### API-Beispiel
+
+Ein typischer API-Aufruf fuer den DATEV-Export sieht wie folgt aus:
+
+```
+GET /api/v1/export/datev?from=2026-01-01&to=2026-01-31&skr=03
+Authorization: Bearer {API_KEY}
+```
+
+Die API liefert die CSV-Datei direkt im Response-Body zurueck — bereit fuer den Import in DATEV.
+
+## Best Practices fuer den DATEV-Export
+
+1. **Exportieren Sie regelmaessig:** Monatliche Exports erleichtern die laufende Buchhaltung und die USt-Voranmeldung.
+2. **Pruefen Sie vor dem Export:** Unvollstaendige Rechnungen oder fehlende Steuersaetze fuehren zu Korrekturbedarf in DATEV.
+3. **Archivieren Sie Exports:** Bewahren Sie jede exportierte Datei als Nachweis auf. RechnungsWerk speichert eine Kopie im Export-Verlauf.
+4. **Stimmen Sie sich mit Ihrem Steuerberater ab:** Klaeren Sie Kontenrahmen, Beraternummer und Mandantennummer einmalig zu Beginn der Zusammenarbeit.
+5. **Testen Sie den ersten Import gemeinsam:** Fuehren Sie den ersten DATEV-Import zusammen mit Ihrem Steuerberater durch, um sicherzustellen, dass alle Zuordnungen korrekt sind.
+
+## Fazit
+
+Der DATEV-Export ist die Bruecke zwischen Ihrer Rechnungssoftware und der Finanzbuchhaltung Ihres Steuerberaters. Mit RechnungsWerk erstellen Sie DATEV-kompatible Buchungsstapel in wenigen Klicks — ohne manuelles Abtippen, ohne Formatprobleme, ohne Zeitverlust. Egal ob SKR03 oder SKR04, monatlicher oder jaehrlicher Export: RechnungsWerk liefert die Daten genau so, wie DATEV sie erwartet.
+
+**Starten Sie jetzt kostenlos mit RechnungsWerk** und erleben Sie, wie einfach der Datenaustausch mit Ihrem Steuerberater sein kann.
