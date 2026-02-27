@@ -4,6 +4,7 @@
 
 **Open-Source E-Invoicing fuer Deutschland -- XRechnung, ZUGFeRD, DATEV**
 
+![Tests](https://github.com/sadanakb/rechnungswerk/actions/workflows/tests.yml/badge.svg)
 ![License](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue)
 ![Tests](https://img.shields.io/badge/Tests-214%2B%20bestanden-brightgreen)
 ![Build](https://img.shields.io/badge/Build-passing-brightgreen)

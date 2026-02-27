@@ -1,0 +1,14 @@
+name: Docker Build
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t rechnungswerk-backend:${{ github.sha }} ./backend
+      - name: Build frontend image
+        run: docker build -t rechnungswerk-frontend:${{ github.sha }} ./frontend
