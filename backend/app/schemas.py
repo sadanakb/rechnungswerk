@@ -104,6 +104,12 @@ class InvoiceResponse(BaseModel):
     xrechnung_available: bool = False
     zugferd_available: bool = False
 
+    # Payment status lifecycle
+    payment_status: str = "unpaid"
+    paid_date: Optional[date] = None
+    payment_method: Optional[str] = None
+    payment_reference: Optional[str] = None
+
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -158,6 +164,10 @@ class InvoiceDetailResponse(InvoiceResponse):
             "validation_status": invoice.validation_status,
             "xrechnung_available": bool(invoice.xrechnung_xml_path),
             "zugferd_available": bool(invoice.zugferd_pdf_path),
+            "payment_status": invoice.payment_status or "unpaid",
+            "paid_date": invoice.paid_date,
+            "payment_method": invoice.payment_method,
+            "payment_reference": invoice.payment_reference,
             "created_at": invoice.created_at,
             "org_id": invoice.organization_id,
         }

@@ -994,6 +994,7 @@ function InvoicesContent() {
               buyer_name: inv.buyer_name,
               gross_amount: inv.gross_amount,
               status: inv.validation_status,
+              payment_status: inv.payment_status,
             }))}
             loading={loading}
             selectionResetKey={selectionResetKey}

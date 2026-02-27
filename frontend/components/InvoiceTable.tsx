@@ -33,6 +33,7 @@ export interface InvoiceRow {
   buyer_name: string
   gross_amount: number
   status?: string
+  payment_status?: string
 }
 
 export interface InvoiceTableProps {
@@ -91,6 +92,50 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 function StatusBadge({ status }: { status: string | undefined }) {
   const s = status ?? 'draft'
   const cfg = STATUS_CONFIG[s] ?? {
+    label: s,
+    className: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400',
+  }
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap',
+        cfg.className,
+      )}
+    >
+      {cfg.label}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Payment status badge
+// ---------------------------------------------------------------------------
+const PAYMENT_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  unpaid: {
+    label: 'Offen',
+    className: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400',
+  },
+  paid: {
+    label: 'Bezahlt',
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  },
+  partial: {
+    label: 'Teilw.',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  overdue: {
+    label: 'Ueberfaellig',
+    className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  },
+  cancelled: {
+    label: 'Storniert',
+    className: 'bg-slate-100 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400',
+  },
+}
+
+function PaymentBadge({ status }: { status: string | undefined }) {
+  const s = status ?? 'unpaid'
+  const cfg = PAYMENT_STATUS_CONFIG[s] ?? {
     label: s,
     className: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400',
   }
@@ -243,6 +288,13 @@ function createColumns(): ColumnDef<InvoiceRow>[] {
       cell: ({ getValue }) => <StatusBadge status={getValue() as string | undefined} />,
       enableSorting: true,
     },
+    // Zahlungsstatus
+    {
+      accessorKey: 'payment_status',
+      header: 'Zahlung',
+      cell: ({ getValue }) => <PaymentBadge status={getValue() as string | undefined} />,
+      enableSorting: true,
+    },
   ]
 }
 
@@ -331,6 +383,9 @@ export function InvoiceTable({ invoices, loading, onSelectionChange, selectionRe
               </th>
               <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--foreground-muted))' }}>
                 Status
+              </th>
+              <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                Zahlung
               </th>
             </tr>
           </thead>

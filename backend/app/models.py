@@ -127,6 +127,12 @@ class Invoice(Base):
     xrechnung_xml_path = Column(String)  # Path to generated XML
     zugferd_pdf_path = Column(String)    # Path to generated PDF/A-3
 
+    # Payment Status Lifecycle
+    payment_status = Column(String(20), default='unpaid', nullable=False)
+    paid_date = Column(Date, nullable=True)
+    payment_method = Column(String(50), nullable=True)
+    payment_reference = Column(String(255), nullable=True)
+
     # Timestamps — timezone-aware UTC (H2)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)

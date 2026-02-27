@@ -14,7 +14,7 @@ import {
   Clock,
   Printer,
 } from 'lucide-react'
-import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, type InvoiceDetail } from '@/lib/api'
+import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, updatePaymentStatus, type InvoiceDetail } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -152,6 +152,216 @@ function InfoBox({
 }
 
 // ---------------------------------------------------------------------------
+// Payment status
+// ---------------------------------------------------------------------------
+
+const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  unpaid: { label: 'Offen', color: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400' },
+  paid: { label: 'Bezahlt', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  partial: { label: 'Teilweise bezahlt', color: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400' },
+  overdue: { label: 'Ueberfaellig', color: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400' },
+  cancelled: { label: 'Storniert', color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400' },
+}
+
+function PaymentStatusBadge({ status }: { status: string }) {
+  const cfg = PAYMENT_STATUS_CONFIG[status] ?? { label: status, color: 'bg-gray-100 text-gray-600 border-gray-200' }
+  return (
+    <span className={cn('inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border', cfg.color)}>
+      {cfg.label}
+    </span>
+  )
+}
+
+function PaymentStatusSection({
+  invoice,
+  onUpdated,
+}: {
+  invoice: InvoiceDetail
+  onUpdated: (newStatus: string) => void
+}) {
+  const [showForm, setShowForm] = useState(false)
+  const [showChangeDropdown, setShowChangeDropdown] = useState(false)
+  const [paidDate, setPaidDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [paymentMethod, setPaymentMethod] = useState('Ueberweisung')
+  const [paymentReference, setPaymentReference] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const canMarkPaid = ['unpaid', 'partial', 'overdue'].includes(invoice.payment_status ?? 'unpaid')
+  const otherStatuses = ['unpaid', 'paid', 'partial', 'overdue', 'cancelled'].filter(
+    (s) => s !== (invoice.payment_status ?? 'unpaid')
+  )
+
+  const handleMarkPaid = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await updatePaymentStatus(invoice.invoice_id, 'paid', paidDate, paymentMethod, paymentReference || undefined)
+      setShowForm(false)
+      onUpdated('paid')
+    } catch {
+      setError('Fehler beim Speichern. Bitte erneut versuchen.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChangeStatus = async (status: string) => {
+    setShowChangeDropdown(false)
+    try {
+      await updatePaymentStatus(invoice.invoice_id, status)
+      onUpdated(status)
+    } catch {
+      // silent — badge won't update but user can retry
+    }
+  }
+
+  return (
+    <div
+      className="rounded-xl border p-5 mb-5"
+      style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}
+    >
+      <p
+        className="text-[10px] font-semibold uppercase tracking-wider mb-3"
+        style={{ color: 'rgb(var(--foreground-muted))' }}
+      >
+        Zahlungsstatus
+      </p>
+
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <PaymentStatusBadge status={invoice.payment_status ?? 'unpaid'} />
+        {invoice.paid_date && (
+          <span className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Bezahlt am: {new Date(invoice.paid_date).toLocaleDateString('de-DE')}
+          </span>
+        )}
+        {invoice.payment_method && (
+          <span className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Methode: {invoice.payment_method}
+          </span>
+        )}
+        {invoice.payment_reference && (
+          <span className="text-sm font-mono" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Ref: {invoice.payment_reference}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {canMarkPaid && !showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'rgb(var(--primary))' }}
+          >
+            Als bezahlt markieren
+          </button>
+        )}
+
+        <div className="relative">
+          <button
+            onClick={() => setShowChangeDropdown((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors"
+            style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))', backgroundColor: 'rgb(var(--card))' }}
+          >
+            Status aendern
+          </button>
+          {showChangeDropdown && (
+            <div
+              className="absolute left-0 top-full mt-1 z-20 rounded-lg border shadow-lg overflow-hidden min-w-[160px]"
+              style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}
+            >
+              {otherStatuses.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => handleChangeStatus(s)}
+                  className="w-full text-left px-4 py-2 text-sm transition-colors"
+                  style={{ color: 'rgb(var(--foreground))' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(var(--muted))' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                >
+                  {PAYMENT_STATUS_CONFIG[s]?.label ?? s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showForm && (
+        <div
+          className="mt-4 pt-4 border-t space-y-3"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                Datum
+              </label>
+              <input
+                type="date"
+                value={paidDate}
+                onChange={(e) => setPaidDate(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                style={{ backgroundColor: 'rgb(var(--input))', borderColor: 'rgb(var(--input-border))', color: 'rgb(var(--foreground))' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                Zahlungsmethode
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                style={{ backgroundColor: 'rgb(var(--input))', borderColor: 'rgb(var(--input-border))', color: 'rgb(var(--foreground))' }}
+              >
+                <option value="Ueberweisung">Ueberweisung</option>
+                <option value="Lastschrift">Lastschrift</option>
+                <option value="Bar">Bar</option>
+                <option value="Sonstiges">Sonstiges</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
+              Referenz (optional)
+            </label>
+            <input
+              type="text"
+              placeholder="z. B. Transaktions-ID oder Buchungsnummer"
+              value={paymentReference}
+              onChange={(e) => setPaymentReference(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+              style={{ backgroundColor: 'rgb(var(--input))', borderColor: 'rgb(var(--input-border))', color: 'rgb(var(--foreground))' }}
+            />
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleMarkPaid}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50 transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'rgb(var(--primary))' }}
+            >
+              {saving ? 'Speichert…' : 'Speichern'}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setError(null) }}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50"
+              style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))' }}
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
 
@@ -264,6 +474,10 @@ export default function InvoiceDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const handlePaymentUpdated = (newStatus: string) => {
+    setInvoice((prev) => prev ? { ...prev, payment_status: newStatus } : prev)
+  }
 
   useEffect(() => {
     if (!invoiceId) return
@@ -584,6 +798,9 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ===== Payment status ===== */}
+      <PaymentStatusSection invoice={invoice} onUpdated={handlePaymentUpdated} />
 
       {/* ===== Totals box ===== */}
       <div className="flex justify-end mb-6">

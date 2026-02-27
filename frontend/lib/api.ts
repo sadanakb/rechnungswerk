@@ -93,6 +93,11 @@ export interface InvoiceDetail {
   seller_endpoint_scheme?: string
   buyer_endpoint_id?: string
   buyer_endpoint_scheme?: string
+  // Payment status lifecycle
+  payment_status: string
+  paid_date?: string | null
+  payment_method?: string | null
+  payment_reference?: string | null
   // Status & meta
   source_type: string
   ocr_confidence?: number
@@ -149,6 +154,11 @@ export interface Invoice {
   seller_endpoint_scheme?: string
   buyer_endpoint_id?: string
   buyer_endpoint_scheme?: string
+  // Payment status lifecycle
+  payment_status: string
+  paid_date?: string | null
+  payment_method?: string | null
+  payment_reference?: string | null
   source_type: string
   ocr_confidence?: number
   validation_status: string
@@ -324,6 +334,7 @@ export interface InvoiceFilters {
   date_to?: string
   amount_min?: number
   amount_max?: number
+  payment_status?: string
 }
 
 export const listInvoices = async (
@@ -341,8 +352,24 @@ export const listInvoices = async (
   if (filters?.date_to) params.set('date_to', filters.date_to)
   if (filters?.amount_min != null) params.set('amount_min', String(filters.amount_min))
   if (filters?.amount_max != null) params.set('amount_max', String(filters.amount_max))
+  if (filters?.payment_status) params.set('payment_status', filters.payment_status)
   const response = await api.get<InvoiceListResponse>(`/api/invoices?${params.toString()}`)
   return response.data
+}
+
+export async function updatePaymentStatus(
+  id: string,
+  status: string,
+  paidDate?: string,
+  paymentMethod?: string,
+  paymentReference?: string,
+): Promise<void> {
+  await api.patch(`/api/invoices/${id}/payment-status`, {
+    status,
+    paid_date: paidDate,
+    payment_method: paymentMethod,
+    payment_reference: paymentReference,
+  })
 }
 
 export const getInvoice = async (invoiceId: string): Promise<InvoiceDetail> => {

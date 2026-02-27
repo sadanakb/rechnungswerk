@@ -5,6 +5,7 @@ import logging
 import tempfile
 
 from fastapi import APIRouter, Depends, Path, Query, Request, UploadFile, File, HTTPException
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -554,6 +555,7 @@ async def list_invoices(
     date_to: Optional[str] = Query(None, description="Filter by invoice_date <= date_to (YYYY-MM-DD)"),
     amount_min: Optional[float] = Query(None, description="Filter by gross_amount >= amount_min"),
     amount_max: Optional[float] = Query(None, description="Filter by gross_amount <= amount_max"),
+    payment_status: Optional[str] = Query(None, description="Filter by payment_status (unpaid, paid, partial, overdue, cancelled)"),
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
@@ -584,6 +586,8 @@ async def list_invoices(
         query = query.filter(Invoice.gross_amount >= amount_min)
     if amount_max is not None:
         query = query.filter(Invoice.gross_amount <= amount_max)
+    if payment_status:
+        query = query.filter(Invoice.payment_status == payment_status)
 
     total = query.count()
     invoices = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
@@ -653,6 +657,48 @@ async def export_datev_by_period(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+class PaymentStatusUpdate(BaseModel):
+    status: str  # unpaid, paid, partial, overdue, cancelled
+    paid_date: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_reference: Optional[str] = None
+
+
+@router.patch("/invoices/{invoice_id}/payment-status")
+async def update_payment_status(
+    body: PaymentStatusUpdate,
+    invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Update the payment status of an invoice (paid, unpaid, partial, overdue, cancelled)."""
+    allowed = {"unpaid", "paid", "partial", "overdue", "cancelled"}
+    if body.status not in allowed:
+        raise HTTPException(400, detail=f"Ungültiger Status. Erlaubt: {', '.join(sorted(allowed))}")
+
+    invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation when authenticated
+    if current_user and current_user.get("org_id"):
+        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
+            raise HTTPException(404, detail="Rechnung nicht gefunden")
+
+    invoice.payment_status = body.status
+    if body.paid_date:
+        from datetime import date as date_type
+        invoice.paid_date = date_type.fromisoformat(body.paid_date)
+    if body.payment_method:
+        invoice.payment_method = body.payment_method
+    if body.payment_reference:
+        invoice.payment_reference = body.payment_reference
+
+    db.commit()
+    db.refresh(invoice)
+    return {"ok": True, "payment_status": invoice.payment_status}
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetailResponse)
