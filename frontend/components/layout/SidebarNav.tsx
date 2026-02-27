@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Settings,
   ClipboardList,
+  LayoutTemplate,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -40,9 +41,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/validator', label: 'Validator', icon: CheckCircle },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/suppliers', label: 'Lieferanten', icon: Users },
+  { href: '/templates', label: 'Vorlagen', icon: LayoutTemplate },
   { href: '/recurring', label: 'Wiederkehrend', icon: Repeat },
   { href: '/mahnwesen', label: 'Mahnwesen', icon: AlertTriangle },
   { href: '/team', label: 'Team', icon: UsersRound },
+  { href: '/berichte', label: 'Berichte', icon: BarChart3 },
   { href: '/audit', label: 'Protokoll', icon: ClipboardList },
   { href: '/settings', label: 'Einstellungen', icon: Settings },
 ]

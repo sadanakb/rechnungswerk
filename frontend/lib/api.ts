@@ -296,6 +296,45 @@ export const deleteInvoice = async (invoiceId: string): Promise<void> => {
   await api.delete(`/api/invoices/${invoiceId}`)
 }
 
+// ---------------------------------------------------------------------------
+// Bulk Operations
+// ---------------------------------------------------------------------------
+
+export interface BulkDeleteResult {
+  deleted: number
+  skipped: number
+}
+
+export interface BulkValidateEntry {
+  id: number
+  invoice_id?: string
+  invoice_number?: string
+  valid: boolean
+  errors: string[]
+}
+
+export interface BulkValidateResult {
+  results: BulkValidateEntry[]
+}
+
+/**
+ * Bulk-delete invoices by their integer DB id.
+ * Returns how many were deleted vs. skipped (not found / wrong org).
+ */
+export const bulkDeleteInvoices = async (ids: number[]): Promise<BulkDeleteResult> => {
+  const resp = await api.post<BulkDeleteResult>('/api/invoices/bulk-delete', { ids })
+  return resp.data
+}
+
+/**
+ * Bulk-validate invoices by their integer DB id.
+ * Returns per-invoice validation results with error lists.
+ */
+export const bulkValidateInvoices = async (ids: number[]): Promise<BulkValidateResult> => {
+  const resp = await api.post<BulkValidateResult>('/api/invoices/bulk-validate', { ids })
+  return resp.data
+}
+
 /**
  * Returns the full download URL for an XRechnung XML file.
  * The actual download is triggered via a plain <a href> or window.open.
@@ -406,6 +445,54 @@ export const getCategoryBreakdown = async (from?: string, to?: string): Promise<
   if (from) params.from = from
   if (to) params.to = to
   const resp = await api.get<CategoryBreakdown[]>('/api/analytics/category-breakdown', { params })
+  return resp.data
+}
+
+export interface TaxSummaryRow {
+  tax_rate: string
+  label: string
+  count: number
+  net: number
+  vat: number
+  gross: number
+}
+
+export interface CashflowMonth {
+  month: string
+  label: string
+  total_amount: number
+  invoice_count: number
+}
+
+export interface AgingInvoice {
+  id: string
+  number: string
+  amount: number
+  days_overdue: number
+}
+
+export interface OverdueAgingBucket {
+  bucket: string
+  label: string
+  count: number
+  total_amount: number
+  invoices: AgingInvoice[]
+}
+
+export const getTaxSummary = async (year?: number): Promise<TaxSummaryRow[]> => {
+  const params: Record<string, number> = {}
+  if (year !== undefined) params.year = year
+  const resp = await api.get<TaxSummaryRow[]>('/api/analytics/tax-summary', { params })
+  return resp.data
+}
+
+export const getCashflow = async (months = 6): Promise<CashflowMonth[]> => {
+  const resp = await api.get<CashflowMonth[]>('/api/analytics/cashflow', { params: { months } })
+  return resp.data
+}
+
+export const getOverdueAging = async (): Promise<OverdueAgingBucket[]> => {
+  const resp = await api.get<OverdueAgingBucket[]>('/api/analytics/overdue-aging')
   return resp.data
 }
 
@@ -812,6 +899,61 @@ export async function createApiKey(
 
 export async function revokeApiKey(id: number): Promise<void> {
   await api.delete(`/api/api-keys/${id}`)
+}
+
+// ---------------------------------------------------------------------------
+// Invoice Templates
+// ---------------------------------------------------------------------------
+
+export interface InvoiceTemplate {
+  id: number
+  org_id: number
+  name: string
+  primary_color: string
+  footer_text: string | null
+  payment_terms_days: number
+  bank_iban: string | null
+  bank_bic: string | null
+  bank_name: string | null
+  default_vat_rate: string
+  notes_template: string | null
+  is_default: boolean
+  created_at: string
+}
+
+export interface InvoiceTemplateCreate {
+  name: string
+  primary_color?: string
+  footer_text?: string
+  payment_terms_days?: number
+  bank_iban?: string
+  bank_bic?: string
+  bank_name?: string
+  default_vat_rate?: string
+  notes_template?: string
+  is_default?: boolean
+}
+
+export async function listTemplates(): Promise<InvoiceTemplate[]> {
+  const resp = await api.get<InvoiceTemplate[]>('/api/templates')
+  return resp.data
+}
+
+export async function createTemplate(data: InvoiceTemplateCreate): Promise<InvoiceTemplate> {
+  const resp = await api.post<InvoiceTemplate>('/api/templates', data)
+  return resp.data
+}
+
+export async function updateTemplate(
+  id: number,
+  data: Partial<InvoiceTemplateCreate>,
+): Promise<InvoiceTemplate> {
+  const resp = await api.put<InvoiceTemplate>(`/api/templates/${id}`, data)
+  return resp.data
+}
+
+export async function deleteTemplate(id: number): Promise<void> {
+  await api.delete(`/api/templates/${id}`)
 }
 
 // ---------------------------------------------------------------------------

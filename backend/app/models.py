@@ -355,3 +355,24 @@ class AuditLog(Base):
     details = Column(JSON, nullable=True)              # extra context
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class InvoiceTemplate(Base):
+    """Invoice design template scoped to an organization."""
+    __tablename__ = "invoice_templates"
+
+    id = Column(Integer, primary_key=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    primary_color = Column(String(7), default="#14b8a6")  # hex color
+    footer_text = Column(String(500), nullable=True)
+    payment_terms_days = Column(Integer, default=14)
+    bank_iban = Column(String(34), nullable=True)
+    bank_bic = Column(String(11), nullable=True)
+    bank_name = Column(String(255), nullable=True)
+    default_vat_rate = Column(String(10), default="19")
+    notes_template = Column(String(1000), nullable=True)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    organization = relationship("Organization")
