@@ -1378,3 +1378,28 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
     return res.data
   } catch { return null }
 }
+
+// ---------------------------------------------------------------------------
+// Share Links & Email
+// ---------------------------------------------------------------------------
+
+export interface InvoiceShareLink {
+  token: string
+  url: string
+  expires_at: string
+}
+
+export async function createShareLink(invoiceId: string): Promise<InvoiceShareLink> {
+  const res = await api.post(`/api/invoices/${invoiceId}/share-link`)
+  return res.data
+}
+
+export async function sendInvoiceEmail(
+  invoiceId: string,
+  toEmail: string
+): Promise<{ message: string; portal_url: string; token: string }> {
+  const res = await api.post(`/api/invoices/${invoiceId}/send-email`, {
+    to_email: toEmail,
+  })
+  return res.data
+}

@@ -26,6 +26,7 @@ from app.schemas_auth import (
     OrganizationResponse,
 )
 from app import email_service
+from app.email_service import enqueue_email
 from app.rate_limiter import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -170,7 +171,7 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/forgot-password", status_code=200)
 @limiter.limit("5/minute")
-def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+async def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Request a password reset link. Always returns 200 to prevent email enumeration."""
     user = db.query(User).filter(User.email == req.email).first()
     if user:
@@ -181,7 +182,13 @@ def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = 
         db.commit()
 
         reset_url = f"{FRONTEND_URL}/passwort-zuruecksetzen?token={raw_token}"
-        email_service.send_password_reset_email(user.email, reset_url)
+        arq_pool = getattr(request.app.state, "arq_pool", None)
+        await enqueue_email(
+            arq_pool,
+            "password_reset",
+            to_email=user.email,
+            reset_url=reset_url,
+        )
 
     # Always return success — no enumeration
     return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link gesendet."}

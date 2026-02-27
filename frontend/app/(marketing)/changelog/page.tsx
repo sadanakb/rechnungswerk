@@ -29,6 +29,53 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: 'v0.8.0',
+    title: 'Phase 8: Production Excellence & Kundenportal',
+    date: '27.02.2026',
+    items: [
+      {
+        text: 'ARQ Task Worker: E-Mail-Versand asynchron mit Redis-Queue und Sync-Fallback',
+        tag: 'infra',
+      },
+      {
+        text: 'Webhook Retry: Exponential Backoff (1m/5m/30m/2h/24h), max 5 Versuche',
+        tag: 'infra',
+      },
+      {
+        text: 'Recurring Invoice Scheduler: ARQ Cron-Job generiert fällige Rechnungen täglich',
+        tag: 'feature',
+      },
+      {
+        text: 'S3-Storage Abstraction: LocalStorage und S3/MinIO Backend konfigurierbar',
+        tag: 'infra',
+      },
+      {
+        text: 'Kundenportal: /portal/[token] — öffentliche Rechnungsansicht ohne Login',
+        tag: 'feature',
+      },
+      {
+        text: 'Share Links: UUID-Token, 30 Tage Gültigkeit, Zugriffszähler, Widerruf',
+        tag: 'feature',
+      },
+      {
+        text: 'Zahlungsbestätigung durch Kunden via Portal',
+        tag: 'feature',
+      },
+      {
+        text: 'Rechnung per E-Mail senden: Portal-Link via Brevo, ARQ-gecacht',
+        tag: 'feature',
+      },
+      {
+        text: 'PDF und XRechnung XML Download direkt aus dem Kundenportal',
+        tag: 'feature',
+      },
+      {
+        text: 'Alembic Migration Phase 8: invoice_share_links Tabelle',
+        tag: 'infra',
+      },
+    ],
+  },
+  {
     version: 'v0.7.0',
     title: 'Phase 7: Business Logic & Performance Hardening',
     date: '27.02.2026',

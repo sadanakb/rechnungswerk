@@ -5,7 +5,9 @@ Provides:
 - generate_webhook_secret()  — create a fresh whsec_... token
 - sign_payload()             — HMAC-SHA256 signature helper
 - publish_event()            — fan-out to all matching subscriptions
-- _deliver()                 — single delivery attempt with logging
+- _deliver_sync()            — single synchronous delivery attempt with logging
+- _deliver()                 — async single delivery attempt (url, payload, secret) → (success, code, body)
+- schedule_webhook_retry()   — enqueue a retry via ARQ
 """
 import hashlib
 import hmac
@@ -54,13 +56,14 @@ def publish_event(db, org_id: int, event_type: str, payload: dict):
         # Filter by subscribed event types (JSON list stored in DB)
         subscribed = sub.events or []
         if event_type in subscribed:
-            _deliver(db, sub, event_type, payload)
+            _deliver_sync(db, sub, event_type, payload)
 
 
-def _deliver(db, subscription: WebhookSubscription, event_type: str, payload: dict):
+def _deliver_sync(db, subscription: WebhookSubscription, event_type: str, payload: dict):
     """
-    Attempt a single HTTP POST delivery to the subscription URL.
+    Synchronous single HTTP POST delivery to the subscription URL.
     Records a WebhookDelivery row with the outcome.
+    Used by publish_event() and the test-ping endpoint.
     """
     now = datetime.now(timezone.utc)
     body = json.dumps(
@@ -101,3 +104,48 @@ def _deliver(db, subscription: WebhookSubscription, event_type: str, payload: di
         delivery.response_body = str(exc)[:500]
 
     db.commit()
+
+
+async def _deliver(
+    url: str,
+    payload: dict,
+    secret: str,
+    event_type: str = "webhook",
+):
+    """
+    Async single HTTP POST delivery to a URL.
+    Returns (success: bool, status_code: int | None, body: str | None).
+    Used by webhook_retry_task in the ARQ worker.
+    """
+    now = datetime.now(timezone.utc)
+    body = json.dumps(
+        {
+            "event": event_type,
+            "data": payload,
+            "timestamp": now.isoformat(),
+        }
+    )
+    sig = sign_payload(secret, body)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-RechnungsWerk-Signature": f"sha256={sig}",
+                    "X-RechnungsWerk-Event": event_type,
+                },
+                timeout=5.0,
+            )
+        success = resp.status_code < 300
+        return success, resp.status_code, resp.text
+    except Exception as exc:
+        return False, None, str(exc)
+
+
+async def schedule_webhook_retry(arq_pool, delivery_id: int) -> None:
+    """Schedule a webhook retry via ARQ. Called after initial delivery failure."""
+    if arq_pool is not None:
+        await arq_pool.enqueue_job("webhook_retry_task", delivery_id, _defer_by=60)

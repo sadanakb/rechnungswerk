@@ -65,10 +65,12 @@ class TestForgotPassword:
         assert resp.status_code == 200
         assert "Link gesendet" in resp.json()["message"]
         mock_send.assert_called_once()
-        # Verify the email and URL were passed correctly
+        # Verify the email and URL were passed correctly (kwargs after enqueue_email refactor)
         call_args = mock_send.call_args
-        assert call_args[0][0] == "reset@test.de"
-        assert "passwort-zuruecksetzen?token=" in call_args[0][1]
+        to_email = call_args.kwargs.get("to_email") or call_args[0][0]
+        reset_url_val = call_args.kwargs.get("reset_url") or call_args[0][1]
+        assert to_email == "reset@test.de"
+        assert "passwort-zuruecksetzen?token=" in reset_url_val
 
     @patch("app.email_service.send_password_reset_email", return_value=True)
     def test_forgot_password_unknown_email_returns_200(self, mock_send, client):
@@ -92,9 +94,9 @@ class TestResetPassword:
             "email": "reset@test.de",
         })
 
-        # Extract the token from the mock call
+        # Extract the token from the mock call (kwargs after enqueue_email refactor)
         call_args = mock_send.call_args
-        reset_url = call_args[0][1]
+        reset_url = call_args.kwargs.get("reset_url") or call_args[0][1]
         token = reset_url.split("token=")[1]
 
         # Reset the password
@@ -132,9 +134,9 @@ class TestResetPassword:
             "email": "reset@test.de",
         })
 
-        # Extract token
+        # Extract token (kwargs after enqueue_email refactor)
         call_args = mock_send.call_args
-        reset_url = call_args[0][1]
+        reset_url = call_args.kwargs.get("reset_url") or call_args[0][1]
         token = reset_url.split("token=")[1]
 
         # Manually expire the token

@@ -21,7 +21,7 @@ from app.auth_jwt import get_current_user
 from app.webhook_service import (
     WEBHOOK_EVENTS,
     generate_webhook_secret,
-    _deliver,
+    _deliver_sync,
 )
 
 router = APIRouter()
@@ -190,7 +190,7 @@ def test_webhook(
     org_id = _resolve_org_id(current_user, db)
     sub = _get_subscription_or_404(subscription_id, org_id, db)
 
-    _deliver(db, sub, "ping", {"message": "RechnungsWerk webhook test ping"})
+    _deliver_sync(db, sub, "ping", {"message": "RechnungsWerk webhook test ping"})
 
     # Fetch the delivery we just created to return its status
     delivery = (

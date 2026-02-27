@@ -305,3 +305,78 @@ def send_mahnung_email(
     except Exception as e:
         logger.error("Failed to send Mahnung email (level %d) to %s: %s", level, to_email, e)
         return False
+
+
+def send_invoice_portal_email(
+    to_email: str,
+    buyer_name: str,
+    invoice_number: str,
+    portal_url: str,
+    invoice_date: str = "",
+    gross_amount: str = "",
+) -> bool:
+    """Send invoice portal link to customer via Brevo."""
+    if not settings.brevo_api_key:
+        logger.warning(
+            "Brevo API key not configured, skipping invoice portal email to %s", to_email
+        )
+        return False
+
+    import sib_api_v3_sdk
+    api = _get_transactional_api()
+
+    html_content = (
+        "<html><body>"
+        f"<p>Sehr geehrte/r {buyer_name},</p>"
+        f"<p>anbei finden Sie Ihre Rechnung <strong>{invoice_number}</strong>"
+        + (f" vom {invoice_date}" if invoice_date else "")
+        + (f" über <strong>{gross_amount} EUR</strong>" if gross_amount else "")
+        + ".</p>"
+        "<p>Sie können Ihre Rechnung über den folgenden Link einsehen, "
+        "herunterladen und Ihre Zahlung bestätigen:</p>"
+        f'<p><a href="https://rechnungswerk.io{portal_url}" '
+        'style="background:#14b8a6;color:white;padding:12px 24px;border-radius:6px;'
+        'text-decoration:none;font-weight:bold;">Rechnung ansehen</a></p>'
+        "<p>Der Link ist 30 Tage gültig.</p>"
+        "<br><p>Mit freundlichen Grüßen,<br>Ihr RechnungsWerk Team</p>"
+        "</body></html>"
+    )
+
+    email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": to_email}],
+        sender=SENDER,
+        subject=f"Ihre Rechnung {invoice_number}",
+        html_content=html_content,
+    )
+
+    try:
+        api.send_transac_email(email)
+        logger.info(
+            "Invoice portal email sent to %s for invoice %s", to_email, invoice_number
+        )
+        return True
+    except Exception as e:
+        logger.error(
+            "Failed to send invoice portal email to %s: %s", to_email, e
+        )
+        return False
+
+
+async def enqueue_email(arq_pool, task_type: str, **kwargs) -> bool:
+    """Enqueue an email task via ARQ if pool is available, else send synchronously."""
+    if arq_pool is not None:
+        await arq_pool.enqueue_job("send_email_task", task_type, **kwargs)
+        return True
+    # Synchronous fallback
+    handlers = {
+        "password_reset": send_password_reset_email,
+        "email_verification": send_email_verification,
+        "team_invite": send_team_invite,
+        "mahnung": send_mahnung_email,
+        "contact": send_contact_email,
+        "invoice_portal": send_invoice_portal_email,
+    }
+    handler = handlers.get(task_type)
+    if handler:
+        return handler(**kwargs)
+    return False

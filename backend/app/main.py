@@ -17,7 +17,7 @@ from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,24 @@ async def lifespan(app: FastAPI):
         logger.info("[Auth] API-Key: %s", ACTIVE_API_KEY)
     else:
         logger.warning("[Auth] API-Key Authentifizierung DEAKTIVIERT (Entwicklungsmodus)")
+
+    # ARQ Redis pool (graceful degradation if Redis unavailable)
+    try:
+        import arq
+        from arq.connections import RedisSettings as ArqRedisSettings
+        pool = await arq.create_pool(ArqRedisSettings.from_dsn(settings.redis_url))
+        app.state.arq_pool = pool
+        logger.info("[Startup] ARQ pool connected to Redis at %s", settings.redis_url)
+    except Exception as e:
+        logger.warning("[Startup] Redis not available (%s) — ARQ tasks will run synchronously", e)
+        app.state.arq_pool = None
+
     yield
+
+    # Shutdown: close ARQ pool
+    if hasattr(app.state, "arq_pool") and app.state.arq_pool is not None:
+        await app.state.arq_pool.close()
+        logger.info("[Shutdown] ARQ pool closed")
 
 
 # Initialize FastAPI app
@@ -87,6 +104,7 @@ app.include_router(contacts.router)
 app.include_router(invoice_sequences.router)
 app.include_router(import_invoices.router)
 app.include_router(contact_router.router)
+app.include_router(portal_router.router, prefix="/api/portal", tags=["portal"])
 
 
 @app.get("/")
