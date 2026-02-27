@@ -30,8 +30,9 @@ class Organization(Base):
     logo_url = Column(String(500))
     onboarding_completed = Column(Boolean, default=False)
     plan = Column(String(20), default="free")  # free, starter, professional
-    stripe_customer_id = Column(String(100))
-    stripe_subscription_id = Column(String(100))
+    stripe_customer_id = Column(String(255), nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
+    plan_status = Column(String(50), default='active')  # active, cancelled, past_due, trialing
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
 
@@ -49,6 +50,7 @@ class User(Base):
     full_name = Column(String(200))
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    email_verification_token = Column(String(255), nullable=True)
     password_reset_token = Column(String(255), nullable=True)
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
@@ -280,7 +282,7 @@ class Mahnung(Base):
     fee = Column(Numeric(8, 2), default=0)  # Mahngebuehr
     interest = Column(Numeric(8, 2), default=0)  # Verzugszinsen
     total_due = Column(Numeric(12, 2))  # Original amount + fees + interest
-    status = Column(String(20), default="created")  # created, sent, paid, cancelled
+    status = Column(String(50), default="created")  # created, sent, paid, cancelled
     sent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
 
