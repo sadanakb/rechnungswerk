@@ -1,0 +1,144 @@
+---
+title: "XRechnung vs. ZUGFeRD: Welches Format passt zu Ihrem Unternehmen?"
+description: "XRechnung oder ZUGFeRD? Wir erklaeren die Unterschiede beider E-Rechnungsformate, wann welches Format Pflicht ist und welches sich fuer den B2B-Alltag besser eignet."
+date: "2026-02-27"
+author: "RechnungsWerk Team"
+---
+
+## Einleitung: Zwei Formate, eine Norm
+
+Seit dem 1. Januar 2025 muessen alle deutschen Unternehmen in der Lage sein, elektronische Rechnungen zu empfangen. Damit ruecken zwei Begriffe immer staerker in den Fokus: **XRechnung** und **ZUGFeRD**. Beide Formate sind konform mit der europaeischen Norm EN 16931, unterscheiden sich jedoch erheblich in ihrer technischen Umsetzung, ihrer Lesbarkeit und ihrem Einsatzbereich.
+
+Wer eine Rechnung an eine Bundesbehoerde stellt, kommt an XRechnung kaum vorbei. Wer hingegen seine Kunden im B2B-Bereich mit einer lesbaren Rechnung per E-Mail bedienen moechte, greift eher zu ZUGFeRD. Dieser Artikel erklaert, was hinter beiden Formaten steckt, worin die Unterschiede liegen und welches Format fuer Ihr Unternehmen die richtige Wahl ist.
+
+## Was ist XRechnung?
+
+XRechnung ist der offizielle deutsche Standard fuer elektronische Rechnungen an oeffentliche Auftraggeber. Das Format wurde von der KoSIT (Koordinierungsstelle fuer IT-Standards) entwickelt und ist eine sogenannte CIUS (Core Invoice Usage Specification) — also eine nationale Spezifikation auf Basis der EN 16931.
+
+Technisch gesehen ist eine XRechnung eine **reine XML-Datei**. Sie enthaelt keinerlei visuelle Darstellung — kein Layout, keine Grafik, keine Formatierung. Alle Rechnungsdaten sind in einem strukturierten, maschinenlesbaren Format kodiert, das von Software automatisch ausgelesen und verarbeitet werden kann.
+
+### Wesentliche Merkmale von XRechnung
+
+- **Rein maschinenlesbar:** Keine visuelle Komponente, nur XML-Daten
+- **Zwei XML-Dialekte:** UBL 2.1 und UN/CEFACT CII (Cross Industry Invoice)
+- **B2G-Pflicht:** Seit 27. November 2020 Pflicht fuer Rechnungen an den Bund
+- **Leitweg-ID erforderlich:** Bei oeffentlichen Auftraggebern ist eine eindeutige Empfaenger-ID noetigt
+- **Aktuelle Version:** XRechnung 3.0.2 (Stand 2024)
+
+### Warum XRechnung fuer oeffentliche Auftraggeber?
+
+Die Bundesverwaltung wickelt taeglich Tausende von Rechnungen ab. Maschinenlesbare Rechnungen ermoglichen eine vollautomatische Verarbeitung — ohne manuelle Dateneingabe, ohne Medienbrueche, mit minimalen Fehlerquoten. XRechnung ist daher nicht nur ein technischer Standard, sondern ein wesentlicher Baustein der Verwaltungsdigitalisierung.
+
+## Was ist ZUGFeRD?
+
+ZUGFeRD steht fuer **Zentraler User Guide des Forums elektronische Rechnung Deutschland** und ist ein hybrides Rechnungsformat. Das Besondere: Eine ZUGFeRD-Rechnung ist gleichzeitig eine lesbare PDF-Datei **und** eine maschinenlesbare XML-Datei — beide Komponenten sind in einem einzigen Dokument vereint.
+
+Technisch wird dies durch einen eingebetteten XML-Anhang in einer PDF/A-3-Datei realisiert. Das XML folgt dem UN/CEFACT CII-Standard und ist vollstaendig EN-16931-konform. Der Empfaenger kann die Rechnung wie gewohnt als PDF oeffnen und lesen, waehrend seine Buchhaltungssoftware gleichzeitig die XML-Daten automatisch einliest.
+
+### Wesentliche Merkmale von ZUGFeRD
+
+- **Hybrid-Format:** PDF/A-3 mit eingebettetem XML
+- **Menschenlesbar:** Vollstaendige visuelle Darstellung als PDF
+- **Mehrere Profile:** Minimum, Basic, EN 16931 (Comfort), Extended, XRechnung
+- **B2B-geeignet:** Ideal fuer den Rechnungsversand per E-Mail im Unternehmensbereich
+- **Aktuelle Version:** ZUGFeRD 2.3.3 (EN 16931 konform)
+
+### ZUGFeRD-Versionen im Ueberblick
+
+Die ZUGFeRD-Spezifikation wurde mehrfach weiterentwickelt. Aktuell relevant sind:
+
+- **ZUGFeRD 2.1:** Weit verbreitet, vollstaendig EN-16931-konform im Profil "EN 16931"
+- **ZUGFeRD 2.3.3:** Aktuelle Version mit weiteren Verbesserungen und Klarstellungen
+
+Fuer neue Implementierungen empfiehlt sich generell die aktuellste Version. Das Profil "EN 16931" (auch "Comfort" genannt) ist dabei der sinnvolle Standard fuer die meisten Unternehmen, da es alle Pflichtfelder der europaeischen Norm abdeckt.
+
+## Direktvergleich: XRechnung vs. ZUGFeRD
+
+| Kriterium | XRechnung | ZUGFeRD |
+|---|---|---|
+| **Format** | Reines XML | PDF/A-3 mit eingebettetem XML |
+| **Menschenlesbar** | Nein | Ja (als PDF) |
+| **Maschinenlesbar** | Ja | Ja (XML-Komponente) |
+| **EN 16931 konform** | Ja | Ja (ab ZUGFeRD 2.0, Profil EN 16931) |
+| **B2G tauglich** | Ja (Pflichtformat) | Bedingt (abhaengig von Behoerde) |
+| **B2B geeignet** | Ja | Ja (bevorzugt) |
+| **Versand per E-Mail** | Moeglich | Sehr gut geeignet |
+| **Softwareunterstuetzung** | Gut | Sehr gut |
+| **Lesbarkeit ohne Spezial-SW** | Nur mit XML-Viewer | Mit jedem PDF-Viewer |
+| **Zusaetzliche Leitweg-ID** | Bei B2G erforderlich | Nicht zwingend erforderlich |
+| **Dateierweiterung** | .xml | .pdf |
+
+## Wann sollten Sie XRechnung verwenden?
+
+XRechnung ist immer dann das richtige Format, wenn Sie Rechnungen an **oeffentliche Auftraggeber** stellen. Seit dem 27. November 2020 schreibt die E-Rechnungsverordnung des Bundes (E-RechV) vor, dass Rechnungen an Bundesbehoerden im XRechnung-Format einzureichen sind.
+
+### Typische Anwendungsfaelle fuer XRechnung
+
+- **Rechnungen an Bundesministerien und -behoerden**
+- **Auftraege der oeffentlichen Hand** (Bundesverwaltung, Bundeslaender mit eigener Verordnung)
+- **Oeffentliche Ausschreibungen**, bei denen XRechnung explizit gefordert wird
+- **Peppol-Netzwerk-Teilnahme** im B2G-Bereich
+
+Ein wichtiger Aspekt: Bei XRechnungen an oeffentliche Auftraggeber benoetigen Sie zwingend die **Leitweg-ID** des Empfaengers. Diese eindeutige Kennung identifiziert die empfangende Behoerde und ist fuer die korrekte Zustellung unverzichtbar. Fragen Sie Ihren Auftraggeber vor der ersten Rechnungsstellung nach dieser ID.
+
+### Bundeslaender-Regelungen beachten
+
+Waehrend die Bundesverwaltung einheitlich XRechnung vorschreibt, haben die Bundeslaender eigene Regelungen eingefuehrt. Die meisten Laender folgen dem Bundesstandard, manche akzeptieren auch ZUGFeRD-Rechnungen mit entsprechendem Profil. Informieren Sie sich bei Ihrem jeweiligen Auftraggeber ueber die konkret geforderten Formate.
+
+## Wann sollten Sie ZUGFeRD verwenden?
+
+ZUGFeRD ist die bessere Wahl fuer den **Rechnungsversand im B2B-Bereich**. Das hybride Format bietet den entscheidenden Vorteil, dass die Rechnung sowohl von Menschen als auch von Maschinen verarbeitet werden kann — ohne dass der Empfaenger zwingend eine spezielle XML-Verarbeitungssoftware benoetigt.
+
+### Typische Anwendungsfaelle fuer ZUGFeRD
+
+- **Rechnungen per E-Mail** an Geschaeftskunden: Der Empfaenger kann die PDF wie gewohnt oeffnen
+- **Buchhaltungsintegration:** Moderne Buchhaltungssoftware liest den XML-Anteil automatisch aus
+- **Uebergangsphase:** Solange nicht alle Empfaenger vollautomatische Verarbeitung unterstuetzen
+- **Internationale Rechnungsstellung:** ZUGFeRD basiert auf dem international verbreiteten CII-Standard
+- **Archivierung:** Eine einzige Datei enthaelt sowohl das lesbare Dokument als auch die strukturierten Daten
+
+### Praktischer Vorteil im Alltag
+
+Stellen Sie sich vor, Sie senden eine XRechnung als XML-Datei per E-Mail an einen Kunden, dessen Buchhaltungssoftware noch keine automatische XML-Verarbeitung unterstuetzt. Ihr Kunde kann die Datei nicht einfach oeffnen und muss sie manuell in ein lesbares Format umwandeln — ein unnoetig aufwaendiger Prozess.
+
+Mit ZUGFeRD vermeiden Sie dieses Problem: Die Rechnung sieht aus wie eine normale PDF-Rechnung, und moderne Systeme koennen zusaetzlich den eingebetteten XML-Anteil automatisch verarbeiten.
+
+## ZUGFeRD-Profile: Welches ist das richtige?
+
+ZUGFeRD kennt verschiedene Profile mit unterschiedlichem Umfang an Pflichtfeldern:
+
+- **Minimum:** Absolutes Mindestset an Feldern — nicht fuer normale Rechnungen geeignet
+- **Basic WL:** Grundlegende Felder ohne Positionsdaten
+- **Basic:** Mit Positionsdaten, aber vereinfacht
+- **EN 16931 (Comfort):** Vollstaendig konform mit EN 16931 — empfohlen fuer B2B
+- **Extended:** Zusaetzliche Felder fuer spezifische Branchen oder Anforderungen
+- **XRechnung:** ZUGFeRD mit den Erweiterungen des XRechnung-Standards
+
+Fuer die meisten Unternehmen ist das Profil **EN 16931** die richtige Wahl. Es erfuellt alle gesetzlichen Anforderungen und ist kompatibel mit der deutschen E-Rechnungspflicht.
+
+## Empfehlung: Strategie fuer Ihr Unternehmen
+
+Die praktische Empfehlung lautet: **Nutzen Sie beide Formate je nach Empfaenger.**
+
+### Empfehlung fuer gemischtes Portfolio
+
+Wenn Sie sowohl an oeffentliche Auftraggeber als auch an private Unternehmen Rechnungen stellen:
+
+1. **B2G-Rechnungen:** XRechnung im UBL- oder CII-Format, immer mit Leitweg-ID
+2. **B2B-Rechnungen:** ZUGFeRD im Profil EN 16931 — lesbar fuer Menschen, verarbeitbar fuer Software
+
+### Nur B2B?
+
+Wenn Sie ausschliesslich an private Unternehmen Rechnungen stellen, ist ZUGFeRD die komfortablere Loesung. Ihre Kunden erhalten eine Rechnung, die sie mit jedem PDF-Programm oeffnen koennen, und ihre Buchhaltungssysteme koennen die Daten automatisch einlesen.
+
+### Nur B2G?
+
+Wenn Sie hauptsaechlich fuer oeffentliche Auftraggeber arbeiten, fuehrt kein Weg an XRechnung vorbei. Achten Sie dabei auf die Aktualitaet der eingesetzten Version (aktuell: XRechnung 3.0.2) und auf die korrekte Angabe der Leitweg-ID.
+
+## Fazit
+
+XRechnung und ZUGFeRD sind keine Konkurrenten, sondern ergaenzende Standards fuer unterschiedliche Einsatzszenarien. XRechnung ist der verbindliche Standard fuer den oeffentlichen Sektor — pragmatisch, maschinenlesbar, ohne visuelle Komponente. ZUGFeRD ist das format der Wahl fuer den B2B-Bereich — flexibel, menschenlesbar und gleichzeitig automatisiert verarbeitbar.
+
+Mit der richtigen Software muessen Sie sich um die technischen Details beider Formate nicht kuemmern. Eine gute E-Rechnungslosung erstellt auf Knopfdruck das jeweils korrekte Format, validiert die Daten und versendet die Rechnung ueber den gewuenschten Kanal.
+
+**Testen Sie RechnungsWerk jetzt kostenlos** — erstellenSie XRechnungen und ZUGFeRD-Rechnungen im richtigen Format, vollstaendig validiert und sofort versandbereit. Ohne technisches Vorwissen, ohne Einarbeitungszeit.
