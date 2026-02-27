@@ -592,6 +592,14 @@ export async function createMahnung(invoiceId: string): Promise<MahnungRecord> {
   return resp.data
 }
 
+export async function updateMahnungStatus(
+  mahnungId: string,
+  status: 'paid' | 'cancelled',
+): Promise<MahnungRecord> {
+  const resp = await api.patch<MahnungRecord>(`/api/mahnwesen/${mahnungId}/status`, { status })
+  return resp.data
+}
+
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------

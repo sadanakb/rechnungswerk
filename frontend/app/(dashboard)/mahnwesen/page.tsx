@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   AlertTriangle,
+  Ban,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -16,6 +18,7 @@ import {
   getOverdueInvoices,
   getMahnungen,
   createMahnung,
+  updateMahnungStatus,
   getErrorMessage,
   type OverdueInvoice,
   type MahnungRecord,
@@ -63,7 +66,7 @@ interface BadgeConfig {
 function getMahnBadge(count: number): BadgeConfig {
   switch (count) {
     case 0:
-      return { label: 'Überfällig', bg: 'rgb(254 243 199)', text: 'rgb(161 98 7)' }
+      return { label: 'Ueberfaellig', bg: 'rgb(254 243 199)', text: 'rgb(161 98 7)' }
     case 1:
       return { label: 'Zahlungserinnerung', bg: 'rgb(255 237 213)', text: 'rgb(194 65 12)' }
     case 2:
@@ -77,6 +80,33 @@ const MAHNUNG_LEVEL_LABELS: Record<number, string> = {
   1: 'Zahlungserinnerung',
   2: '1. Mahnung',
   3: '2. Mahnung (letzte)',
+}
+
+// ---------------------------------------------------------------------------
+// Status badge for Mahnung records
+// ---------------------------------------------------------------------------
+
+const STATUS_BADGE_CONFIG: Record<string, BadgeConfig> = {
+  created: { label: 'Erstellt', bg: 'rgb(var(--muted))', text: 'rgb(var(--foreground-muted))' },
+  sent: { label: 'Versendet', bg: 'rgb(219 234 254)', text: 'rgb(29 78 216)' },
+  paid: { label: 'Bezahlt', bg: 'rgb(220 252 231)', text: 'rgb(22 101 52)' },
+  cancelled: { label: 'Storniert', bg: 'rgb(254 226 226)', text: 'rgb(185 28 28)' },
+}
+
+function MahnungStatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_BADGE_CONFIG[status] ?? {
+    label: status,
+    bg: 'rgb(var(--muted))',
+    text: 'rgb(var(--foreground-muted))',
+  }
+  return (
+    <span
+      className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold"
+      style={{ backgroundColor: cfg.bg, color: cfg.text }}
+    >
+      {cfg.label}
+    </span>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -125,10 +155,10 @@ function EmptyState() {
         <FileWarning size={24} style={{ color: 'rgb(var(--foreground-muted))' }} />
       </div>
       <p className="text-sm font-medium" style={{ color: 'rgb(var(--foreground))' }}>
-        Keine überfälligen Rechnungen
+        Keine ueberfaelligen Rechnungen
       </p>
       <p className="text-xs mt-1 max-w-sm mx-auto" style={{ color: 'rgb(var(--foreground-muted))' }}>
-        Alle Rechnungen wurden rechtzeitig bezahlt. Sobald eine Rechnung ihr Fälligkeitsdatum überschreitet, erscheint sie hier.
+        Alle Rechnungen wurden rechtzeitig bezahlt. Sobald eine Rechnung ihr Faelligkeitsdatum ueberschreitet, erscheint sie hier.
       </p>
     </div>
   )
@@ -151,7 +181,7 @@ function OverviewCards({ invoices }: OverviewCardsProps) {
 
   const cards = [
     {
-      label: 'Überfällige Rechnungen',
+      label: 'Ueberfaellige Rechnungen',
       value: String(invoices.length),
       icon: AlertTriangle,
       iconColor: 'rgb(234 179 8)',
@@ -163,7 +193,7 @@ function OverviewCards({ invoices }: OverviewCardsProps) {
       iconColor: 'rgb(var(--primary))',
     },
     {
-      label: 'Ø Tage überfällig',
+      label: 'Durchschnitt Tage ueberfaellig',
       value: String(avgDays),
       icon: Clock,
       iconColor: 'rgb(239 68 68)',
@@ -205,16 +235,29 @@ function OverviewCards({ invoices }: OverviewCardsProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Expandable row detail
+// Expandable row detail — Mahnung history with status actions
 // ---------------------------------------------------------------------------
 
 interface MahnHistoryProps {
   invoiceId: string
+  onStatusChange: (message: string, type: 'success' | 'error') => void
 }
 
-function MahnHistory({ invoiceId }: MahnHistoryProps) {
+function MahnHistory({ invoiceId, onStatusChange }: MahnHistoryProps) {
   const [mahnungen, setMahnungen] = useState<MahnungRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  const loadMahnungen = useCallback(async () => {
+    try {
+      const data = await getMahnungen(invoiceId)
+      setMahnungen(data)
+    } catch {
+      // silently handle -- error is non-critical
+    } finally {
+      setLoading(false)
+    }
+  }, [invoiceId])
 
   useEffect(() => {
     let cancelled = false
@@ -223,7 +266,7 @@ function MahnHistory({ invoiceId }: MahnHistoryProps) {
         const data = await getMahnungen(invoiceId)
         if (!cancelled) setMahnungen(data)
       } catch {
-        // silently handle — error is non-critical
+        // silently handle
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -231,6 +274,24 @@ function MahnHistory({ invoiceId }: MahnHistoryProps) {
     load()
     return () => { cancelled = true }
   }, [invoiceId])
+
+  const handleStatusUpdate = async (mahnungId: string, newStatus: 'paid' | 'cancelled') => {
+    setActionLoading(mahnungId)
+    try {
+      await updateMahnungStatus(mahnungId, newStatus)
+      const label = newStatus === 'paid' ? 'als bezahlt markiert' : 'storniert'
+      onStatusChange(`Mahnung wurde ${label}.`, 'success')
+      // Reload mahnungen to reflect updated status
+      await loadMahnungen()
+    } catch (err) {
+      onStatusChange(
+        getErrorMessage(err, 'Status konnte nicht geaendert werden'),
+        'error',
+      )
+    } finally {
+      setActionLoading(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -244,7 +305,7 @@ function MahnHistory({ invoiceId }: MahnHistoryProps) {
     return (
       <div className="px-6 py-4">
         <p className="text-xs" style={{ color: 'rgb(var(--foreground-muted))' }}>
-          Noch keine Mahnungen für diese Rechnung erstellt.
+          Noch keine Mahnungen fuer diese Rechnung erstellt.
         </p>
       </div>
     )
@@ -256,36 +317,72 @@ function MahnHistory({ invoiceId }: MahnHistoryProps) {
         Mahnverlauf
       </p>
       <div className="space-y-2">
-        {mahnungen.map((m) => (
-          <div
-            key={m.mahnung_id}
-            className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-3 text-xs"
-            style={{
-              backgroundColor: 'rgb(var(--background))',
-              borderColor: 'rgb(var(--border))',
-              color: 'rgb(var(--foreground-muted))',
-            }}
-          >
-            <span className="font-medium" style={{ color: 'rgb(var(--foreground))' }}>
-              {MAHNUNG_LEVEL_LABELS[m.level] ?? `Stufe ${m.level}`}
-            </span>
-            <span>Gebühr: {fmt(m.fee)}</span>
-            <span>Zinsen: {fmt(m.interest)}</span>
-            <span className="font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
-              Gesamt: {fmt(m.total_due)}
-            </span>
-            <span>{fmtDateTime(m.created_at)}</span>
-            <span
-              className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+        {mahnungen.map((m) => {
+          const isTerminal = m.status === 'paid' || m.status === 'cancelled'
+          const isUpdating = actionLoading === m.mahnung_id
+
+          return (
+            <div
+              key={m.mahnung_id}
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-4 py-3 text-xs"
               style={{
-                backgroundColor: m.status === 'sent' ? 'rgb(220 252 231)' : 'rgb(var(--muted))',
-                color: m.status === 'sent' ? 'rgb(22 101 52)' : 'rgb(var(--foreground-muted))',
+                backgroundColor: 'rgb(var(--background))',
+                borderColor: 'rgb(var(--border))',
+                color: 'rgb(var(--foreground-muted))',
               }}
             >
-              {m.status === 'created' ? 'Erstellt' : m.status === 'sent' ? 'Versendet' : m.status}
-            </span>
-          </div>
-        ))}
+              <span className="font-medium" style={{ color: 'rgb(var(--foreground))' }}>
+                {MAHNUNG_LEVEL_LABELS[m.level] ?? `Stufe ${m.level}`}
+              </span>
+              <span>Gebuehr: {fmt(m.fee)}</span>
+              <span>Zinsen: {fmt(m.interest)}</span>
+              <span className="font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
+                Gesamt: {fmt(m.total_due)}
+              </span>
+              <span>{fmtDateTime(m.created_at)}</span>
+              {m.sent_at && (
+                <span className="text-[10px]" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                  Versendet: {fmtDateTime(m.sent_at)}
+                </span>
+              )}
+              <MahnungStatusBadge status={m.status} />
+
+              {/* Action buttons for non-terminal statuses */}
+              {!isTerminal && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={() => handleStatusUpdate(m.mahnung_id, 'paid')}
+                    disabled={isUpdating}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ backgroundColor: 'rgb(220 252 231)', color: 'rgb(22 101 52)' }}
+                    title="Als bezahlt markieren"
+                  >
+                    {isUpdating ? (
+                      <RefreshCw size={10} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={10} />
+                    )}
+                    Bezahlt
+                  </button>
+                  <button
+                    onClick={() => handleStatusUpdate(m.mahnung_id, 'cancelled')}
+                    disabled={isUpdating}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ backgroundColor: 'rgb(254 226 226)', color: 'rgb(185 28 28)' }}
+                    title="Stornieren"
+                  >
+                    {isUpdating ? (
+                      <RefreshCw size={10} className="animate-spin" />
+                    ) : (
+                      <Ban size={10} />
+                    )}
+                    Stornieren
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -313,7 +410,7 @@ export default function MahnwesenPage() {
       const data = await getOverdueInvoices()
       setInvoices(data)
     } catch (err) {
-      setError(getErrorMessage(err, 'Überfällige Rechnungen konnten nicht geladen werden'))
+      setError(getErrorMessage(err, 'Ueberfaellige Rechnungen konnten nicht geladen werden'))
     } finally {
       setLoading(false)
     }
@@ -356,6 +453,14 @@ export default function MahnwesenPage() {
   }
 
   // ---------------------------------------------------------------------------
+  // Handle status change from MahnHistory
+  // ---------------------------------------------------------------------------
+
+  const handleStatusChange = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type })
+  }
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -368,7 +473,7 @@ export default function MahnwesenPage() {
             Mahnwesen
           </h1>
           <p className="text-sm mt-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
-            Überfällige Rechnungen verwalten und Mahnungen erstellen
+            Ueberfaellige Rechnungen verwalten und Mahnungen erstellen
           </p>
         </div>
         <button
@@ -433,7 +538,7 @@ export default function MahnwesenPage() {
           >
             {/* Table header */}
             <div
-              className="hidden md:grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_1fr_0.8fr] gap-4 px-6 py-3 text-xs font-semibold uppercase tracking-wider border-b"
+              className="hidden md:grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_1fr_1fr] gap-4 px-6 py-3 text-xs font-semibold uppercase tracking-wider border-b"
               style={{
                 color: 'rgb(var(--foreground-muted))',
                 borderColor: 'rgb(var(--border))',
@@ -441,12 +546,12 @@ export default function MahnwesenPage() {
               }}
             >
               <span>Rechnungsnr.</span>
-              <span>Empfänger</span>
+              <span>Kunde</span>
               <span>Betrag</span>
-              <span>Fällig seit</span>
+              <span>Faellig seit</span>
               <span>Tage</span>
               <span>Mahnstufe</span>
-              <span>Aktion</span>
+              <span>Aktionen</span>
             </div>
 
             {/* Table rows */}
@@ -460,7 +565,7 @@ export default function MahnwesenPage() {
                 <div key={inv.invoice_id}>
                   {/* Row */}
                   <div
-                    className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_1fr_0.8fr] gap-2 md:gap-4 px-6 py-4 items-center border-b cursor-pointer transition-colors"
+                    className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_1fr_1fr] gap-2 md:gap-4 px-6 py-4 items-center border-b cursor-pointer transition-colors"
                     style={{ borderColor: 'rgb(var(--border))' }}
                     onClick={() => setExpandedId(isExpanded ? null : inv.invoice_id)}
                     onMouseEnter={(e) => {
@@ -482,10 +587,10 @@ export default function MahnwesenPage() {
                       </span>
                     </div>
 
-                    {/* Buyer */}
+                    {/* Buyer / Kunde */}
                     <span className="text-sm truncate" style={{ color: 'rgb(var(--foreground))' }}>
                       <span className="md:hidden text-xs font-medium mr-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
-                        Empfänger:
+                        Kunde:
                       </span>
                       {inv.buyer_name || '-'}
                     </span>
@@ -500,7 +605,7 @@ export default function MahnwesenPage() {
 
                     {/* Due date */}
                     <span className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
-                      <span className="md:hidden text-xs font-medium mr-1">Fällig:</span>
+                      <span className="md:hidden text-xs font-medium mr-1">Faellig:</span>
                       {fmtDate(inv.due_date)}
                     </span>
 
@@ -512,7 +617,7 @@ export default function MahnwesenPage() {
                       {inv.days_overdue}
                     </span>
 
-                    {/* Status badge */}
+                    {/* Mahnstufe badge */}
                     <div>
                       <span
                         className="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full"
@@ -522,8 +627,8 @@ export default function MahnwesenPage() {
                       </span>
                     </div>
 
-                    {/* Action button */}
-                    <div>
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -538,7 +643,7 @@ export default function MahnwesenPage() {
                         title={
                           maxedOut
                             ? 'Maximale Mahnstufe erreicht'
-                            : 'Nächste Mahnstufe erstellen'
+                            : 'Naechste Mahnstufe erstellen'
                         }
                       >
                         {isCreating ? (
@@ -546,7 +651,7 @@ export default function MahnwesenPage() {
                         ) : (
                           <Send size={12} />
                         )}
-                        {maxedOut ? 'Maximum' : 'Mahnung'}
+                        {maxedOut ? 'Maximum' : 'Neue Mahnung'}
                       </button>
                     </div>
                   </div>
@@ -560,7 +665,10 @@ export default function MahnwesenPage() {
                         backgroundColor: 'rgb(var(--muted))',
                       }}
                     >
-                      <MahnHistory invoiceId={inv.invoice_id} />
+                      <MahnHistory
+                        invoiceId={inv.invoice_id}
+                        onStatusChange={handleStatusChange}
+                      />
                     </div>
                   )}
                 </div>
@@ -574,20 +682,20 @@ export default function MahnwesenPage() {
             style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}
           >
             <h3 className="text-sm font-semibold mb-2" style={{ color: 'rgb(var(--foreground))' }}>
-              Mahnstufen-Übersicht
+              Mahnstufen-Uebersicht
             </h3>
             <div className="space-y-2 text-xs" style={{ color: 'rgb(var(--foreground-muted))' }}>
               <p>
-                <strong style={{ color: 'rgb(var(--foreground))' }}>Stufe 1 — Zahlungserinnerung:</strong>{' '}
-                Gebühr 5,00 EUR, keine Verzugszinsen.
+                <strong style={{ color: 'rgb(var(--foreground))' }}>Stufe 1 -- Zahlungserinnerung:</strong>{' '}
+                Gebuehr 5,00 EUR, keine Verzugszinsen.
               </p>
               <p>
-                <strong style={{ color: 'rgb(var(--foreground))' }}>Stufe 2 — 1. Mahnung:</strong>{' '}
-                Gebühr 10,00 EUR + 5% Verzugszinsen auf den Rechnungsbetrag.
+                <strong style={{ color: 'rgb(var(--foreground))' }}>Stufe 2 -- 1. Mahnung:</strong>{' '}
+                Gebuehr 10,00 EUR + 5% Verzugszinsen auf den Rechnungsbetrag.
               </p>
               <p>
-                <strong style={{ color: 'rgb(var(--foreground))' }}>Stufe 3 — 2. Mahnung (letzte):</strong>{' '}
-                Gebühr 15,00 EUR + 8% Verzugszinsen. Danach sind keine weiteren Mahnungen möglich.
+                <strong style={{ color: 'rgb(var(--foreground))' }}>Stufe 3 -- 2. Mahnung (letzte):</strong>{' '}
+                Gebuehr 15,00 EUR + 8% Verzugszinsen. Danach sind keine weiteren Mahnungen moeglich.
               </p>
             </div>
           </div>
