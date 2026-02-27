@@ -20,6 +20,7 @@ import {
   Repeat,
   AlertTriangle,
   Settings,
+  ClipboardList,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/recurring', label: 'Wiederkehrend', icon: Repeat },
   { href: '/mahnwesen', label: 'Mahnwesen', icon: AlertTriangle },
   { href: '/team', label: 'Team', icon: UsersRound },
+  { href: '/audit', label: 'Protokoll', icon: ClipboardList },
   { href: '/settings', label: 'Einstellungen', icon: Settings },
 ]
 

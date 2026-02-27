@@ -1,11 +1,12 @@
 """Users router: profile read and update."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User, Organization, OrganizationMember
 from app.auth_jwt import get_current_user, hash_password, verify_password
 from app.schemas_users import UserProfileResponse, UserProfileUpdate, OrganizationInfo
+from app.audit_service import log_action
 
 router = APIRouter()
 
@@ -44,6 +45,7 @@ def get_profile(
 
 @router.patch("/me", response_model=UserProfileResponse)
 def update_profile(
+    request: Request,
     payload: UserProfileUpdate,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -52,6 +54,10 @@ def update_profile(
     user = db.query(User).filter(User.id == int(current_user["user_id"])).first()
     if not user:
         raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+
+    # Track which changes are being made for audit log
+    changed_name = payload.full_name is not None
+    changed_password = False
 
     # Update full_name if provided
     if payload.full_name is not None:
@@ -70,6 +76,7 @@ def update_profile(
                 detail="Aktuelles Passwort ist falsch",
             )
         user.hashed_password = hash_password(payload.new_password)
+        changed_password = True
 
     db.commit()
     db.refresh(user)
@@ -85,6 +92,34 @@ def update_profile(
         org = db.query(Organization).filter(Organization.id == member.organization_id).first()
         if org:
             org_info = OrganizationInfo(id=org.id, name=org.name)
+
+    # Audit log
+    ip = request.client.host if request.client else None
+    user_id = int(current_user["user_id"])
+    org_id = member.organization_id if member else None
+    if org_id:
+        if changed_password:
+            log_action(
+                db,
+                org_id=org_id,
+                user_id=user_id,
+                action="password_changed",
+                resource_type="user",
+                resource_id=str(user.id),
+                details={"email": user.email},
+                ip_address=ip,
+            )
+        if changed_name:
+            log_action(
+                db,
+                org_id=org_id,
+                user_id=user_id,
+                action="user_profile_updated",
+                resource_type="user",
+                resource_id=str(user.id),
+                details={"field": "full_name", "email": user.email},
+                ip_address=ip,
+            )
 
     return UserProfileResponse(
         id=user.id,
