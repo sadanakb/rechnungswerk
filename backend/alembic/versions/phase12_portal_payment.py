@@ -17,7 +17,7 @@ depends_on = None
 def upgrade() -> None:
     # Add Stripe Connect fields to organizations
     op.add_column('organizations', sa.Column('stripe_connect_account_id', sa.String(255), nullable=True))
-    op.add_column('organizations', sa.Column('stripe_connect_onboarded', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column('organizations', sa.Column('stripe_connect_onboarded', sa.Boolean(), nullable=False, server_default=sa.false()))
     op.add_column('organizations', sa.Column('paypal_link', sa.String(255), nullable=True))
 
     # Create portal_payment_intents table
@@ -34,9 +34,15 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.UniqueConstraint('stripe_intent_id', name='uq_portal_payment_intents_stripe_intent_id'),
     )
+    op.create_index('ix_portal_payment_intents_invoice_id', 'portal_payment_intents', ['invoice_id'])
+    op.create_index('ix_portal_payment_intents_share_link_id', 'portal_payment_intents', ['share_link_id'])
+    op.create_index('ix_portal_payment_intents_stripe_intent_id', 'portal_payment_intents', ['stripe_intent_id'], unique=True)
 
 
 def downgrade() -> None:
+    op.drop_index('ix_portal_payment_intents_stripe_intent_id', table_name='portal_payment_intents')
+    op.drop_index('ix_portal_payment_intents_share_link_id', table_name='portal_payment_intents')
+    op.drop_index('ix_portal_payment_intents_invoice_id', table_name='portal_payment_intents')
     op.drop_table('portal_payment_intents')
     op.drop_column('organizations', 'paypal_link')
     op.drop_column('organizations', 'stripe_connect_onboarded')
