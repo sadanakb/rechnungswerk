@@ -159,3 +159,58 @@ def complete_onboarding(
     db.refresh(org)
 
     return OnboardingCompleteResponse(completed=True)
+
+
+# ---------------------------------------------------------------------------
+# DATEV Settings (Phase 10)
+# ---------------------------------------------------------------------------
+
+class DatevSettingsPayload(BaseModel):
+    datev_berater_nr: str | None = None
+    datev_mandant_nr: str | None = None
+    steuerberater_email: str | None = None
+
+
+class DatevSettingsResponse(BaseModel):
+    datev_berater_nr: str | None
+    datev_mandant_nr: str | None
+    steuerberater_email: str | None
+
+
+@router.get("/datev-settings", response_model=DatevSettingsResponse)
+def get_datev_settings(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return DATEV configuration for current organization."""
+    org = _get_org(current_user, db)
+    return DatevSettingsResponse(
+        datev_berater_nr=org.datev_berater_nr,
+        datev_mandant_nr=org.datev_mandant_nr,
+        steuerberater_email=org.steuerberater_email,
+    )
+
+
+@router.post("/datev-settings", response_model=DatevSettingsResponse)
+def update_datev_settings(
+    payload: DatevSettingsPayload,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update DATEV configuration (Beraternummer, Mandantennummer, Steuerberater-E-Mail)."""
+    org = _get_org(current_user, db)
+
+    if payload.datev_berater_nr is not None:
+        org.datev_berater_nr = payload.datev_berater_nr
+    if payload.datev_mandant_nr is not None:
+        org.datev_mandant_nr = payload.datev_mandant_nr
+    if payload.steuerberater_email is not None:
+        org.steuerberater_email = payload.steuerberater_email
+
+    db.commit()
+    db.refresh(org)
+    return DatevSettingsResponse(
+        datev_berater_nr=org.datev_berater_nr,
+        datev_mandant_nr=org.datev_mandant_nr,
+        steuerberater_email=org.steuerberater_email,
+    )
