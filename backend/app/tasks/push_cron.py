@@ -35,13 +35,16 @@ async def send_overdue_push_cron(ctx: Dict) -> dict:
 
         notified = 0
         for org_id, count in org_counts.items():
-            push_service.notify_org(
-                organization_id=org_id,
-                title=f"{count} überfällige Rechnung{'n' if count > 1 else ''}",
-                body="Bitte prüfe offene Rechnungen in RechnungsWerk.",
-                db=db,
-            )
-            notified += 1
+            try:
+                push_service.notify_org(
+                    organization_id=org_id,
+                    title=f"{count} überfällige Rechnung{'n' if count > 1 else ''}",
+                    body="Bitte prüfe offene Rechnungen in RechnungsWerk.",
+                    db=db,
+                )
+                notified += 1
+            except Exception:
+                logger.warning("[PushCron] notify_org failed for org %d", org_id)
 
         logger.info("[PushCron] Overdue push sent to %d organisations", notified)
         return {"notified_orgs": notified, "overdue_invoices": len(overdue)}

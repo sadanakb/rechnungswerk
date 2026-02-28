@@ -209,9 +209,9 @@ async def upload_pdf_for_ocr(
         db.commit()
 
         # Phase 11: Push notification on OCR complete
-        # OCR endpoint belongs to an org only when the upload_log carries an org context.
-        # We check the UploadLog's org_id (if present) via the authenticated user context.
-        _ocr_org_id = current_user.get("org_id") if current_user else None
+        _ocr_org_id = getattr(upload_log, "organization_id", None) or (
+            current_user.get("org_id") if current_user else None
+        )
         if _ocr_org_id:
             try:
                 from app import push_service
