@@ -23,6 +23,7 @@ import {
   Loader2,
   ArrowRight,
   Hash,
+  Bell,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import {
@@ -40,6 +41,9 @@ import {
   saveInvoiceSequence,
   getDatevSettings,
   saveDatevSettings,
+  getPushStatus,
+  subscribePush,
+  unsubscribePush,
   getErrorMessage,
   type UserProfile,
   type OnboardingStatus,
@@ -1608,6 +1612,98 @@ function DatevKonfigurationTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Push Notifications Tab
+// ---------------------------------------------------------------------------
+function PushSettingsTab() {
+  const [subscribed, setSubscribed] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [toggling, setToggling] = useState(false)
+  const [fcmToken, setFcmToken] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getPushStatus()
+      .then((data) => setSubscribed(data.subscribed))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleToggle = async () => {
+    setToggling(true)
+    setError(null)
+    try {
+      if (subscribed && fcmToken) {
+        await unsubscribePush(fcmToken)
+        setFcmToken(null)
+        setSubscribed(false)
+      } else {
+        if (typeof Notification === 'undefined') {
+          setError('Push-Benachrichtigungen werden in diesem Browser nicht unterstützt.')
+          return
+        }
+        const permission = await Notification.requestPermission()
+        if (permission !== 'granted') {
+          setError('Benachrichtigungen wurden blockiert. Bitte in den Browser-Einstellungen erlauben.')
+          return
+        }
+        // In production: replace with real FCM token from Firebase SDK
+        const mockToken = `sw-token-${Date.now()}`
+        await subscribePush(mockToken)
+        setFcmToken(mockToken)
+        setSubscribed(true)
+      }
+    } catch {
+      setError('Fehler beim Ändern der Benachrichtigungseinstellungen.')
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Push-Benachrichtigungen</CardTitle>
+        <CardDescription>
+          Erhalte sofortige Browser-Benachrichtigungen bei wichtigen Ereignissen.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {loading ? (
+          <p className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>Laden…</p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'rgb(var(--foreground))' }}>
+                  {subscribed ? 'Benachrichtigungen aktiv' : 'Benachrichtigungen deaktiviert'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                  Überfällige Rechnungen · Zahlung eingegangen · Mahnung · OCR
+                </p>
+              </div>
+              <button
+                onClick={handleToggle}
+                disabled={toggling}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-50"
+                style={{
+                  backgroundColor: subscribed ? 'rgb(var(--muted))' : 'rgb(var(--primary))',
+                  color: subscribed ? 'rgb(var(--foreground))' : 'white',
+                }}
+              >
+                {toggling ? '…' : subscribed ? 'Deaktivieren' : 'Aktivieren'}
+              </button>
+            </div>
+            {error && (
+              <p className="text-sm" style={{ color: 'rgb(var(--destructive))' }}>{error}</p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Settings Page
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
@@ -1661,6 +1757,10 @@ export default function SettingsPage() {
             <ArrowRight size={14} />
             <span className="hidden sm:inline">DATEV</span>
           </TabsTrigger>
+          <TabsTrigger value="benachrichtigungen" className="gap-1.5">
+            <Bell size={14} />
+            <span className="hidden sm:inline">Benachrichtigungen</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="konto">
@@ -1685,6 +1785,10 @@ export default function SettingsPage() {
 
         <TabsContent value="datev">
           <DatevKonfigurationTab />
+        </TabsContent>
+
+        <TabsContent value="benachrichtigungen">
+          <PushSettingsTab />
         </TabsContent>
       </Tabs>
     </div>
