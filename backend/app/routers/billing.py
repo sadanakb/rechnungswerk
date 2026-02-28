@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.auth_jwt import get_current_user
-from app.models import User, Organization, OrganizationMember
+from app.models import User, Organization, OrganizationMember, PortalPaymentIntent, Invoice
 from app import stripe_service
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,10 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 class CheckoutRequest(BaseModel):
     plan: str  # "starter" or "professional"
     billing_cycle: str = "monthly"  # "monthly" or "yearly"
+
+
+class PaymentSettingsUpdate(BaseModel):
+    paypal_link: str | None = None
 
 
 @router.post("/checkout")
@@ -114,6 +118,116 @@ def create_portal(
     except Exception as e:
         logger.error("Stripe portal error: %s", e)
         raise HTTPException(status_code=500, detail="Portal konnte nicht erstellt werden")
+
+
+# ---------------------------------------------------------------------------
+# POST /api/billing/connect-onboard — Stripe Connect Express Onboarding
+# ---------------------------------------------------------------------------
+
+@router.post("/connect-onboard")
+def connect_onboard(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create or resume Stripe Connect Express onboarding. Returns {url, account_id}."""
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == int(current_user["user_id"])
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Keine Organisation gefunden")
+    org = db.query(Organization).filter(Organization.id == member.organization_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation nicht gefunden")
+
+    try:
+        result = stripe_service.create_connect_onboarding_url(
+            existing_account_id=org.stripe_connect_account_id,
+            return_url="https://rechnungswerk.de/dashboard/settings?stripe_connected=1",
+            refresh_url="https://rechnungswerk.de/dashboard/settings?stripe_refresh=1",
+        )
+        if not org.stripe_connect_account_id:
+            org.stripe_connect_account_id = result["account_id"]
+            db.commit()
+        return {"url": result["url"], "account_id": result["account_id"]}
+    except Exception as e:
+        logger.error("Stripe Connect onboarding error: %s", e)
+        raise HTTPException(status_code=500, detail="Stripe Connect Onboarding fehlgeschlagen")
+
+
+# ---------------------------------------------------------------------------
+# GET /api/billing/connect-status — Check Connect Account Status
+# ---------------------------------------------------------------------------
+
+@router.get("/connect-status")
+def connect_status(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return Stripe Connect onboarding status. Updates DB if newly onboarded."""
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == int(current_user["user_id"])
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Keine Organisation gefunden")
+    org = db.query(Organization).filter(Organization.id == member.organization_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation nicht gefunden")
+
+    if org.stripe_connect_account_id is None:
+        return {"onboarded": False, "account_id": None}
+
+    try:
+        status = stripe_service.get_connect_account_status(org.stripe_connect_account_id)
+        if status["onboarded"] and not org.stripe_connect_onboarded:
+            org.stripe_connect_onboarded = True
+            db.commit()
+        return {
+            "onboarded": status["onboarded"],
+            "account_id": org.stripe_connect_account_id,
+            "charges_enabled": status["charges_enabled"],
+        }
+    except Exception as e:
+        logger.error("Stripe Connect status check error: %s", e)
+        return {"onboarded": org.stripe_connect_onboarded, "account_id": org.stripe_connect_account_id}
+
+
+# ---------------------------------------------------------------------------
+# GET + PATCH /api/billing/payment-settings — PayPal link
+# ---------------------------------------------------------------------------
+
+@router.get("/payment-settings")
+def get_payment_settings(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return PayPal link for the org."""
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == int(current_user["user_id"])
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Keine Organisation gefunden")
+    org = db.query(Organization).filter(Organization.id == member.organization_id).first()
+    return {"paypal_link": org.paypal_link if org else None}
+
+
+@router.patch("/payment-settings")
+def update_payment_settings(
+    data: PaymentSettingsUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update PayPal link for the org."""
+    member = db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == int(current_user["user_id"])
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Keine Organisation gefunden")
+    org = db.query(Organization).filter(Organization.id == member.organization_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation nicht gefunden")
+    org.paypal_link = data.paypal_link
+    db.commit()
+    return {"paypal_link": org.paypal_link}
 
 
 # ---------------------------------------------------------------------------
@@ -224,5 +338,34 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             org.plan_status = "past_due"
             db.commit()
             logger.info("Payment failed for org %s: status=past_due", org.id)
+
+    # --- payment_intent.succeeded (Phase 12: portal payments) ---
+    elif event_type == "payment_intent.succeeded":
+        intent_id = data_object.get("id")
+        if intent_id:
+            ppi = db.query(PortalPaymentIntent).filter(
+                PortalPaymentIntent.stripe_intent_id == intent_id
+            ).first()
+            if ppi and ppi.status != "succeeded":
+                from datetime import date
+                ppi.status = "succeeded"
+                invoice = db.query(Invoice).filter(Invoice.id == ppi.invoice_id).first()
+                if invoice and invoice.payment_status != "paid":
+                    invoice.payment_status = "paid"
+                    invoice.paid_date = date.today()
+                    invoice.payment_method = "stripe_portal"
+                    invoice.payment_reference = intent_id
+                    db.commit()
+                    logger.info("Portal payment succeeded: invoice_id=%s intent=%s", invoice.id, intent_id)
+                    try:
+                        from app import push_service
+                        push_service.notify_org(
+                            organization_id=invoice.organization_id,
+                            title="Zahlung eingegangen",
+                            body=f"Rechnung {invoice.invoice_number or ''} wurde online bezahlt.",
+                            db=db,
+                        )
+                    except Exception:
+                        pass
 
     return {"status": "ok"}
