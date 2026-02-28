@@ -1,95 +1,93 @@
-export const metadata = {
-  title: 'Datenschutzerklaerung — RechnungsWerk',
-  description: 'Datenschutzerklaerung gemaess DSGVO fuer RechnungsWerk',
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Datenschutzerklärung | RechnungsWerk',
+  description: 'Datenschutzerklärung von RechnungsWerk gemäß DSGVO (Art. 13, 14 DSGVO).',
 }
 
 export default function DatenschutzPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-bold mb-8">Datenschutzerklaerung</h1>
+    <main className="max-w-3xl mx-auto px-6 py-16">
+      <h1 className="text-3xl font-bold mb-2">Datenschutzerklärung</h1>
+      <p className="text-sm mb-10" style={{ color: 'rgb(var(--foreground-muted))' }}>
+        Zuletzt aktualisiert: Februar 2026
+      </p>
 
-      <div className="space-y-8 leading-relaxed">
+      <div className="space-y-8">
         <section>
-          <h2 className="text-xl font-semibold mb-2">1. Verantwortlicher</h2>
-          <p>
-            Verantwortlich fuer die Datenverarbeitung auf dieser Website ist:<br />
-            RechnungsWerk<br />
-            [Adresse]<br />
-            E-Mail: datenschutz@rechnungswerk.de
+          <h2 className="text-xl font-semibold mb-3">1. Verantwortlicher</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Verantwortlicher im Sinne der DSGVO ist: RechnungsWerk GmbH,
+            [Adresse], Deutschland. Kontakt: datenschutz@rechnungswerk.de
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-2">2. Erhebung und Verarbeitung personenbezogener Daten</h2>
-          <p>
-            Wir verarbeiten personenbezogene Daten nur, soweit dies zur Bereitstellung unserer Dienste
-            erforderlich ist. Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO
-            (Vertragsdurchfuehrung) und Art. 6 Abs. 1 lit. f DSGVO (berechtigte Interessen).
+          <h2 className="text-xl font-semibold mb-3">2. Erhobene Daten</h2>
+          <p className="text-sm leading-relaxed mb-2" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Wir verarbeiten folgende personenbezogene Daten:
           </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold mb-2">3. Datenkategorien</h2>
-          <ul className="list-disc pl-6 space-y-1">
-            <li>Bestandsdaten (Name, E-Mail-Adresse, Firmenname)</li>
-            <li>Rechnungsdaten (Rechnungsinhalte, Betraege, Steuernummern)</li>
-            <li>Nutzungsdaten (Zugriffszeiten, IP-Adressen — anonymisiert)</li>
-            <li>Zahlungsdaten (ueber Stripe verarbeitet — wir speichern keine Kreditkartendaten)</li>
+          <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            <li>Kontodaten: E-Mail-Adresse, Name</li>
+            <li>Rechnungsdaten: Lieferantennamen, Beträge, Datumsangaben</li>
+            <li>Nutzungsdaten: Login-Zeitstempel</li>
+            <li>Gerätedaten für Push-Benachrichtigungen (nur mit ausdrücklicher Einwilligung)</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-2">4. Drittanbieter</h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold">Stripe (Zahlungsabwicklung)</h3>
-              <p>Stripe, Inc., 510 Townsend Street, San Francisco, CA 94103, USA. Datenschutzerklaerung: stripe.com/privacy</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Brevo (E-Mail-Versand)</h3>
-              <p>Sendinblue GmbH, Koepernikusstr. 35, 10243 Berlin. EU-Datenresidenz. Datenschutzerklaerung: brevo.com/legal/privacypolicy</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">PostHog (Analytics — Self-Hosted)</h3>
-              <p>Self-hosted auf unserer eigenen Infrastruktur. Keine Daten verlassen unsere Server. Cookieless Tracking.</p>
-            </div>
-          </div>
+          <h2 className="text-xl font-semibold mb-3">3. Zweck der Verarbeitung</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Daten werden ausschließlich zur Bereitstellung des RechnungsWerk-Dienstes verarbeitet
+            (E-Invoicing, Buchhaltung, DATEV-Export). Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO
+            (Vertragserfüllung).
+          </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-2">5. Ihre Rechte</h2>
-          <p>Sie haben gemaess DSGVO folgende Rechte:</p>
-          <ul className="list-disc pl-6 space-y-1 mt-2">
-            <li>Auskunftsrecht (Art. 15 DSGVO)</li>
-            <li>Recht auf Berichtigung (Art. 16 DSGVO)</li>
-            <li>Recht auf Loeschung (Art. 17 DSGVO)</li>
-            <li>Recht auf Einschraenkung der Verarbeitung (Art. 18 DSGVO)</li>
-            <li>Recht auf Datenuebertragbarkeit (Art. 20 DSGVO)</li>
-            <li>Widerspruchsrecht (Art. 21 DSGVO)</li>
+          <h2 className="text-xl font-semibold mb-3">4. Aufbewahrungsfristen</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Rechnungsdaten werden gemäß § 147 AO für 10 Jahre aufbewahrt.
+            Kontodaten werden nach Account-Löschung sofort und vollständig entfernt.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">5. Deine Rechte (Art. 15–22 DSGVO)</h2>
+          <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            <li><strong>Auskunft (Art. 15):</strong> Welche Daten wir über dich speichern</li>
+            <li><strong>Berichtigung (Art. 16):</strong> Korrektur unrichtiger Daten</li>
+            <li><strong>Löschung (Art. 17):</strong> In Einstellungen → Datenschutz → Account löschen</li>
+            <li><strong>Datenübertragbarkeit (Art. 20):</strong> In Einstellungen → Datenschutz → Daten herunterladen</li>
+            <li><strong>Einschränkung (Art. 18):</strong> Auf Anfrage per E-Mail</li>
+            <li><strong>Widerspruch (Art. 21):</strong> datenschutz@rechnungswerk.de</li>
           </ul>
-          <p className="mt-2">
-            Kontaktieren Sie uns unter datenschutz@rechnungswerk.de oder wenden Sie sich an die zustaendige Aufsichtsbehoerde.
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">6. Push-Benachrichtigungen</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Push-Benachrichtigungen werden nur mit deiner ausdrücklichen Einwilligung über
+            Firebase Cloud Messaging (Google LLC, USA) gesendet. Du kannst sie jederzeit unter
+            Einstellungen → Benachrichtigungen deaktivieren.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-2">6. Aufbewahrung</h2>
-          <p>
-            Rechnungsdaten werden gemaess den handels- und steuerrechtlichen Aufbewahrungsfristen
-            (§ 147 AO, § 257 HGB) fuer 10 Jahre aufbewahrt. Nach Ablauf der Fristen werden die Daten
-            geloescht.
+          <h2 className="text-xl font-semibold mb-3">7. Drittanbieter</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Stripe (Zahlungsabwicklung), Brevo (transaktionale E-Mails),
+            Firebase (Push-Benachrichtigungen). Alle Anbieter sind DSGVO-konform
+            und verarbeiten Daten ausschließlich im Auftrag von RechnungsWerk.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-2">7. SSL/TLS-Verschluesselung</h2>
-          <p>
-            Diese Website nutzt aus Sicherheitsgruenden eine SSL/TLS-Verschluesselung.
-            Eine verschluesselte Verbindung erkennen Sie an dem Praefix &quot;https://&quot; in der Adresszeile.
+          <h2 className="text-xl font-semibold mb-3">8. Kontakt</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Bei Fragen zum Datenschutz: datenschutz@rechnungswerk.de
           </p>
         </section>
-
-        <p className="text-sm opacity-50 mt-8">Stand: Februar 2026</p>
       </div>
     </main>
   )

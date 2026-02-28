@@ -44,6 +44,8 @@ import {
   getPushStatus,
   subscribePush,
   unsubscribePush,
+  exportGdprData,
+  requestAccountDelete,
   getErrorMessage,
   type UserProfile,
   type OnboardingStatus,
@@ -1708,6 +1710,124 @@ function PushSettingsTab() {
 }
 
 // ---------------------------------------------------------------------------
+// GDPR Controls Tab
+// ---------------------------------------------------------------------------
+function GdprTab() {
+  const [exporting, setExporting] = useState(false)
+  const [requestingDelete, setRequestingDelete] = useState(false)
+  const [deleteRequested, setDeleteRequested] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleExport = async () => {
+    setExporting(true)
+    setError(null)
+    try {
+      await exportGdprData()
+    } catch {
+      setError('Export fehlgeschlagen. Bitte versuche es erneut.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleRequestDelete = async () => {
+    setRequestingDelete(true)
+    setError(null)
+    try {
+      await requestAccountDelete()
+      setDeleteRequested(true)
+      setShowDeleteConfirm(false)
+    } catch {
+      setError('Anfrage fehlgeschlagen. Bitte versuche es erneut.')
+    } finally {
+      setRequestingDelete(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Datenexport (Art. 20 DSGVO)</CardTitle>
+          <CardDescription>
+            Lade alle deine gespeicherten Daten als ZIP-Datei herunter (Rechnungen, Kontakte, Profil).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-50"
+            style={{ backgroundColor: 'rgb(var(--primary))', color: 'rgb(var(--primary-foreground))' }}
+          >
+            {exporting ? 'Wird erstellt…' : 'Daten herunterladen'}
+          </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account löschen (Art. 17 DSGVO)</CardTitle>
+          <CardDescription>
+            Lösche deinen Account und alle Daten unwiderruflich. Du erhältst eine Bestätigungs-E-Mail.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {deleteRequested ? (
+            <p className="text-sm" style={{ color: 'rgb(var(--primary))' }}>
+              Bestätigungs-E-Mail wurde gesendet. Bitte prüfe dein Postfach (gilt 24 Stunden).
+            </p>
+          ) : showDeleteConfirm ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium" style={{ color: 'rgb(var(--destructive))' }}>
+                Bist du sicher? Diese Aktion kann nicht rückgängig gemacht werden.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRequestDelete}
+                  disabled={requestingDelete}
+                  className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                  style={{ backgroundColor: 'rgb(var(--destructive))', color: 'rgb(var(--destructive-foreground))' }}
+                >
+                  {requestingDelete ? '…' : 'Ja, Account löschen'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium"
+                  style={{ backgroundColor: 'rgb(var(--muted))', color: 'rgb(var(--foreground))' }}
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2 rounded-lg text-sm font-medium"
+              style={{ backgroundColor: 'rgb(var(--muted))', color: 'rgb(var(--destructive))' }}
+            >
+              Account löschen
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      {error && (
+        <p className="text-sm" style={{ color: 'rgb(var(--destructive))' }}>{error}</p>
+      )}
+
+      <p className="text-xs" style={{ color: 'rgb(var(--foreground-muted))' }}>
+        Weitere Informationen:{' '}
+        <a href="/datenschutz" style={{ color: 'rgb(var(--primary))' }}>
+          Datenschutzerklärung
+        </a>
+      </p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Settings Page
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
@@ -1765,6 +1885,10 @@ export default function SettingsPage() {
             <Bell size={14} />
             <span className="hidden sm:inline">Benachrichtigungen</span>
           </TabsTrigger>
+          <TabsTrigger value="datenschutz" className="gap-1.5">
+            <Shield size={14} />
+            <span className="hidden sm:inline">Datenschutz</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="konto">
@@ -1793,6 +1917,10 @@ export default function SettingsPage() {
 
         <TabsContent value="benachrichtigungen">
           <PushSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="datenschutz">
+          <GdprTab />
         </TabsContent>
       </Tabs>
     </div>

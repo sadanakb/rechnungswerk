@@ -1518,3 +1518,23 @@ export async function subscribePush(fcmToken: string, deviceLabel?: string): Pro
 export async function unsubscribePush(fcmToken: string): Promise<void> {
   await api.delete('/api/push/unsubscribe', { params: { fcm_token: fcmToken } })
 }
+
+// ── GDPR Controls (Phase 11) ───────────────────────────────────────────────
+
+export async function exportGdprData(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10)
+  const res = await api.get('/api/gdpr/export', { responseType: 'blob' })
+  const url = URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `RechnungsWerk_Datenexport_${today}.zip`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export async function requestAccountDelete(): Promise<{ message: string }> {
+  const res = await api.post('/api/gdpr/request-delete')
+  return res.data
+}
