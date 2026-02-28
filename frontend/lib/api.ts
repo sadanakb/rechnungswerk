@@ -1538,3 +1538,36 @@ export async function requestAccountDelete(): Promise<{ message: string }> {
   const res = await api.post('/api/gdpr/request-delete')
   return res.data
 }
+
+// ---------------------------------------------------------------------------
+// Phase 12: Stripe Connect + PayPal Settings
+// ---------------------------------------------------------------------------
+
+export interface ConnectStatus {
+  onboarded: boolean
+  account_id: string | null
+  charges_enabled?: boolean
+}
+
+export interface PaymentSettingsData {
+  paypal_link: string | null
+}
+
+export async function getConnectStatus(): Promise<ConnectStatus> {
+  const res = await api.get('/api/billing/connect-status')
+  return res.data
+}
+
+export async function startConnectOnboarding(): Promise<{ url: string; account_id: string }> {
+  const res = await api.post('/api/billing/connect-onboard')
+  return res.data
+}
+
+export async function getPaymentSettings(): Promise<PaymentSettingsData> {
+  const res = await api.get('/api/billing/payment-settings')
+  return res.data
+}
+
+export async function savePaymentSettings(data: { paypal_link: string | null }): Promise<void> {
+  await api.patch('/api/billing/payment-settings', data)
+}

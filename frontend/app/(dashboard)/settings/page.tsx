@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Hash,
   Bell,
+  DollarSign,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import {
@@ -47,12 +48,17 @@ import {
   exportGdprData,
   requestAccountDelete,
   getErrorMessage,
+  getConnectStatus,
+  startConnectOnboarding,
+  getPaymentSettings,
+  savePaymentSettings,
   type UserProfile,
   type OnboardingStatus,
   type SubscriptionInfo,
   type ApiKeyItem,
   type ApiKeyCreateResult,
   type SequenceInfo,
+  type ConnectStatus,
 } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -1828,6 +1834,168 @@ function GdprTab() {
 }
 
 // ---------------------------------------------------------------------------
+// PaymentSettingsTab — Stripe Connect + PayPal (Phase 12)
+// ---------------------------------------------------------------------------
+function PaymentSettingsTab() {
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null)
+  const [paypalLink, setPaypalLink] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [onboarding, setOnboarding] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [status, settings] = await Promise.all([
+          getConnectStatus(),
+          getPaymentSettings(),
+        ])
+        setConnectStatus(status)
+        setPaypalLink(settings.paypal_link ?? '')
+      } catch {
+        setError('Einstellungen konnten nicht geladen werden')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const handleConnectOnboarding = async () => {
+    setOnboarding(true)
+    setError(null)
+    try {
+      const { url } = await startConnectOnboarding()
+      if (typeof window !== 'undefined') {
+        window.location.href = url
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Stripe Connect konnte nicht gestartet werden'))
+      setOnboarding(false)
+    }
+  }
+
+  const handleSavePaypal = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await savePaymentSettings({ paypal_link: paypalLink.trim() || null })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Speichern fehlgeschlagen'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'rgb(var(--primary))' }} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stripe Connect */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Online-Zahlung via Stripe</CardTitle>
+          <CardDescription>
+            Verbinde dein Stripe-Konto, damit Kunden Rechnungen direkt im Portal bezahlen können (Karte, SEPA, Sofort, iDEAL).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {connectStatus?.onboarded ? (
+            <div
+              className="flex items-center gap-3 rounded-lg border p-4"
+              style={{ borderColor: 'rgb(var(--border))', background: 'rgb(var(--muted))' }}
+            >
+              <Check className="h-5 w-5 shrink-0" style={{ color: 'rgb(var(--primary))' }} />
+              <div>
+                <p className="text-sm font-medium">Stripe verbunden</p>
+                {connectStatus.account_id && (
+                  <p className="text-xs font-mono" style={{ color: 'rgb(var(--muted-foreground))' }}>
+                    {connectStatus.account_id}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div
+                className="flex items-start gap-3 rounded-lg border p-4"
+                style={{ borderColor: 'rgb(var(--border))' }}
+              >
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'rgb(var(--muted-foreground))' }} />
+                <p className="text-sm" style={{ color: 'rgb(var(--muted-foreground))' }}>
+                  Noch nicht verbunden. Nach dem Onboarding (~10 Min) können Kunden direkt im Portal bezahlen.
+                  RechnungsWerk behält automatisch 0,5 % als Plattformgebühr ein.
+                </p>
+              </div>
+              <Button
+                onClick={handleConnectOnboarding}
+                disabled={onboarding}
+                className="w-full sm:w-auto"
+              >
+                {onboarding ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                )}
+                Mit Stripe verbinden
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* PayPal */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">PayPal-Link (optional)</CardTitle>
+          <CardDescription>
+            Trage deine PayPal.me-URL ein. Kunden sehen im Portal einen „Per PayPal zahlen"-Button.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input
+            value={paypalLink}
+            onChange={(e) => setPaypalLink(e.target.value)}
+            placeholder="https://paypal.me/deinname"
+          />
+          <Button
+            onClick={handleSavePaypal}
+            disabled={saving}
+            variant="outline"
+            size="sm"
+          >
+            {saved ? (
+              <Check className="mr-2 h-4 w-4" />
+            ) : saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            {saved ? 'Gespeichert' : 'Speichern'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <p className="text-sm rounded-md p-3" style={{ background: 'rgb(var(--destructive) / 0.1)', color: 'rgb(var(--destructive))' }}>
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Settings Page
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
@@ -1889,6 +2057,10 @@ export default function SettingsPage() {
             <Shield size={14} />
             <span className="hidden sm:inline">Datenschutz</span>
           </TabsTrigger>
+          <TabsTrigger value="zahlungen" className="flex items-center gap-1.5">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Zahlungen</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="konto">
@@ -1921,6 +2093,10 @@ export default function SettingsPage() {
 
         <TabsContent value="datenschutz">
           <GdprTab />
+        </TabsContent>
+
+        <TabsContent value="zahlungen">
+          <PaymentSettingsTab />
         </TabsContent>
       </Tabs>
     </div>
