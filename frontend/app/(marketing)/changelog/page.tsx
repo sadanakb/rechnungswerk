@@ -17,7 +17,7 @@ export const metadata: Metadata = {
    ----------------------------------------------------------------------- */
 interface ReleaseItem {
   text: string
-  tag?: 'feature' | 'security' | 'seo' | 'infra' | 'content'
+  tag?: 'feature' | 'security' | 'seo' | 'infra' | 'content' | 'neu'
 }
 
 interface Release {
@@ -28,6 +28,17 @@ interface Release {
 }
 
 const releases: Release[] = [
+  {
+    version: 'v1.1.0',
+    title: 'Phase 11: Push Notifications + GDPR Controls',
+    date: '28.02.2026',
+    items: [
+      { text: 'Push-Benachrichtigungen via Firebase FCM — Zahlung eingegangen, Mahnung, OCR, Überfällig', tag: 'neu' },
+      { text: 'DSGVO-Datenexport (Art. 20) — ZIP mit Rechnungen, Kontakten und Profil', tag: 'neu' },
+      { text: 'Account-Löschung (Art. 17) — 2-Schritt mit E-Mail-Bestätigung', tag: 'neu' },
+      { text: 'Datenschutzerklärung unter /datenschutz', tag: 'neu' },
+    ],
+  },
   {
     version: 'v1.0.0',
     title: 'DATEV-Export — Buchungsstapel v700',
@@ -252,6 +263,11 @@ const tagConfig: Record<string, { label: string; bg: string; text: string }> = {
     label: 'Content',
     bg: 'rgba(245, 158, 11, 0.1)',
     text: 'rgb(217, 119, 6)',
+  },
+  neu: {
+    label: 'Neu',
+    bg: 'rgba(14, 165, 233, 0.1)',
+    text: 'rgb(2, 132, 199)',
   },
 }
 
