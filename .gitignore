@@ -34,3 +34,4 @@ frontend/public/sw.js
 # Temp
 /tmp/
 *.tmp
+.worktrees/
