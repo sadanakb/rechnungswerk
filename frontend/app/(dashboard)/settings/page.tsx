@@ -38,6 +38,8 @@ import {
   revokeApiKey,
   getInvoiceSequence,
   saveInvoiceSequence,
+  getDatevSettings,
+  saveDatevSettings,
   getErrorMessage,
   type UserProfile,
   type OnboardingStatus,
@@ -1464,6 +1466,148 @@ function NummernkreisTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Tab: DATEV-Konfiguration
+// ---------------------------------------------------------------------------
+function DatevKonfigurationTab() {
+  const [settings, setSettings] = useState<{
+    datev_berater_nr: string | null
+    datev_mandant_nr: string | null
+    steuerberater_email: string | null
+  }>({
+    datev_berater_nr: null,
+    datev_mandant_nr: null,
+    steuerberater_email: null,
+  })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getDatevSettings()
+      .then((data) => setSettings(data))
+      .catch(() => {})
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      const updated = await saveDatevSettings(settings)
+      setSettings(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setError('Speichern fehlgeschlagen.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>DATEV-Konfiguration</CardTitle>
+        <CardDescription>
+          Pflichtfelder fuer den DATEV EXTF Buchungsstapel-Export (v700).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label
+              className="block text-xs font-medium mb-1"
+              style={{ color: 'rgb(var(--foreground-muted))' }}
+            >
+              Beraternummer (5-stellig)
+            </label>
+            <input
+              type="text"
+              maxLength={5}
+              placeholder="12345"
+              value={settings.datev_berater_nr ?? ''}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, datev_berater_nr: e.target.value || null }))
+              }
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{
+                backgroundColor: 'rgb(var(--background))',
+                borderColor: 'rgb(var(--border))',
+                color: 'rgb(var(--foreground))',
+              }}
+            />
+          </div>
+
+          <div>
+            <label
+              className="block text-xs font-medium mb-1"
+              style={{ color: 'rgb(var(--foreground-muted))' }}
+            >
+              Mandantennummer (5-stellig)
+            </label>
+            <input
+              type="text"
+              maxLength={5}
+              placeholder="00001"
+              value={settings.datev_mandant_nr ?? ''}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, datev_mandant_nr: e.target.value || null }))
+              }
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{
+                backgroundColor: 'rgb(var(--background))',
+                borderColor: 'rgb(var(--border))',
+                color: 'rgb(var(--foreground))',
+              }}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label
+            className="block text-xs font-medium mb-1"
+            style={{ color: 'rgb(var(--foreground-muted))' }}
+          >
+            Steuerberater-E-Mail (optional)
+          </label>
+          <input
+            type="email"
+            placeholder="steuerberater@kanzlei.de"
+            value={settings.steuerberater_email ?? ''}
+            onChange={(e) =>
+              setSettings((s) => ({ ...s, steuerberater_email: e.target.value || null }))
+            }
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{
+              backgroundColor: 'rgb(var(--background))',
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+            }}
+          />
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
+            Wird fuer &bdquo;An Steuerberater senden&ldquo; in den Berichten verwendet.
+          </p>
+        </div>
+
+        {error && (
+          <p className="text-xs" style={{ color: 'rgb(var(--danger, 239 68 68))' }}>
+            {error}
+          </p>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ backgroundColor: 'rgb(var(--primary))', color: '#ffffff' }}
+        >
+          {saving ? 'Speichern\u2026' : saved ? '\u2713 Gespeichert' : 'Speichern'}
+        </button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Settings Page
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
@@ -1513,6 +1657,10 @@ export default function SettingsPage() {
             <Hash size={14} />
             <span className="hidden sm:inline">Rechnungen</span>
           </TabsTrigger>
+          <TabsTrigger value="datev" className="gap-1.5">
+            <ArrowRight size={14} />
+            <span className="hidden sm:inline">DATEV</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="konto">
@@ -1533,6 +1681,10 @@ export default function SettingsPage() {
 
         <TabsContent value="rechnungen">
           <NummernkreisTab />
+        </TabsContent>
+
+        <TabsContent value="datev">
+          <DatevKonfigurationTab />
         </TabsContent>
       </Tabs>
     </div>
