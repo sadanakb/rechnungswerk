@@ -37,6 +37,10 @@ class Organization(Base):
     datev_berater_nr = Column(String(5), nullable=True)
     datev_mandant_nr = Column(String(5), nullable=True)
     steuerberater_email = Column(String(200), nullable=True)
+    # Phase 12: Stripe Connect Express + PayPal
+    stripe_connect_account_id = Column(String(255), nullable=True)
+    stripe_connect_onboarded = Column(Boolean, default=False, nullable=False)
+    paypal_link = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
 
@@ -491,3 +495,21 @@ class GdprDeleteRequest(Base):
     created_at = Column(DateTime(timezone=True), default=_utc_now)
 
     user = relationship("User", backref="gdpr_delete_requests")
+
+
+class PortalPaymentIntent(Base):
+    """Tracks Stripe PaymentIntents created for customer portal payments — Phase 12."""
+    __tablename__ = 'portal_payment_intents'
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False, index=True)
+    share_link_id = Column(Integer, ForeignKey("invoice_share_links.id"), nullable=False, index=True)
+    stripe_intent_id = Column(String(255), unique=True, nullable=False, index=True)
+    amount_cents = Column(Integer, nullable=False)
+    fee_cents = Column(Integer, nullable=False, default=0)
+    status = Column(String(50), nullable=False, default='created')
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
+
+    invoice = relationship("Invoice")
+    share_link = relationship("InvoiceShareLink")
