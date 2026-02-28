@@ -362,6 +362,57 @@ def send_invoice_portal_email(
         return False
 
 
+def send_datev_export_email(
+    to_email: str,
+    from_month: str,
+    to_month: str,
+    invoice_count: int,
+) -> bool:
+    """Notify the tax advisor about a new DATEV export being available."""
+    if not settings.brevo_api_key:
+        logger.warning(
+            "Brevo API key not configured, skipping DATEV export email to %s", to_email
+        )
+        return False
+
+    import sib_api_v3_sdk
+
+    api = _get_transactional_api()
+
+    html_content = (
+        "<html><body>"
+        "<h2>Neuer DATEV-Export verfügbar</h2>"
+        "<p>Guten Tag,</p>"
+        "<p>ein neuer DATEV-Export wurde erstellt.</p>"
+        f"<p><strong>Zeitraum:</strong> {from_month} bis {to_month}</p>"
+        f"<p><strong>Anzahl Buchungssätze:</strong> {invoice_count}</p>"
+        "<p>Bitte loggen Sie sich in RechnungsWerk ein, um den Export herunterzuladen:</p>"
+        '<p><a href="https://app.rechnungswerk.de/berichte" '
+        'style="background:#14b8a6;color:white;padding:12px 24px;border-radius:6px;'
+        'text-decoration:none;font-weight:bold;">Export herunterladen</a></p>'
+        "<br><p>Mit freundlichen Grüßen,<br>RechnungsWerk</p>"
+        "</body></html>"
+    )
+
+    email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": to_email}],
+        sender=SENDER,
+        subject=f"DATEV-Export {from_month} bis {to_month} — RechnungsWerk",
+        html_content=html_content,
+    )
+
+    try:
+        api.send_transac_email(email)
+        logger.info(
+            "DATEV export email sent to %s for period %s–%s (%d invoices)",
+            to_email, from_month, to_month, invoice_count,
+        )
+        return True
+    except Exception as e:
+        logger.error("Failed to send DATEV export email to %s: %s", to_email, e)
+        return False
+
+
 async def enqueue_email(arq_pool, task_type: str, **kwargs) -> bool:
     """Enqueue an email task via ARQ if pool is available, else send synchronously."""
     if arq_pool is not None:
@@ -375,6 +426,7 @@ async def enqueue_email(arq_pool, task_type: str, **kwargs) -> bool:
         "mahnung": send_mahnung_email,
         "contact": send_contact_email,
         "invoice_portal": send_invoice_portal_email,
+        "datev_export": send_datev_export_email,
     }
     handler = handlers.get(task_type)
     if handler:

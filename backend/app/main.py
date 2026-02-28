@@ -17,7 +17,7 @@ from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
 from app.auth import ACTIVE_API_KEY
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router, ai as ai_router
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router, ai as ai_router, datev as datev_router
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ app.include_router(import_invoices.router)
 app.include_router(contact_router.router)
 app.include_router(portal_router.router, prefix="/api/portal", tags=["portal"])
 app.include_router(ai_router.router, prefix="/api/ai", tags=["ai"])
+app.include_router(datev_router.router, prefix="/api/datev", tags=["datev"])
 
 
 # WebSocket endpoint (Phase 9 — real-time events)
