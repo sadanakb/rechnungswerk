@@ -114,7 +114,7 @@ def test_export_profil_contains_email(client, db_session):
 def test_request_delete_sends_email(client, db_session):
     """POST /api/gdpr/request-delete creates a GdprDeleteRequest and calls send_gdpr_delete_confirmation."""
     token = _register_and_login(client, "gdpr_delete1@test.de", "GDPR Org 3")
-    with patch("app.email_service.send_gdpr_delete_confirmation") as mock_email:
+    with patch("app.routers.gdpr.send_gdpr_delete_confirmation") as mock_email:
         res = client.post("/api/gdpr/request-delete", headers=_auth(token))
         assert res.status_code == 200
         data = res.json()

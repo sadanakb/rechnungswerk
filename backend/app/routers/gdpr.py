@@ -9,13 +9,17 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth_jwt import get_current_user
 from app.database import get_db
+from app.email_service import send_gdpr_delete_confirmation
 from app.models import (
-    Contact, GdprDeleteRequest, Invoice, Organization,
-    OrganizationMember, PushSubscription, User,
+    ApiKey, ArchiveEntry, AuditLog, Contact, GdprDeleteRequest,
+    Invoice, InvoiceNumberSequence, InvoiceShareLink, InvoiceTemplate,
+    Mahnung, Organization, OrganizationMember, PushSubscription, User,
+    UploadLog, ValidationResult, WebhookDelivery, WebhookSubscription,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,8 +123,6 @@ def request_account_delete(
     db: Session = Depends(get_db),
 ):
     """GDPR Art. 17 Step 1 — Send account deletion confirmation email with 24h token."""
-    from app.email_service import send_gdpr_delete_confirmation
-
     user, _ = _get_user_and_org(current_user, db)
 
     # Remove any existing pending request for this user (idempotent)
@@ -169,11 +171,70 @@ def confirm_account_delete(
 
     if member:
         org_id = member.organization_id
+
+        # --- Step 1: Children of Invoice (FK to invoices.id or invoices.invoice_id) ---
+        # Collect integer PKs of all invoices for this org (used by InvoiceShareLink)
+        invoice_ids = db.execute(
+            select(Invoice.id).where(Invoice.organization_id == org_id)
+        ).scalars().all()
+        if invoice_ids:
+            db.query(InvoiceShareLink).filter(
+                InvoiceShareLink.invoice_id.in_(invoice_ids)
+            ).delete(synchronize_session="fetch")
+
+        # Collect string invoice_ids for tables that FK on invoices.invoice_id
+        invoice_str_ids = db.execute(
+            select(Invoice.invoice_id).where(Invoice.organization_id == org_id)
+        ).scalars().all()
+        if invoice_str_ids:
+            db.query(UploadLog).filter(
+                UploadLog.invoice_id.in_(invoice_str_ids)
+            ).delete(synchronize_session="fetch")
+            db.query(ValidationResult).filter(
+                ValidationResult.invoice_id.in_(invoice_str_ids)
+            ).delete(synchronize_session="fetch")
+            db.query(ArchiveEntry).filter(
+                ArchiveEntry.invoice_id.in_(invoice_str_ids)
+            ).delete(synchronize_session="fetch")
+            db.query(Mahnung).filter(
+                Mahnung.invoice_id.in_(invoice_str_ids)
+            ).delete(synchronize_session="fetch")
+
+        # --- Step 2: Invoice (FK to organizations.id) ---
         db.query(Invoice).filter(Invoice.organization_id == org_id).delete()
-        # Contact model uses org_id field
+
+        # --- Step 3: Contact (org_id plain integer column, no FK constraint) ---
         db.query(Contact).filter(Contact.org_id == org_id).delete()
+
+        # --- Step 4: ApiKey (FK org_id -> organizations.id) ---
+        db.query(ApiKey).filter(ApiKey.org_id == org_id).delete()
+
+        # --- Step 5: WebhookDelivery -> WebhookSubscription (FK chain) ---
+        webhook_sub_ids = db.execute(
+            select(WebhookSubscription.id).where(WebhookSubscription.org_id == org_id)
+        ).scalars().all()
+        if webhook_sub_ids:
+            db.query(WebhookDelivery).filter(
+                WebhookDelivery.subscription_id.in_(webhook_sub_ids)
+            ).delete(synchronize_session="fetch")
+        db.query(WebhookSubscription).filter(WebhookSubscription.org_id == org_id).delete()
+
+        # --- Step 6: AuditLog (FK org_id -> organizations.id) ---
+        db.query(AuditLog).filter(AuditLog.org_id == org_id).delete()
+
+        # --- Step 7: InvoiceTemplate (FK org_id -> organizations.id) ---
+        db.query(InvoiceTemplate).filter(InvoiceTemplate.org_id == org_id).delete()
+
+        # --- Step 8: InvoiceNumberSequence (org_id plain integer, no FK constraint) ---
+        db.query(InvoiceNumberSequence).filter(InvoiceNumberSequence.org_id == org_id).delete()
+
+        # --- Step 9: PushSubscription (FK organization_id -> organizations.id) ---
         db.query(PushSubscription).filter(PushSubscription.organization_id == org_id).delete()
+
+        # --- Step 10: OrganizationMember (FK organization_id -> organizations.id) ---
         db.query(OrganizationMember).filter(OrganizationMember.organization_id == org_id).delete()
+
+        # --- Step 11: Organization itself ---
         db.query(Organization).filter(Organization.id == org_id).delete()
 
     # Delete user-level data
