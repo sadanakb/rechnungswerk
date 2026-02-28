@@ -5,6 +5,7 @@ import { SidebarNav } from '@/components/layout/SidebarNav'
 import { CommandPalette } from '@/components/CommandPalette'
 import { NotificationBell } from '@/components/layout/NotificationBell'
 import { WebSocketProvider } from '@/contexts/WebSocketContext'
+import { ChatWidget } from '@/components/ai/ChatWidget'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [cmdkOpen, setCmdkOpen] = useState(false)
@@ -42,6 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <CommandPalette open={cmdkOpen} onOpenChange={setCmdkOpen} />
+        <ChatWidget />
       </div>
     </WebSocketProvider>
   )
