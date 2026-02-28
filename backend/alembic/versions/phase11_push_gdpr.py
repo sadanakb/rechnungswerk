@@ -37,6 +37,7 @@ def upgrade() -> None:
         sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('token', name='uq_gdpr_delete_requests_token'),
     )
     op.create_index('ix_gdpr_delete_requests_id', 'gdpr_delete_requests', ['id'])
     op.create_index('ix_gdpr_delete_requests_token', 'gdpr_delete_requests', ['token'], unique=True)

@@ -473,7 +473,7 @@ class PushSubscription(Base):
     created_at = Column(DateTime(timezone=True), default=_utc_now)
 
     user = relationship("User", backref="push_subscriptions")
-    organization = relationship("Organization", backref="push_subscriptions")
+    organization = relationship("Organization", backref="org_push_subscriptions")
 
 
 class GdprDeleteRequest(Base):
