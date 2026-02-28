@@ -29,6 +29,22 @@ interface Release {
 
 const releases: Release[] = [
   {
+    version: 'v0.9.0',
+    title: 'Phase 9: KI-Suite + Echtzeit',
+    date: '28.02.2026',
+    items: [
+      { text: 'GPT-4o-mini als Primary KI-Provider (7,5× günstiger als Claude Haiku)', tag: 'infra' },
+      { text: 'Auto-Routing: Standard → GPT-4o-mini, Komplex → Claude Haiku, Dev → Ollama', tag: 'infra' },
+      { text: 'WebSocket Echtzeit-Events: invoice.paid, portal.visited, recurring.created', tag: 'feature' },
+      { text: 'KI-Chat-Assistent mit Tool Use (Streaming SSE, Datenbankabfragen)', tag: 'feature' },
+      { text: 'Auto-Kategorisierung nach SKR03 — asynchron via ARQ nach Invoice-Speicherung', tag: 'feature' },
+      { text: 'Monatliche KI-Zusammenfassung im Dashboard (Redis-gecacht, 24h TTL)', tag: 'feature' },
+      { text: 'WebSocket ConnectionManager mit Reconnect-Backoff (1s → 30s max)', tag: 'feature' },
+      { text: 'Toast-Notifications via Sonner bei Echtzeit-Events', tag: 'feature' },
+      { text: 'Alembic Migration: skr03_account, ai_category, ai_categorized_at Spalten', tag: 'infra' },
+    ],
+  },
+  {
     version: 'v0.8.0',
     title: 'Phase 8: Production Excellence & Kundenportal',
     date: '27.02.2026',
