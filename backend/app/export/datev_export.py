@@ -9,6 +9,7 @@ Supports:
 import csv
 import io
 import logging
+import zipfile
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -74,7 +75,7 @@ class DATEVExporter:
         self.kontenrahmen = kontenrahmen.upper()
         self.accounts = SKR03_ACCOUNTS if self.kontenrahmen == "SKR03" else SKR04_ACCOUNTS
 
-    def export_buchungsstapel(self, invoices: List[Dict]) -> str:
+    def export_buchungsstapel(self, invoices: List[Dict], berater_nr: str = "", mandant_nr: str = "") -> str:
         """
         Generate DATEV Buchungsstapel CSV.
 
@@ -88,7 +89,7 @@ class DATEVExporter:
         writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
 
         # DATEV file header (meta row)
-        writer.writerow(self._build_meta_header())
+        writer.writerow(self._build_meta_header(berater_nr=berater_nr, mandant_nr=mandant_nr))
 
         # Column headers
         writer.writerow(DATEV_HEADER_FIELDS)
@@ -101,7 +102,7 @@ class DATEVExporter:
 
         return output.getvalue()
 
-    def _build_meta_header(self) -> List[str]:
+    def _build_meta_header(self, berater_nr: str = "", mandant_nr: str = "") -> List[str]:
         """Build DATEV meta header row."""
         now = datetime.now()
         return [
@@ -114,8 +115,8 @@ class DATEVExporter:
             "",      # Herkunft
             "",      # Exportiert von
             "",      # Importiert von
-            "",      # Berater
-            "",      # Mandant
+            berater_nr,  # Berater
+            mandant_nr,  # Mandant
             str(now.year * 10000 + 101),  # WJ-Beginn (01.01.YYYY)
             "4",     # Sachkontennummernlaenge
             str(now.year * 10000 + now.month * 100 + 1),  # Datum von
@@ -160,7 +161,8 @@ class DATEVExporter:
         row[0] = self._format_amount(gross)          # Umsatz
         row[1] = "S"                                   # Soll
         row[2] = invoice.get("currency", "EUR")        # WKZ
-        row[6] = self.accounts["accounts_receivable"]  # Konto (Forderungen)
+        konto = invoice.get("skr03_account") or self.accounts["accounts_receivable"]
+        row[6] = konto  # Konto
         row[7] = revenue_account                       # Gegenkonto (Erloese)
         row[8] = bu_key                                # BU-Schluessel
         row[9] = datev_date                            # Belegdatum
@@ -192,6 +194,54 @@ class DATEVExporter:
     def _format_amount(self, amount: float) -> str:
         """Format amount for DATEV (German decimal format: comma as separator)."""
         return f"{amount:.2f}".replace(".", ",")
+
+    def format_stammdaten(self, contacts: List[Dict]) -> str:
+        """
+        Generate DATEV Stammdaten CSV (Kreditoren/Debitoren).
+
+        Args:
+            contacts: List of dicts with 'account_nr' and 'name' keys.
+
+        Returns:
+            CSV string with columns: Konto;Kontobeschriftung;Sprachkennung
+        """
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(["Konto", "Kontobeschriftung", "Sprachkennung"])
+        for contact in contacts:
+            writer.writerow([
+                contact.get("account_nr", ""),
+                contact.get("name", "")[:40],  # DATEV max 40 chars
+                "0",  # 0 = Deutsch
+            ])
+        return output.getvalue()
+
+    def export_zip(
+        self,
+        invoices: List[Dict],
+        contacts: List[Dict],
+        berater_nr: str = "",
+        mandant_nr: str = "",
+        from_month: str = "",
+        to_month: str = "",
+    ) -> bytes:
+        """
+        Generate an in-memory ZIP containing Buchungsstapel.csv and Stammdaten.csv.
+
+        Returns:
+            bytes of the ZIP archive
+        """
+        buchungsstapel_csv = self.export_buchungsstapel(
+            invoices, berater_nr=berater_nr, mandant_nr=mandant_nr
+        )
+        stammdaten_csv = self.format_stammdaten(contacts)
+
+        period = f"{from_month}_{to_month}" if from_month and to_month else "export"
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f"Buchungsstapel_{period}.csv", buchungsstapel_csv.encode("utf-8"))
+            zf.writestr(f"Stammdaten_{period}.csv", stammdaten_csv.encode("utf-8"))
+        return buf.getvalue()
 
     def export_csv_simple(self, invoices: List[Dict]) -> str:
         """
