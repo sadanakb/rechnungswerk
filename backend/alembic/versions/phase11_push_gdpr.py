@@ -24,6 +24,7 @@ def upgrade() -> None:
         sa.Column('device_label', sa.String(100), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('user_id', 'fcm_token', name='uq_push_user_token'),
     )
     op.create_index('ix_push_subscriptions_id', 'push_subscriptions', ['id'])
     op.create_index('ix_push_subscriptions_user_id', 'push_subscriptions', ['user_id'])

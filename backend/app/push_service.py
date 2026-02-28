@@ -55,9 +55,13 @@ def send_push(fcm_token: str, title: str, body: str, data: Optional[dict] = None
 def notify_user(user_id: int, title: str, body: str, db) -> None:
     """Send push to all FCM tokens registered for this user."""
     from app.models import PushSubscription
-    subscriptions = db.query(PushSubscription).filter(
-        PushSubscription.user_id == user_id
-    ).all()
+    try:
+        subscriptions = db.query(PushSubscription).filter(
+            PushSubscription.user_id == user_id
+        ).all()
+    except Exception as e:
+        logger.error("[Push] DB query failed for user %s: %s", user_id, e)
+        return
     for sub in subscriptions:
         send_push(fcm_token=sub.fcm_token, title=title, body=body)
 
@@ -65,8 +69,12 @@ def notify_user(user_id: int, title: str, body: str, db) -> None:
 def notify_org(organization_id: int, title: str, body: str, db) -> None:
     """Send push to all FCM tokens in an organization (all members)."""
     from app.models import PushSubscription
-    subscriptions = db.query(PushSubscription).filter(
-        PushSubscription.organization_id == organization_id
-    ).all()
+    try:
+        subscriptions = db.query(PushSubscription).filter(
+            PushSubscription.organization_id == organization_id
+        ).all()
+    except Exception as e:
+        logger.error("[Push] DB query failed for org %s: %s", organization_id, e)
+        return
     for sub in subscriptions:
         send_push(fcm_token=sub.fcm_token, title=title, body=body)

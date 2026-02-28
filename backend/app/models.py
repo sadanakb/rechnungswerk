@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column, Integer, String, Float, Numeric, Date, DateTime, Text,
-    JSON, Boolean, ForeignKey, func,
+    JSON, Boolean, ForeignKey, func, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -474,6 +474,10 @@ class PushSubscription(Base):
 
     user = relationship("User", backref="push_subscriptions")
     organization = relationship("Organization", backref="org_push_subscriptions")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'fcm_token', name='uq_push_user_token'),
+    )
 
 
 class GdprDeleteRequest(Base):

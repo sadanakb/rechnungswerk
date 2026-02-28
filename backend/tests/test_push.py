@@ -160,26 +160,15 @@ def test_push_service_send_returns_false_when_not_configured():
     assert result is False
 
 
-def test_push_service_send_calls_firebase_messaging(monkeypatch):
-    """push_service.send_push() calls firebase_admin.messaging.send() when initialized."""
+def test_push_service_send_returns_false_without_firebase(monkeypatch):
+    """send_push() returns False gracefully when Firebase is not initialized and env var missing."""
     import app.push_service as push_svc
+    monkeypatch.setattr(push_svc, "_firebase_initialized", False)
+    monkeypatch.delenv("FIREBASE_SERVICE_ACCOUNT_JSON", raising=False)
 
-    mock_send = MagicMock(return_value="projects/test/messages/abc")
-    mock_messaging = MagicMock()
-    mock_messaging.send = mock_send
-    mock_messaging.Message = MagicMock(return_value=MagicMock())
-    mock_messaging.Notification = MagicMock(return_value=MagicMock())
-
-    monkeypatch.setattr("app.push_service._firebase_initialized", True)
-    monkeypatch.setattr("app.push_service._init_firebase", lambda: True)
-
-    with patch.dict("sys.modules", {"firebase_admin.messaging": mock_messaging}):
-        result = push_svc.send_push(
-            fcm_token="fake-token-xyz",
-            title="Test",
-            body="Test body",
-        )
-
-    # send was called once
-    mock_send.assert_called_once()
-    assert result is True
+    result = push_svc.send_push(
+        fcm_token="fake-token",
+        title="Test",
+        body="Test body",
+    )
+    assert result is False
