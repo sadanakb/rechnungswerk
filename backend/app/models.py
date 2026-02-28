@@ -127,6 +127,11 @@ class Invoice(Base):
     xrechnung_xml_path = Column(String)  # Path to generated XML
     zugferd_pdf_path = Column(String)    # Path to generated PDF/A-3
 
+    # AI Categorization (Phase 9)
+    skr03_account = Column(String(10), nullable=True)    # e.g. "4964"
+    ai_category = Column(String(100), nullable=True)     # e.g. "IT/Software"
+    ai_categorized_at = Column(DateTime(timezone=True), nullable=True)
+
     # Payment Status Lifecycle
     payment_status = Column(String(20), default='unpaid', nullable=False)
     paid_date = Column(Date, nullable=True)
