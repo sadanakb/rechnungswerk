@@ -174,6 +174,8 @@ export default function PortalPage() {
       if (result.client_secret) {
         setClientSecret(result.client_secret)
         setShowPayment(true)
+      } else {
+        setIntentError('Zahlung konnte nicht initiiert werden.')
       }
     } catch (err) {
       setIntentError(err instanceof Error ? err.message : 'Fehler')
@@ -553,7 +555,9 @@ export default function PortalPage() {
           )}
 
           {/* PayPal */}
-          {invoice.paypal_link && invoice.payment_status !== 'paid' && (
+          {invoice.paypal_link &&
+            /^https?:\/\//i.test(invoice.paypal_link) &&
+            invoice.payment_status !== 'paid' && (
             <a
               href={invoice.paypal_link}
               target="_blank"
