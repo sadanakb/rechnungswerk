@@ -212,6 +212,8 @@ async def daily_recurring_check(ctx: Dict):
 
         due = RecurringScheduler.get_due_templates(templates_dicts)
 
+        generated_invoices = []
+
         for tmpl_dict in due:
             template_rec = next(
                 (t for t in active if t.template_id == tmpl_dict["template_id"]), None
@@ -251,6 +253,10 @@ async def daily_recurring_check(ctx: Dict):
                 payment_status="unpaid",
             )
             db.add(invoice)
+            generated_invoices.append({
+                "invoice_id": invoice.invoice_id,
+                "org_id": template_rec.organization_id if hasattr(template_rec, 'organization_id') else 1,
+            })
 
             template_rec.last_generated = today
             template_rec.next_date = RecurringScheduler.calculate_next_date(
@@ -259,6 +265,16 @@ async def daily_recurring_check(ctx: Dict):
             generated += 1
 
         db.commit()
+
+        # Notify org via WebSocket for each generated invoice
+        from app.ws import notify_org
+        import asyncio
+        for inv_data in generated_invoices:
+            try:
+                await notify_org(inv_data["org_id"], "recurring.created", {"invoice_id": inv_data["invoice_id"]})
+            except Exception:
+                pass
+
         logger.info("daily_recurring_check: generated %d invoices", generated)
         return {"generated": generated}
     finally:

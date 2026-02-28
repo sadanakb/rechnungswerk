@@ -43,6 +43,16 @@ async def get_portal_invoice(
     """Return invoice data for portal display. Public endpoint — no auth required."""
     invoice, link = _get_invoice_by_token(token, db)
 
+    from app.ws import notify_org
+    try:
+        await notify_org(
+            invoice.organization_id or 0,
+            "portal.visited",
+            {"invoice_id": invoice.invoice_id, "access_count": link.access_count},
+        )
+    except Exception:
+        pass  # WS notification is best-effort
+
     return {
         "invoice_number": invoice.invoice_number,
         "invoice_date": str(invoice.invoice_date) if invoice.invoice_date else None,
@@ -83,6 +93,17 @@ async def confirm_payment(
     invoice.paid_date = date.today()
     invoice.payment_method = "portal_confirmation"
     db.commit()
+
+    # Notify org via WebSocket
+    from app.ws import notify_org
+    try:
+        await notify_org(
+            invoice.organization_id or 0,
+            "invoice.paid",
+            {"invoice_id": invoice.invoice_id, "amount": float(invoice.gross_amount or 0)},
+        )
+    except Exception:
+        pass  # WS notification is best-effort
 
     return {"message": "Zahlung bestaetigt", "payment_status": "paid"}
 
