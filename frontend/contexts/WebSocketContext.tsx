@@ -43,11 +43,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     const token = getToken()
     if (!token) return
 
-    const url = `${WS_BASE}/ws?token=${token}`
+    const url = `${WS_BASE}/ws`
     const ws = new WebSocket(url)
     wsRef.current = ws
 
     ws.onopen = () => {
+      // Send token as first message (first-message auth — keeps token out of URL)
+      ws.send(JSON.stringify({ token }))
       setConnected(true)
       reconnectDelay.current = 1000  // reset backoff
     }

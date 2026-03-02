@@ -1,6 +1,8 @@
 """
 RechnungsWerk FastAPI Main Application
 """
+import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 
@@ -117,12 +119,36 @@ from app.ws import manager as ws_manager
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str = ""):
-    """Real-time WebSocket endpoint. Auth via ?token=<jwt>."""
+    """Real-time WebSocket endpoint. Auth via first-message JSON or ?token=<jwt> (deprecated)."""
     from app.auth_jwt import decode_token
     from app.database import SessionLocal
     from app.models import OrganizationMember
 
-    # Validate JWT token (must be access token, not refresh)
+    # --- Token resolution ---
+    first_message_auth = False
+    if token:
+        # Query-param path: backward-compatible but deprecated
+        logger.warning(
+            "WebSocket: query-param token is deprecated — use first-message auth instead"
+        )
+    else:
+        # First-message path: accept the connection, then read token from first JSON message
+        first_message_auth = True
+        await websocket.accept()
+        try:
+            raw = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+            data = json.loads(raw)
+            token = data.get("token", "")
+        except Exception:
+            await websocket.close(code=1008)
+            return
+
+    if not token:
+        if websocket.client_state.name != "DISCONNECTED":
+            await websocket.close(code=1008)
+        return
+
+    # --- JWT decode (must be access token, not refresh) ---
     try:
         payload = decode_token(token)
         if payload.get("type") != "access":
@@ -133,7 +159,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
         await websocket.close(code=1008)  # Policy Violation
         return
 
-    # Resolve org_id
+    # --- DB membership check ---
     db = SessionLocal()
     try:
         member = db.query(OrganizationMember).filter(
@@ -146,7 +172,21 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
     finally:
         db.close()
 
-    await ws_manager.connect(org_id, websocket)
+    # --- Register with connection manager ---
+    if first_message_auth:
+        # Socket is already accepted — just register it with the manager directly
+        if org_id not in ws_manager._connections:
+            ws_manager._connections[org_id] = []
+        ws_manager._connections[org_id].append(websocket)
+        logger.info(
+            "WS connected (first-message auth): org_id=%d, total=%d",
+            org_id,
+            len(ws_manager._connections[org_id]),
+        )
+    else:
+        # Query-param path: manager.connect() calls accept() for us
+        await ws_manager.connect(org_id, websocket)
+
     try:
         while True:
             # Keep connection alive — receive messages (ping/pong or ignore)

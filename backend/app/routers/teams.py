@@ -316,6 +316,14 @@ def accept_invite(
     if invite.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Einladung ist abgelaufen")
 
+    # Check email binding — invite must match the authenticated user's email
+    user_email = current_user.get("email")
+    if not user_email or invite.email.lower() != user_email.lower():
+        raise HTTPException(
+            status_code=403,
+            detail="Diese Einladung ist fuer eine andere E-Mail-Adresse bestimmt.",
+        )
+
     user_id = int(current_user["user_id"])
 
     # Check if user is already a member of this organization

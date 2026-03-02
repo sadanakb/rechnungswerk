@@ -42,8 +42,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=Fals
 
 def _get_password_hasher():
     """Get passlib CryptContext with bcrypt_sha256 (CLAUDE.md Pflicht!)."""
-    from passlib.context import CryptContext
-    return CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+    try:
+        from passlib.context import CryptContext
+        return CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+    except Exception as e:
+        raise RuntimeError(
+            f"Passwort-Hashing konnte nicht initialisiert werden. "
+            f"Bitte 'passlib==1.7.4' und 'bcrypt==4.0.1' installieren: {e}"
+        )
 
 
 def hash_password(password: str) -> str:
@@ -164,6 +170,7 @@ async def get_org_from_api_key(
                 "org_id": candidate.org_id,
                 "source": "api_key",
                 "scopes": candidate.scopes or [],
+                "created_at": candidate.created_at,
             }
 
     raise HTTPException(status_code=403, detail="Ungültiger API-Key")
@@ -173,14 +180,26 @@ def require_scope(api_ctx: dict, scope: str) -> None:
     """Enforce that the API key carries the required scope.
 
     Rules:
-    - If scopes is empty, None, or missing: allow all access (backward
-      compatibility for existing keys that were created without scopes).
+    - If scopes is empty, None, or missing AND the key was created on or after
+      2026-03-01: deny with 403 (new keys must carry explicit scopes).
+    - If scopes is empty AND the key is older: allow but log a warning
+      (backward compatibility for pre-existing keys).
     - If scopes is non-empty: the requested *scope* must be present,
       otherwise raise 403.
     """
     scopes = api_ctx.get("scopes") or []
     if not scopes:
-        # No scopes defined on this key — allow everything (backward compat)
+        created_at = api_ctx.get("created_at")
+        # Keys created after 2026-03-01 must have explicit scopes
+        if created_at and created_at >= datetime(2026, 3, 1, tzinfo=timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="API-Key hat keine Berechtigungen (scopes). Bitte erstellen Sie einen neuen Key mit expliziten Scopes.",
+            )
+        logger.warning(
+            "API-Key without scopes used — will be denied in future | org_id=%s",
+            api_ctx.get("org_id"),
+        )
         return
     if scope not in scopes:
         raise HTTPException(

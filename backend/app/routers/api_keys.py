@@ -30,10 +30,10 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 ALLOWED_SCOPES = {
-    "read:invoices",
-    "write:invoices",
-    "read:suppliers",
-    "write:suppliers",
+    "invoices:read",
+    "invoices:write",
+    "suppliers:read",
+    "suppliers:write",
 }
 
 

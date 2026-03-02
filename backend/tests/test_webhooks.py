@@ -50,9 +50,16 @@ def client(db_session):
             pass
 
     app.dependency_overrides[get_db] = _override_get_db
-    with patch.object(settings, "require_api_key", True):
-        with TestClient(app) as c:
-            yield c
+    with patch.object(settings, "require_api_key", True), \
+         patch("app.routers.webhooks.validate_url_no_ssrf"):
+        # Disable rate limiting for test client (shared limiter from rate_limiter.py)
+        from app.rate_limiter import limiter as shared_limiter
+        shared_limiter.enabled = False
+        try:
+            with TestClient(app) as c:
+                yield c
+        finally:
+            shared_limiter.enabled = True
     app.dependency_overrides.clear()
 
 
@@ -195,7 +202,8 @@ def test_webhook_test_ping(client):
     mock_response.status_code = 200
     mock_response.text = '{"ok": true}'
 
-    with patch("app.webhook_service.httpx.post", return_value=mock_response) as mock_post:
+    with patch("app.webhook_service.httpx.post", return_value=mock_response) as mock_post, \
+         patch("app.webhook_service.validate_url_no_ssrf"):
         test_resp = client.post(f"/api/webhooks/{sub_id}/test", headers=_auth(token))
 
     assert test_resp.status_code == 200
@@ -231,7 +239,8 @@ def test_webhook_delivery_log(client):
     mock_response.status_code = 200
     mock_response.text = "ok"
 
-    with patch("app.webhook_service.httpx.post", return_value=mock_response):
+    with patch("app.webhook_service.httpx.post", return_value=mock_response), \
+         patch("app.webhook_service.validate_url_no_ssrf"):
         client.post(f"/api/webhooks/{sub_id}/test", headers=_auth(token))
 
     # Fetch delivery log

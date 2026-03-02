@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 import httpx
 
 from app.models import WebhookSubscription, WebhookDelivery
+from app.utils.network import validate_url_no_ssrf
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,15 @@ def _deliver_sync(db, subscription: WebhookSubscription, event_type: str, payloa
     db.add(delivery)
 
     try:
+        validate_url_no_ssrf(subscription.url, label="Webhook-Delivery")
+    except Exception:
+        delivery.status = "blocked_ssrf"
+        delivery.response_body = "SSRF validation failed — delivery blocked"
+        db.commit()
+        logger.warning("SSRF blocked for webhook delivery | url=%s", subscription.url)
+        return
+
+    try:
         resp = httpx.post(
             subscription.url,
             content=body,
@@ -149,6 +159,12 @@ async def _deliver(
         }
     )
     sig = sign_payload(secret, body)
+
+    try:
+        validate_url_no_ssrf(url, label="Webhook-Delivery")
+    except Exception:
+        logger.warning("SSRF blocked for async webhook delivery | url=%s", url)
+        return False, None, "SSRF validation failed — delivery blocked"
 
     try:
         async with httpx.AsyncClient() as client:

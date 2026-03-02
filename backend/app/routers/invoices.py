@@ -1206,8 +1206,8 @@ async def upload_batch_for_ocr(
     if not files:
         raise HTTPException(status_code=400, detail="Keine Dateien hochgeladen")
 
-    if len(files) > 50:
-        raise HTTPException(status_code=400, detail="Maximal 50 Dateien pro Batch")
+    if len(files) > 20:
+        raise HTTPException(status_code=400, detail="Maximal 20 Dateien pro Batch")
 
     # Validate all files first
     filenames = []
@@ -1225,13 +1225,22 @@ async def upload_batch_for_ocr(
     org_id = current_user.get("org_id")
     batch_job = batch_processor.create_batch(filenames, org_id=org_id)
 
+    MAX_BATCH_TOTAL_BYTES = 50 * 1024 * 1024
+
     # Save all files
     file_paths = []
+    batch_total_bytes = 0
     for i, f in enumerate(files):
         upload_id = f"upload-{uuid.uuid4().hex[:8]}"
         file_path = os.path.join(UPLOAD_DIR, f"{upload_id}.pdf")
 
         contents = await f.read()
+        batch_total_bytes += len(contents)
+        if batch_total_bytes > MAX_BATCH_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Batch-Upload überschreitet das Gesamtlimit von 50 MB.",
+            )
         if len(contents) > _MAX_UPLOAD_BYTES:
             raise HTTPException(
                 status_code=413,

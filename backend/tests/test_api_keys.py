@@ -96,7 +96,7 @@ def test_create_api_key_returns_full_key_once(client):
         "/api/api-keys",
         json={
             "name": "Produktionsschluessel",
-            "scopes": ["read:invoices", "write:invoices"],
+            "scopes": ["invoices:read", "invoices:write"],
         },
         headers=_auth(token),
     )
@@ -117,8 +117,8 @@ def test_create_api_key_returns_full_key_once(client):
 
     # Metadata is correct
     assert data["name"] == "Produktionsschluessel"
-    assert "read:invoices" in data["scopes"]
-    assert "write:invoices" in data["scopes"]
+    assert "invoices:read" in data["scopes"]
+    assert "invoices:write" in data["scopes"]
     assert data["is_active"] is True
 
     # key_hash must NOT be returned in any response
@@ -132,12 +132,12 @@ def test_list_api_keys_hides_key(client):
     # Create two keys
     client.post(
         "/api/api-keys",
-        json={"name": "Key A", "scopes": ["read:invoices"]},
+        json={"name": "Key A", "scopes": ["invoices:read"]},
         headers=_auth(token),
     )
     client.post(
         "/api/api-keys",
-        json={"name": "Key B", "scopes": ["read:suppliers", "write:suppliers"]},
+        json={"name": "Key B", "scopes": ["suppliers:read", "suppliers:write"]},
         headers=_auth(token),
     )
 
@@ -168,7 +168,7 @@ def test_revoke_api_key(client):
     # Create a key
     create_resp = client.post(
         "/api/api-keys",
-        json={"name": "Zu widerrufender Key", "scopes": ["read:invoices"]},
+        json={"name": "Zu widerrufender Key", "scopes": ["invoices:read"]},
         headers=_auth(token),
     )
     assert create_resp.status_code == 201
@@ -199,7 +199,7 @@ def test_cross_org_isolation(client):
     # Org A creates a key
     create_resp = client.post(
         "/api/api-keys",
-        json={"name": "Org A Key", "scopes": ["read:invoices"]},
+        json={"name": "Org A Key", "scopes": ["invoices:read"]},
         headers=_auth(token_a),
     )
     assert create_resp.status_code == 201
@@ -236,7 +236,7 @@ def test_invalid_scope_rejected(client):
     token = _register_and_get_token(client, email="scope@test.de")
     resp = client.post(
         "/api/api-keys",
-        json={"name": "Bad Scopes", "scopes": ["delete:everything", "read:invoices"]},
+        json={"name": "Bad Scopes", "scopes": ["delete:everything", "invoices:read"]},
         headers=_auth(token),
     )
     assert resp.status_code == 400
@@ -248,7 +248,7 @@ def test_empty_name_rejected(client):
     token = _register_and_get_token(client, email="emptyname@test.de")
     resp = client.post(
         "/api/api-keys",
-        json={"name": "   ", "scopes": ["read:invoices"]},
+        json={"name": "   ", "scopes": ["invoices:read"]},
         headers=_auth(token),
     )
     assert resp.status_code == 400

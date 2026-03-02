@@ -14,10 +14,13 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
+from starlette.requests import Request
 
 from app.database import get_db
 from app.models import OrganizationMember, WebhookDelivery, WebhookSubscription
 from app.auth_jwt import get_current_user
+from app.rate_limiter import limiter
+from app.utils.network import validate_url_no_ssrf
 from app.webhook_service import (
     WEBHOOK_EVENTS,
     generate_webhook_secret,
@@ -121,7 +124,9 @@ def list_webhooks(
 
 
 @router.post("", response_model=WebhookCreatedResponse, status_code=201)
+@limiter.limit("5/minute")
 def create_webhook(
+    request: Request,
     payload: WebhookCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -140,6 +145,8 @@ def create_webhook(
             status_code=422,
             detail=f"Unbekannte Events: {unknown}. Erlaubt: {WEBHOOK_EVENTS}",
         )
+
+    validate_url_no_ssrf(str(payload.url), label="Webhook-URL")
 
     secret = generate_webhook_secret()
     sub = WebhookSubscription(
@@ -178,7 +185,9 @@ def delete_webhook(
 
 
 @router.post("/{subscription_id}/test", status_code=200)
+@limiter.limit("5/minute")
 def test_webhook(
+    request: Request,
     subscription_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),

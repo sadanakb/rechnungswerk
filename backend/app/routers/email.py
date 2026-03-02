@@ -4,9 +4,7 @@ Email inbox router — process IMAP inboxes for PDF invoice attachments.
 POST /api/email/process-inbox  — fetch PDFs from IMAP, optionally run OCR
 GET  /api/email/status         — last inbox scan result
 """
-import ipaddress
 import logging
-import socket
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -14,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from app.auth_jwt import get_current_user
 from app.email.inbox_processor import InboxProcessor
+from app.utils.network import validate_host_no_ssrf
 
 logger = logging.getLogger(__name__)
 audit_logger = logging.getLogger("audit.email")
@@ -29,49 +28,14 @@ def _validate_imap_host(host: str, port: int) -> None:
     """
     Validate an IMAP host to prevent SSRF attacks.
 
-    Blocks connections to private/internal IP ranges and restricts
-    ports to standard IMAP ports (993 SSL, 143 plain).
-
-    Raises:
-        HTTPException(400) if the host or port is not allowed.
+    Delegates to the shared SSRF validator in ``app.utils.network``.
     """
-    # --- Port validation ---
-    if port not in _ALLOWED_IMAP_PORTS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unzulässiger IMAP-Port: {port}. Erlaubt: {sorted(_ALLOWED_IMAP_PORTS)}",
-        )
-
-    # --- Host validation: resolve and check all IPs ---
-    try:
-        addr_infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
-    except socket.gaierror:
-        raise HTTPException(
-            status_code=400,
-            detail=f"IMAP-Host konnte nicht aufgelöst werden: {host}",
-        )
-
-    if not addr_infos:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Keine DNS-Ergebnisse für Host: {host}",
-        )
-
-    for family, _type, _proto, _canonname, sockaddr in addr_infos:
-        ip = ipaddress.ip_address(sockaddr[0])
-
-        if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Verbindung zu internen/privaten Adressen ist nicht erlaubt: {host}",
-            )
-
-        # Explicitly block common internal ranges for defence-in-depth
-        if ip.is_multicast or ip.is_unspecified:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Verbindung zu internen/privaten Adressen ist nicht erlaubt: {host}",
-            )
+    validate_host_no_ssrf(
+        host,
+        port,
+        allowed_ports=_ALLOWED_IMAP_PORTS,
+        label="IMAP-Host",
+    )
 
 
 class EmailConfig(BaseModel):

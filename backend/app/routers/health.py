@@ -1,113 +1,142 @@
 """
-Health check endpoint
+Health check endpoints — split into liveness and readiness probes.
+
+Security: no system internals, software versions, model names, or data
+counts are exposed in any response.
 """
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import Invoice
-from app.schemas import HealthResponse
-from app.config import settings
-import subprocess
-import shutil
+import time
+from typing import Optional, Tuple
+
 import httpx
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
+from app.database import SessionLocal
+from app.config import settings
+from app.rate_limiter import limiter
 
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# Module-level cache for the readiness result (TTL = 60 seconds)
+# ---------------------------------------------------------------------------
+_CACHE_TTL: int = 60  # seconds
+_cache_ts: float = 0.0
+_cache_result: Optional[dict] = None
 
-@router.get("/health", response_model=HealthResponse)
-async def health_check(db: Session = Depends(get_db)):
-    """
-    Health check for RechnungsWerk API
 
-    Checks:
-    - Database connection + total invoice count
-    - Tesseract OCR installation + version
-    - KoSIT validator availability (optional)
-    """
-    # --- Database ---
+def _get_cached_ready() -> Optional[dict]:
+    """Return cached readiness result if still valid, else None."""
+    if _cache_result is not None and (time.monotonic() - _cache_ts) < _CACHE_TTL:
+        return _cache_result
+    return None
+
+
+def _set_cache(result: dict) -> None:
+    global _cache_ts, _cache_result
+    _cache_ts = time.monotonic()
+    _cache_result = result
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _check_database() -> str:
+    """Run a minimal SELECT 1 to verify DB connectivity. Returns 'ok' or 'error'."""
     try:
-        total_invoices = db.query(Invoice).count()
-        db_status = "connected"
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+            return "ok"
+        finally:
+            db.close()
     except Exception:
-        total_invoices = 0
-        db_status = "error"
+        return "error"
 
-    # --- Tesseract ---
-    tesseract_installed = shutil.which("tesseract") is not None
-    tesseract_version: str | None = None
-    if tesseract_installed:
-        try:
-            result = subprocess.run(
-                ["tesseract", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            # First line of stderr typically: "tesseract 5.3.4"
-            output = result.stdout or result.stderr
-            first_line = output.strip().splitlines()[0] if output.strip() else ""
-            tesseract_version = first_line  # e.g. "tesseract 5.3.4"
-        except Exception:
-            tesseract_version = "unknown"
 
-    # --- KoSIT Validator (optional, non-blocking) ---
-    kosit_status = "not_configured"
-    validator_url = settings.kosit_validator_url
-    if validator_url and validator_url != "http://localhost:8081/validate":
-        # Try a lightweight GET on the base URL (the /validate path is POST-only)
-        base_url = validator_url.rsplit("/validate", 1)[0]
-        try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                resp = await client.get(base_url)
-            kosit_status = "available" if resp.status_code < 500 else "error"
-        except Exception:
-            kosit_status = "unavailable"
-    else:
-        # Try default KoSIT port 8080 on localhost
+async def _check_kosit() -> str:
+    """
+    Probe KoSIT validator reachability.
+    Returns 'ok', 'error', or 'not_configured'.
+    """
+    validator_url: str = settings.kosit_validator_url or ""
+
+    # Treat the placeholder default as "not configured"
+    if not validator_url or validator_url == "http://localhost:8081/validate":
+        # Try the conventional default port as a best-effort probe
         try:
             async with httpx.AsyncClient(timeout=2.0) as client:
                 resp = await client.get("http://localhost:8080")
-            kosit_status = "available" if resp.status_code < 500 else "error"
+            return "ok" if resp.status_code < 500 else "error"
         except Exception:
-            kosit_status = "not_running"
+            return "not_configured"
 
-    # --- Ollama ---
-    ollama_available = False
+    # Strip the /validate path to probe the base URL with a lightweight GET
+    base_url = validator_url.rsplit("/validate", 1)[0]
     try:
-        import ollama as _ollama
-        _ollama.list()
-        ollama_available = True
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(base_url)
+        return "ok" if resp.status_code < 500 else "error"
     except Exception:
-        pass
+        return "error"
 
-    # --- PaddleOCR ---
-    paddleocr_available = False
-    try:
-        from paddleocr import PaddleOCR as _PaddleOCR
-        paddleocr_available = True
-    except ImportError:
-        pass
 
-    if paddleocr_available and ollama_available:
-        ocr_engine = "paddleocr+ollama-text+vision"
-    elif ollama_available:
-        ocr_engine = "ollama-text+vision"
-    elif paddleocr_available:
-        ocr_engine = "paddleocr+tesseract"
-    else:
-        ocr_engine = "tesseract"
-    overall_status = "healthy" if db_status == "connected" else "degraded"
+async def _build_readiness_response() -> Tuple[dict, int]:
+    """
+    Perform all readiness checks and return (body_dict, http_status_code).
+    Results are cached for _CACHE_TTL seconds.
+    """
+    cached = _get_cached_ready()
+    if cached is not None:
+        return cached, (200 if cached["status"] == "ok" else 503)
 
-    return HealthResponse(
-        status=overall_status,
-        database=db_status,
-        tesseract_installed=tesseract_installed,
-        tesseract_version=tesseract_version,
-        kosit_validator=kosit_status,
-        total_invoices=total_invoices,
-        xrechnung_version=settings.xrechnung_version,
-        ollama_available=ollama_available,
-        ollama_primary_model="qwen2.5:14b",
-        ollama_vision_model="qwen2-vl:7b",
-        ocr_engine=ocr_engine,
-    )
+    db_status = _check_database()
+    kosit_status = await _check_kosit()
+
+    overall = "ok" if db_status == "ok" else "degraded"
+    body = {
+        "status": overall,
+        "checks": {
+            "database": db_status,
+            "kosit_validator": kosit_status,
+        },
+    }
+    _set_cache(body)
+    http_status = 200 if overall == "ok" else 503
+    return body, http_status
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/health/live", tags=["Health"])
+async def liveness():
+    """
+    Liveness probe — instant, no external calls, no auth required.
+    Returns 200 as long as the process is alive.
+    """
+    return {"status": "ok"}
+
+
+@router.get("/health/ready", tags=["Health"])
+@limiter.limit("10/minute")
+async def readiness(request: Request):
+    """
+    Readiness probe — checks DB connectivity and KoSIT validator reachability.
+    Rate-limited to 10 requests per minute. Result cached for 60 seconds.
+    """
+    body, status_code = await _build_readiness_response()
+    return JSONResponse(content=body, status_code=status_code)
+
+
+@router.get("/health", tags=["Health"])
+@limiter.limit("10/minute")
+async def health_check(request: Request):
+    """
+    Backward-compatible alias — delegates to the readiness probe.
+    """
+    body, status_code = await _build_readiness_response()
+    return JSONResponse(content=body, status_code=status_code)
