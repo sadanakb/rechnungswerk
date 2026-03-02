@@ -58,8 +58,11 @@ def _resolve_org_id(current_user: dict, db: Session) -> int:
     """Resolve organization ID from the current user context."""
     if isinstance(current_user, dict):
         user_id = current_user.get("user_id") or current_user.get("id")
-        # Dev mode returns "dev-user" string — return 0 for dev
-        if not user_id or not isinstance(user_id, int):
+        if not user_id:
+            return 0
+        try:
+            user_id = int(user_id)
+        except (TypeError, ValueError):
             return 0
         member = db.query(OrganizationMember).filter(
             OrganizationMember.user_id == user_id

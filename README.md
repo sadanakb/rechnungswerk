@@ -6,7 +6,7 @@
 
 ![Tests](https://github.com/sadanakb/rechnungswerk/actions/workflows/tests.yml/badge.svg)
 ![License](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue)
-![Tests](https://img.shields.io/badge/Tests-214%2B%20bestanden-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-580%2B%20bestanden-brightgreen)
 ![Build](https://img.shields.io/badge/Build-passing-brightgreen)
 ![XRechnung](https://img.shields.io/badge/XRechnung-3.0.2-blue)
 ![EN 16931](https://img.shields.io/badge/EN_16931-konform-green)
@@ -22,98 +22,108 @@ RechnungsWerk wandelt Papierrechnungen per KI-OCR in normkonforme XRechnung-XML 
 
 Die E-Rechnungspflicht betrifft ab 2025 jedes Unternehmen in Deutschland -- und die bestehenden Loesungen kosten 500-2.000 EUR/Monat. RechnungsWerk macht das kostenlos und selbst gehostet.
 
-<!-- Add screenshots -->
+---
+
+## Schnellstart
+
+### Ein Befehl (Entwicklung)
+
+```bash
+git clone https://github.com/sadanakb/rechnungswerk.git && cd rechnungswerk
+make setup   # Installiert Backend + Frontend Dependencies
+make dev     # Startet Backend (Port 8001) + Frontend (Port 3001)
+```
+
+Oeffne http://localhost:3001 -- API-Docs: http://localhost:8001/docs
+
+### Mit Docker Compose (Produktion)
+
+```bash
+git clone https://github.com/sadanakb/rechnungswerk.git && cd rechnungswerk
+cp .env.production.example .env
+# .env anpassen: DB_PASSWORD, JWT_SECRET_KEY, ALLOWED_ORIGINS
+docker compose up -d
+```
 
 ---
 
 ## Features
 
+### E-Rechnung
+
 | Modul | Beschreibung |
 |-------|-------------|
-| **KI-OCR** | PDF-Upload -- PaddleOCR + Ollama extrahieren alle Rechnungsfelder mit Per-Feld-Confidence |
+| **KI-OCR** | PDF-Upload -- Surya OCR (97.7% Genauigkeit) + PaddleOCR Fallback mit Per-Feld-Confidence |
 | **XRechnung 3.0.2** | EN 16931-konformes UBL-XML, alle Pflichtfelder (BT-1 bis BT-112) |
 | **ZUGFeRD 2.3.3** | XML wird in PDF/A-3 eingebettet (factur-x, Profil EXTENDED) |
-| **DATEV-Export** | Buchungsstapel (ASCII) und CSV fuer SKR03/SKR04 |
-| **Mahnwesen** | Automatische Faelligkeitsueberwachung und mehrstufige Mahnungen |
-| **KI-Kategorisierung** | Ollama ordnet Rechnungen automatisch SKR03/SKR04-Konten zu |
-| **GoBD-konform** | Revisionssichere Archivierung gemaess GoBD-Anforderungen |
 | **KoSIT-Validator** | Validierung gegen offizielle Schematron-Regeln (Docker + lokaler Fallback) |
+| **Batch-OCR** | Bis zu 20 PDFs gleichzeitig hochladen und verarbeiten |
+
+### Buchhaltung & Compliance
+
+| Modul | Beschreibung |
+|-------|-------------|
+| **DATEV-Export** | Buchungsstapel (ASCII) und CSV fuer SKR03/SKR04 |
+| **KI-Kategorisierung** | Ollama ordnet Rechnungen automatisch SKR03/SKR04-Konten zu |
+| **Mahnwesen** | Automatische Faelligkeitsueberwachung und mehrstufige Mahnungen |
+| **GoBD-konform** | Revisionssichere Archivierung gemaess GoBD-Anforderungen |
 | **Betrugs-Erkennung** | Duplikat-Check, IBAN-Aenderungs-Warnung, Betrags-Anomalien |
+
+### Verwaltung & Zusammenarbeit
+
+| Modul | Beschreibung |
+|-------|-------------|
+| **Multi-Tenant** | Organisationen mit Rollen (Owner, Admin, Member) |
+| **Team-Management** | Einladungen per E-Mail, Rollenverwaltung |
 | **Wiederkehrende Rechnungen** | Templates mit monatlicher/vierteljaehrlicher/jaehrlicher Ausloesung |
-| **Batch-OCR** | Mehrere PDFs gleichzeitig hochladen und verarbeiten |
+| **Kundenportal** | Kunden koennen Rechnungen per Link einsehen und Zahlung bestaetigen |
 | **Analytics** | Monatliches Rechnungsvolumen, Top-Lieferanten, MwSt-Uebersicht |
-
----
-
-## Schnellstart
-
-### Mit Docker Compose (empfohlen)
-
-```bash
-git clone https://github.com/sadanakb/rechnungswerk.git && cd rechnungswerk
-cp .env.production.example .env
-docker compose up -d
-```
-
-Die App ist unter `http://localhost:3001` erreichbar, die API unter `http://localhost:8001/docs`.
-
-### Manuell (Entwicklung)
-
-```bash
-# 1. Repository klonen
-git clone https://github.com/sadanakb/rechnungswerk.git
-cd rechnungswerk
-
-# 2. Backend starten
-cd backend
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
-
-# 3. Frontend starten (neues Terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-Oeffne: http://localhost:3001 -- API-Docs: http://localhost:8001/docs
+| **Webhooks** | Event-basierte Benachrichtigungen (invoice.created, validated, ...) |
+| **Audit-Log** | Alle Aktionen nachvollziehbar protokolliert |
+| **GDPR** | Datenexport (Art. 20) und Account-Loeschung (Art. 17) |
+| **CSV-Import** | Bulk-Import von Rechnungen aus CSV-Dateien |
+| **Stripe-Billing** | Integrierte Abrechnung (Free, Starter, Professional) |
 
 ---
 
 ## Self-Hosting
 
-Drei Schritte zum produktiven Betrieb:
+### Voraussetzungen
 
-### 1. Server vorbereiten
+- **Minimum:** 2 vCPU, 4 GB RAM, 20 GB SSD
+- **Software:** Docker + Docker Compose
 
-Mindestanforderungen: 2 vCPU, 4 GB RAM, 20 GB SSD. Docker und Docker Compose muessen installiert sein.
-
-```bash
-git clone https://github.com/sadanakb/rechnungswerk.git
-cd rechnungswerk
-```
-
-### 2. Umgebungsvariablen konfigurieren
+### Konfiguration
 
 ```bash
+git clone https://github.com/sadanakb/rechnungswerk.git && cd rechnungswerk
 cp .env.production.example .env
 ```
 
 Passe die `.env`-Datei an:
-- `DB_PASSWORD` -- sicheres PostgreSQL-Passwort
-- `API_KEY` -- API-Schluessel fuer Authentifizierung
-- `ALLOWED_ORIGINS` -- deine Domain(s)
-- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` -- fuer Premium-Features (optional)
 
-### 3. Starten
+| Variable | Pflicht | Beschreibung |
+|----------|---------|-------------|
+| `DB_PASSWORD` | Ja | Sicheres PostgreSQL-Passwort |
+| `JWT_SECRET_KEY` | Ja | Token-Signatur (`openssl rand -hex 64`) |
+| `ALLOWED_ORIGINS` | Ja | Deine Domain(s) als JSON-Array |
+| `BREVO_API_KEY` | Nein | E-Mail-Versand (Passwort-Reset, Einladungen) |
+| `STRIPE_SECRET_KEY` | Nein | Premium-Features / Billing |
+| `ANTHROPIC_API_KEY` | Nein | KI-Kategorisierung (Ollama als Fallback) |
+
+### Starten
 
 ```bash
 docker compose up -d
 ```
 
-Die Infrastruktur (PostgreSQL 17, Redis 7, Backend, Frontend, Uptime Kuma) startet automatisch. Die App ist unter Port 3001, die API unter Port 8001 erreichbar.
+Startet automatisch: PostgreSQL 17, Redis 7, Backend, Frontend, Uptime Kuma.
+
+| Service | Port | URL |
+|---------|------|-----|
+| Frontend | 3001 | http://localhost:3001 |
+| Backend API | 8001 | http://localhost:8001/api |
+| Monitoring | 3002 | http://localhost:3002 |
 
 ---
 
@@ -121,18 +131,64 @@ Die Infrastruktur (PostgreSQL 17, Redis 7, Backend, Frontend, Uptime Kuma) start
 
 | Schicht | Technologie |
 |---------|-------------|
-| Frontend | Next.js 16 + React 19 + TypeScript |
-| Styling | Tailwind CSS v4 + Radix UI Primitives |
-| Backend | Python 3.11 + FastAPI 0.115 |
+| Frontend | Next.js 16 + React 19 + TypeScript 5 |
+| Styling | Tailwind CSS v4 + Radix UI + Shadcn/ui |
+| Backend | Python 3.11+ + FastAPI 0.133 |
 | Datenbank | PostgreSQL 17 (Produktion) / SQLite (Entwicklung) |
-| Cache | Redis 7 |
+| Cache/Queue | Redis 7 + ARQ |
 | ORM | SQLAlchemy 2.0 + Alembic |
-| OCR | PaddleOCR 2.8 + Ollama (qwen2.5:14b) |
+| OCR | Surya OCR + PaddleOCR (Fallback) |
+| KI | Ollama / Anthropic / Mistral (konfigurierbar) |
 | XML | lxml 5.3 (XRechnung UBL 2.1) |
 | ZUGFeRD | factur-x 3.1 + WeasyPrint |
-| Charts | Recharts |
+| Payments | Stripe |
+| E-Mail | Brevo (ehem. Sendinblue) |
 | Monitoring | Uptime Kuma |
 | CI/CD | GitHub Actions (pytest + build + lint + security audit) |
+
+---
+
+## Entwicklung
+
+### Voraussetzungen
+
+- Python 3.11+ (empfohlen: 3.13)
+- Node.js 20+
+- make (auf macOS/Linux vorinstalliert)
+
+### Setup & Start
+
+```bash
+make setup   # Backend venv + pip install + Frontend npm install
+make dev     # Startet beides parallel
+```
+
+### Einzelne Befehle
+
+```bash
+make backend    # Nur Backend starten
+make frontend   # Nur Frontend starten
+make test       # Alle Tests ausfuehren
+make lint       # Linter ausfuehren
+make build      # Frontend-Produktionsbuild
+make help       # Alle verfuegbaren Befehle
+```
+
+### Manuell (ohne Make)
+
+```bash
+# Backend
+cd backend
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+# Frontend (neues Terminal)
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
@@ -149,18 +205,26 @@ Die Infrastruktur (PostgreSQL 17, Redis 7, Backend, Frontend, Uptime Kuma) start
 
 ## API-Referenz
 
-Alle Endpunkte sind unter http://localhost:8001/docs (Swagger) vollstaendig dokumentiert.
+Interaktive Swagger-Docs unter http://localhost:8001/docs (nur im Debug-Modus).
 
 ### Authentifizierung
 
 ```bash
-curl -H "X-API-Key: dein-api-key" http://localhost:8001/api/invoices
+# JWT Token holen
+TOKEN=$(curl -s -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"..."}' | jq -r .access_token)
+
+# Authentifizierter API-Aufruf
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8001/api/invoices
 ```
 
 ### Wichtigste Endpunkte
 
 | Methode | Pfad | Beschreibung |
 |---------|------|-------------|
+| `POST` | `/api/auth/register` | Benutzer registrieren |
+| `POST` | `/api/auth/login` | JWT Token erhalten |
 | `POST` | `/api/upload-ocr` | PDF per OCR verarbeiten |
 | `POST` | `/api/upload-ocr-batch` | Mehrere PDFs als Batch |
 | `POST` | `/api/invoices` | Rechnung manuell anlegen |
@@ -171,17 +235,20 @@ curl -H "X-API-Key: dein-api-key" http://localhost:8001/api/invoices
 | `POST` | `/api/invoices/{id}/categorize` | KI-Kategorisierung |
 | `GET` | `/api/export/datev` | DATEV-Export |
 | `GET` | `/api/analytics/summary` | Analytics-Zusammenfassung |
+| `GET` | `/api/health/live` | Liveness-Check |
+| `GET` | `/api/health/ready` | Readiness-Check |
 
 ---
 
 ## Tests
 
 ```bash
-# Backend (174+ Tests)
-cd backend && python -m pytest tests/ -v
+# Alle Tests (Backend + Frontend)
+make test
 
-# Frontend (40+ Tests)
-cd frontend && npx vitest run
+# Einzeln
+make test-backend    # 500+ Backend-Tests (pytest)
+make test-frontend   # 77+ Frontend-Tests (vitest)
 
 # Mit Coverage
 cd backend && python -m pytest tests/ --cov=app --cov-report=html
@@ -193,28 +260,34 @@ cd backend && python -m pytest tests/ --cov=app --cov-report=html
 
 ```
 rechnungswerk/
-├── .github/workflows/ci.yml    # CI: pytest + build + lint + security
+├── Makefile                        # make dev / make test / make setup
+├── docker-compose.yml              # Produktions-Setup (5 Services)
 ├── backend/
 │   ├── app/
-│   │   ├── main.py             # FastAPI App
-│   │   ├── xrechnung_generator.py
-│   │   ├── zugferd_generator.py
-│   │   ├── kosit_validator.py
-│   │   ├── ocr/                # PaddleOCR + Batch
-│   │   ├── ai/                 # KI-Kategorisierung
-│   │   ├── fraud/              # Betrugs-Erkennung
-│   │   ├── export/             # DATEV-Export
-│   │   ├── archive/            # GoBD-Archivierung
-│   │   └── routers/            # API-Endpunkte
-│   └── tests/
+│   │   ├── main.py                 # FastAPI App + WebSocket
+│   │   ├── auth_jwt.py             # JWT + bcrypt_sha256
+│   │   ├── xrechnung_generator.py  # XRechnung 3.0.2 UBL-XML
+│   │   ├── zugferd_generator.py    # ZUGFeRD PDF/A-3
+│   │   ├── kosit_validator.py      # KoSIT Schematron-Validierung
+│   │   ├── ocr/                    # Surya + PaddleOCR
+│   │   ├── ai/                     # KI-Kategorisierung (SKR03/04)
+│   │   ├── fraud/                  # Betrugs-Erkennung
+│   │   ├── export/                 # DATEV-Export
+│   │   ├── archive/                # GoBD-Archivierung
+│   │   └── routers/                # 24+ API-Router
+│   ├── tests/                      # 500+ pytest Tests
+│   └── Dockerfile
 ├── frontend/
-│   ├── app/                    # Next.js App Router
-│   ├── components/             # UI-Komponenten
-│   └── __tests__/              # Vitest Tests
-├── docker-compose.yml          # Produktions-Setup
+│   ├── app/                        # Next.js App Router
+│   │   ├── (dashboard)/            # Geschuetzter Bereich
+│   │   └── (marketing)/            # Oeffentliche Seiten
+│   ├── components/                 # Shadcn/ui + Custom
+│   ├── __tests__/                  # Vitest Unit-Tests
+│   ├── e2e/                        # Playwright E2E-Tests
+│   └── Dockerfile
 ├── CONTRIBUTING.md
 ├── SECURITY.md
-└── LICENSE
+└── LICENSE                         # AGPL-3.0
 ```
 
 ---

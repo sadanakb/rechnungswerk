@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import extract, func
 
 from app.auth_jwt import get_current_user
 from app.database import get_db
@@ -130,7 +130,8 @@ async def get_monthly_summary(
     # Aggregate data from DB
     invoices = db.query(Invoice).filter(
         Invoice.organization_id == org_id,
-        func.strftime("%Y-%m", Invoice.invoice_date) == month_key,
+        extract("year", Invoice.invoice_date) == year,
+        extract("month", Invoice.invoice_date) == mo,
     ).all()
 
     if not invoices:
@@ -159,7 +160,8 @@ async def get_monthly_summary(
     prev_month_key = f"{prev_year}-{prev_mo:02d}"
     prev_invoices = db.query(Invoice).filter(
         Invoice.organization_id == org_id,
-        func.strftime("%Y-%m", Invoice.invoice_date) == prev_month_key,
+        extract("year", Invoice.invoice_date) == prev_year,
+        extract("month", Invoice.invoice_date) == prev_mo,
     ).all()
     prev_total = sum(float(inv.gross_amount or 0) for inv in prev_invoices)
     prev_change = ((gross_total - prev_total) / prev_total * 100) if prev_total > 0 else 0.0
@@ -275,11 +277,12 @@ async def chat(
                 query = query.filter(Invoice.invoice_date >= today - timedelta(days=7))
             elif period == "month":
                 query = query.filter(
-                    func.strftime("%Y-%m", Invoice.invoice_date) == today.strftime("%Y-%m")
+                    extract("year", Invoice.invoice_date) == today.year,
+                    extract("month", Invoice.invoice_date) == today.month,
                 )
             elif period == "year":
                 query = query.filter(
-                    func.strftime("%Y", Invoice.invoice_date) == str(today.year)
+                    extract("year", Invoice.invoice_date) == today.year,
                 )
             invoices = query.all()
             total = sum(float(inv.gross_amount or 0) for inv in invoices)

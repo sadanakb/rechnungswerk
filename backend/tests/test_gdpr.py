@@ -125,13 +125,15 @@ def test_request_delete_sends_email(client, db_session):
 def test_confirm_delete_with_valid_token(client, db_session):
     """DELETE /api/gdpr/confirm-delete?token=... deletes user data when token is valid."""
     token = _register_and_login(client, "gdpr_delete2@test.de", "GDPR Org 4")
-    with patch("app.routers.gdpr.send_gdpr_delete_confirmation"):
+    with patch("app.routers.gdpr.send_gdpr_delete_confirmation") as mock_email:
         client.post("/api/gdpr/request-delete", headers=_auth(token))
+        # Capture the raw token passed to the email function (before hashing)
+        raw_token = mock_email.call_args.kwargs.get("token") or mock_email.call_args[0][1]
 
     req = db_session.query(GdprDeleteRequest).first()
     assert req is not None, "GdprDeleteRequest should have been created"
 
-    res = client.delete(f"/api/gdpr/confirm-delete?token={req.token}")
+    res = client.delete(f"/api/gdpr/confirm-delete?token={raw_token}")
     assert res.status_code == 200
     data = res.json()
     assert "gelöscht" in data["message"] or "deleted" in data["message"].lower()
@@ -139,15 +141,18 @@ def test_confirm_delete_with_valid_token(client, db_session):
 
 def test_confirm_delete_with_expired_token(client, db_session):
     """DELETE /api/gdpr/confirm-delete with expired token returns 400."""
+    import hashlib
+    raw_token = secrets.token_hex(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     expired = GdprDeleteRequest(
         user_id=9999,
-        token=secrets.token_hex(32),
+        token=token_hash,
         expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
     )
     db_session.add(expired)
     db_session.commit()
 
-    res = client.delete(f"/api/gdpr/confirm-delete?token={expired.token}")
+    res = client.delete(f"/api/gdpr/confirm-delete?token={raw_token}")
     assert res.status_code == 400
 
 

@@ -46,7 +46,13 @@ PLAN_LIMITS = {
 
 
 def require_plan(feature: str):
-    """Dependency that checks if user's org plan allows the feature."""
+    """Deprecated: use require_feature() instead.
+
+    This function reads the plan from the JWT token payload (current_user dict)
+    rather than looking it up from the database, which means the plan can be stale
+    if it was changed after the token was issued. require_feature() properly queries
+    the Organization table for the current plan.
+    """
     def dependency(current_user: dict = Depends(get_current_user)):
         plan = current_user.get("plan", "free")
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])

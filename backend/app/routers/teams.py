@@ -92,23 +92,22 @@ def list_members(
     member, org = _get_member_and_org(current_user, db)
 
     members = (
-        db.query(OrganizationMember)
+        db.query(OrganizationMember, User)
+        .join(User, User.id == OrganizationMember.user_id)
         .filter(OrganizationMember.organization_id == org.id)
         .all()
     )
 
     result = []
-    for m in members:
-        user = db.query(User).filter(User.id == m.user_id).first()
-        if user:
-            result.append(MemberResponse(
-                id=m.id,
-                user_id=m.user_id,
-                email=user.email,
-                full_name=user.full_name,
-                role=m.role,
-                joined_at=m.joined_at,
-            ))
+    for m, user in members:
+        result.append(MemberResponse(
+            id=m.id,
+            user_id=m.user_id,
+            email=user.email,
+            full_name=user.full_name,
+            role=m.role,
+            joined_at=m.joined_at,
+        ))
 
     return result
 

@@ -1,14 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { CommandPalette } from '@/components/CommandPalette'
 import { NotificationBell } from '@/components/layout/NotificationBell'
 import { WebSocketProvider } from '@/contexts/WebSocketContext'
 import { ChatWidget } from '@/components/ai/ChatWidget'
+import { useAuth } from '@/lib/auth'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [cmdkOpen, setCmdkOpen] = useState(false)
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login')
+    }
+  }, [loading, user, router])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -20,6 +30,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  // Show nothing while loading or redirecting unauthenticated users
+  if (loading || !user) {
+    return null
+  }
 
   return (
     <WebSocketProvider>

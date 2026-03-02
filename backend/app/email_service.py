@@ -37,7 +37,7 @@ def send_password_reset_email(to_email: str, reset_url: str) -> bool:
         "<h2>Passwort zuruecksetzen</h2>"
         "<p>Du hast angefordert, dein Passwort bei RechnungsWerk zurueckzusetzen.</p>"
         "<p>Klicke auf den folgenden Link, um ein neues Passwort zu setzen:</p>"
-        f'<p><a href="{reset_url}">{reset_url}</a></p>'
+        f'<p><a href="{html.escape(reset_url)}">{html.escape(reset_url)}</a></p>'
         "<p>Dieser Link ist 1 Stunde gueltig.</p>"
         "<p>Falls du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren.</p>"
         "<br><p>Dein RechnungsWerk Team</p>"
@@ -78,7 +78,7 @@ def send_email_verification(to_email: str, verification_url: str) -> bool:
         "<h2>E-Mail-Adresse bestaetigen</h2>"
         "<p>Willkommen bei RechnungsWerk!</p>"
         "<p>Bitte bestaetigt deine E-Mail-Adresse, indem du auf den folgenden Link klickst:</p>"
-        f'<p><a href="{verification_url}">{verification_url}</a></p>'
+        f'<p><a href="{html.escape(verification_url)}">{html.escape(verification_url)}</a></p>'
         "<p>Dieser Link ist 24 Stunden gueltig.</p>"
         "<br><p>Dein RechnungsWerk Team</p>"
         "</body></html>"
@@ -188,7 +188,7 @@ def send_team_invite(
         f"<p><strong>{safe_inviter}</strong> hat Sie eingeladen, dem Team "
         f"<strong>{safe_org}</strong> bei RechnungsWerk beizutreten.</p>"
         "<p>Klicken Sie auf den folgenden Link, um die Einladung anzunehmen:</p>"
-        f'<p><a href="{invite_url}">{invite_url}</a></p>'
+        f'<p><a href="{html.escape(invite_url)}">{html.escape(invite_url)}</a></p>'
         "<p>Dieser Link ist 7 Tage gueltig.</p>"
         "<br><p>Ihr RechnungsWerk Team</p>"
         "</body></html>"
@@ -348,7 +348,7 @@ def send_invoice_portal_email(
         + ".</p>"
         "<p>Sie können Ihre Rechnung über den folgenden Link einsehen, "
         "herunterladen und Ihre Zahlung bestätigen:</p>"
-        f'<p><a href="{settings.frontend_url}{portal_url}" '
+        f'<p><a href="{html.escape(settings.frontend_url)}{html.escape(portal_url)}" '
         'style="background:#14b8a6;color:white;padding:12px 24px;border-radius:6px;'
         'text-decoration:none;font-weight:bold;">Rechnung ansehen</a></p>'
         "<p>Der Link ist 30 Tage gültig.</p>"
@@ -401,7 +401,7 @@ def send_datev_export_email(
         f"<p><strong>Zeitraum:</strong> {html.escape(from_month)} bis {html.escape(to_month)}</p>"
         f"<p><strong>Anzahl Buchungssätze:</strong> {invoice_count}</p>"
         "<p>Bitte loggen Sie sich in RechnungsWerk ein, um den Export herunterzuladen:</p>"
-        f'<p><a href="{settings.frontend_url}/berichte" '
+        f'<p><a href="{html.escape(settings.frontend_url)}/berichte" '
         'style="background:#14b8a6;color:white;padding:12px 24px;border-radius:6px;'
         'text-decoration:none;font-weight:bold;">Export herunterladen</a></p>'
         "<br><p>Mit freundlichen Grüßen,<br>RechnungsWerk</p>"
@@ -437,13 +437,14 @@ def send_gdpr_delete_confirmation(to_email: str, token: str) -> bool:
     api = _get_transactional_api()
 
     confirm_url = f"{settings.frontend_url}/gdpr/confirm-delete?token={token}"
+    safe_confirm_url = html.escape(confirm_url)
     html_content = (
         "<html><body>"
         "<h2>Account-Löschung bestätigen</h2>"
         "<p>Du hast die Löschung deines RechnungsWerk-Accounts beantragt.</p>"
         "<p>Klicke auf den folgenden Button, um dein Konto und alle Daten "
         "<strong>unwiderruflich</strong> zu löschen:</p>"
-        f'<p><a href="{confirm_url}" style="background:#ef4444;color:white;padding:12px 24px;'
+        f'<p><a href="{safe_confirm_url}" style="background:#ef4444;color:white;padding:12px 24px;'
         f'border-radius:6px;text-decoration:none;font-weight:bold;">Account jetzt löschen</a></p>'
         "<p>Dieser Link ist 24 Stunden gültig. Falls du diese Anfrage nicht gestellt hast, "
         "ignoriere diese E-Mail.</p>"

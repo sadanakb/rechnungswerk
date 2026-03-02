@@ -59,8 +59,8 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="E-Invoice OCR and XRechnung Generator - Convert paper invoices to ZUGFeRD/XRechnung",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
 
@@ -191,7 +191,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
         while True:
             # Keep connection alive — receive messages (ping/pong or ignore)
             await websocket.receive_text()
-    except WebSocketDisconnect:
+    except Exception:
         ws_manager.disconnect(org_id, websocket)
 
 

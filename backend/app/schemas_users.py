@@ -2,7 +2,8 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from app.schemas_auth import validate_password_strength
 
 
 class OrganizationInfo(BaseModel):
@@ -29,3 +30,10 @@ class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     current_password: Optional[str] = None
     new_password: Optional[str] = None
+
+    @field_validator("new_password")
+    @classmethod
+    def check_password_strength(cls, v):
+        if v is not None:
+            validate_password_strength(v)
+        return v

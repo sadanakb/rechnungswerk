@@ -50,8 +50,6 @@ async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme
     if not token:
         return None
     try:
-        if not settings.require_api_key:
-            return None
         payload = decode_token(token)
         if payload.get("type") != "access":
             return None
@@ -61,6 +59,7 @@ async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme
             "role": payload.get("role", "user"),
         }
     except Exception:
+        # Token invalid or expired — treat as unauthenticated
         return None
 
 
@@ -68,6 +67,9 @@ router = APIRouter()
 ocr_pipeline = OCRPipeline()
 ocr_pipeline_v2 = OCRPipelineV2()
 batch_processor = BatchProcessor()
+
+# Throttle for overdue auto-update (module-level state)
+_last_overdue_check = [0.0]
 xrechnung_gen = XRechnungGenerator()
 zugferd_gen = ZUGFeRDGenerator()
 kosit_validator = KoSITValidator()
@@ -332,7 +334,7 @@ async def create_invoice(
                 {
                     "id": db_invoice.id,
                     "number": db_invoice.invoice_number,
-                    "amount": float(db_invoice.total_amount) if hasattr(db_invoice, "total_amount") and db_invoice.total_amount is not None else float(db_invoice.gross_amount or 0),
+                    "amount": float(db_invoice.gross_amount or 0),
                 },
             )
         except Exception:
@@ -605,12 +607,14 @@ async def list_invoices(
     if status:
         query = query.filter(Invoice.validation_status == status)
     if supplier:
-        query = query.filter(Invoice.buyer_name.ilike(f"%{supplier}%"))
+        safe_supplier = supplier.replace('%', r'\%').replace('_', r'\_')
+        query = query.filter(Invoice.buyer_name.ilike(f"%{safe_supplier}%", escape='\\'))
     if search:
+        safe_search = search.replace('%', r'\%').replace('_', r'\_')
         query = query.filter(
             or_(
-                Invoice.invoice_number.ilike(f"%{search}%"),
-                Invoice.buyer_name.ilike(f"%{search}%"),
+                Invoice.invoice_number.ilike(f"%{safe_search}%", escape='\\'),
+                Invoice.buyer_name.ilike(f"%{safe_search}%", escape='\\'),
             )
         )
     if date_from:
@@ -624,8 +628,11 @@ async def list_invoices(
     if payment_status:
         query = query.filter(Invoice.payment_status == payment_status)
 
-    # Auto-mark overdue invoices (lazy evaluation on every list request)
-    if current_user.get("org_id"):
+    # Auto-mark overdue invoices (throttled: at most once every 5 minutes)
+    import time as _time
+    _now = _time.monotonic()
+    if current_user.get("org_id") and (_now - _last_overdue_check[0]) > 300:
+        _last_overdue_check[0] = _now
         org_id = current_user["org_id"]
         from datetime import date as date_type
         today_str = str(date_type.today())
@@ -782,9 +789,10 @@ def autocomplete_invoices(
     if not q or field not in allowed_fields:
         return []
     col = allowed_fields[field]
+    safe_q = q.replace('%', r'\%').replace('_', r'\_')
     org_id = current_user.get("org_id")
     query = db.query(col).filter(
-        col.ilike(f"{q}%"),
+        col.ilike(f"{safe_q}%", escape='\\'),
         col.isnot(None),
         col != "",
     )

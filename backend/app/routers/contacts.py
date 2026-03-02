@@ -113,7 +113,8 @@ def list_contacts(
     if type:
         q = q.filter(Contact.type == type)
     if search:
-        q = q.filter(Contact.name.ilike(f"%{search}%"))
+        safe_search = search.replace('%', r'\%').replace('_', r'\_')
+        q = q.filter(Contact.name.ilike(f"%{safe_search}%", escape='\\'))
     return q.order_by(Contact.name).offset(skip).limit(limit).all()
 
 

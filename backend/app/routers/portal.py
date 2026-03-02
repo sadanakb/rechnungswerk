@@ -174,8 +174,12 @@ async def download_pdf(
     os.makedirs("data/zugferd_output", exist_ok=True)
     ZUGFeRDGenerator().generate(invoice_data, xml_content, pdf_path)
 
+    resolved_pdf = os.path.realpath(pdf_path)
+    if not resolved_pdf.startswith(_ZUGFERD_PDF_BASE):
+        raise HTTPException(status_code=403, detail="Zugriff auf diese Datei nicht erlaubt")
+
     return FileResponse(
-        path=pdf_path,
+        path=resolved_pdf,
         media_type="application/pdf",
         filename=f"Rechnung_{invoice.invoice_number}.pdf",
     )

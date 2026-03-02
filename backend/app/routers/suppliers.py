@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _ensure_supplier_belongs_to_org(supplier: Supplier, org_id) -> None:
-    """Raise 403 if the supplier does not belong to the caller's organization.
+    """Raise 404 if the supplier does not belong to the caller's organization.
 
     In dev mode (org_id is None) or when the supplier has no organization_id,
     the check is skipped for backwards compatibility.
@@ -36,7 +36,7 @@ def _ensure_supplier_belongs_to_org(supplier: Supplier, org_id) -> None:
     if supplier.organization_id is None:
         return
     if supplier.organization_id != int(org_id):
-        raise HTTPException(status_code=403, detail="Kein Zugriff")
+        raise HTTPException(status_code=404, detail="Lieferant nicht gefunden")
 
 
 def _org_filter(query, org_id):
@@ -127,11 +127,12 @@ async def search_suppliers(
     Der Suchbegriff wird als Teilstring-Match (ILIKE) angewendet.
     """
     org_id = current_user.get("org_id")
-    search_term = f"%{q}%"
+    safe_q = q.replace('%', r'\%').replace('_', r'\_')
+    search_term = f"%{safe_q}%"
     query = db.query(Supplier).filter(
         or_(
-            Supplier.name.ilike(search_term),
-            Supplier.vat_id.ilike(search_term),
+            Supplier.name.ilike(search_term, escape='\\'),
+            Supplier.vat_id.ilike(search_term, escape='\\'),
         )
     )
     query = _org_filter(query, org_id)

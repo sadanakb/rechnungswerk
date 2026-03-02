@@ -32,7 +32,8 @@ if settings.require_api_key and (
         "Set a strong JWT_SECRET_KEY in your environment or .env file."
     )
 
-SECRET_KEY = settings.jwt_secret_key or _INSECURE_DEFAULT
+import secrets as _secrets
+SECRET_KEY = settings.jwt_secret_key or _secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7

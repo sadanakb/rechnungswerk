@@ -46,6 +46,7 @@ def list_overdue_invoices(
 
     query = db.query(Invoice).filter(
         Invoice.due_date < date.today(),
+        Invoice.payment_status.notin_(["paid", "cancelled", "payment_pending_confirmation"]),
     )
     if org_id:
         query = query.filter(Invoice.organization_id == org_id)
@@ -240,6 +241,10 @@ def update_mahnung_status(
     """
     mahnung = db.query(Mahnung).filter(Mahnung.mahnung_id == mahnung_id).first()
     if not mahnung:
+        raise HTTPException(status_code=404, detail="Mahnung nicht gefunden")
+
+    org_id = current_user.get("org_id")
+    if org_id and mahnung.organization_id != int(org_id):
         raise HTTPException(status_code=404, detail="Mahnung nicht gefunden")
 
     allowed_statuses = ("paid", "cancelled")

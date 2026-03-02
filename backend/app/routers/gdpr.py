@@ -1,5 +1,6 @@
 """GDPR Controls Router — Phase 11 (Art. 17 + Art. 20)."""
 import csv
+import hashlib
 import io
 import json
 import logging
@@ -133,9 +134,10 @@ def request_account_delete(
     ).delete()
 
     token = secrets.token_hex(32)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
     req = GdprDeleteRequest(
         user_id=user.id,
-        token=token,
+        token=token_hash,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
     )
     db.add(req)
@@ -172,7 +174,8 @@ def confirm_account_delete(
             "Clients should migrate to the X-Delete-Token header."
         )
 
-    req = db.query(GdprDeleteRequest).filter(GdprDeleteRequest.token == effective_token).first()
+    token_hash = hashlib.sha256(effective_token.encode()).hexdigest()
+    req = db.query(GdprDeleteRequest).filter(GdprDeleteRequest.token == token_hash).first()
     if not req:
         raise HTTPException(status_code=404, detail="Token ungültig oder bereits verwendet.")
 
