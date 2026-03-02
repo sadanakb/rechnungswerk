@@ -28,7 +28,6 @@ from app.export.datev_export import DATEVExporter
 from app.fraud.detector import FraudDetector
 from app.archive.gobd_archive import GoBDArchive
 from app.ai.categorizer import InvoiceCategorizer
-from app.auth import verify_api_key
 from app.auth_jwt import oauth2_scheme, decode_token, get_current_user, ensure_invoice_belongs_to_org
 from app.invoice_number_service import generate_next_invoice_number
 from app.config import settings
@@ -65,7 +64,7 @@ async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme
         return None
 
 
-router = APIRouter(dependencies=[Depends(verify_api_key)])
+router = APIRouter()
 ocr_pipeline = OCRPipeline()
 ocr_pipeline_v2 = OCRPipelineV2()
 batch_processor = BatchProcessor()
@@ -96,7 +95,7 @@ async def upload_pdf_for_ocr(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Upload PDF invoice for OCR processing
@@ -210,7 +209,7 @@ async def upload_pdf_for_ocr(
 
         # Phase 11: Push notification on OCR complete
         _ocr_org_id = getattr(upload_log, "organization_id", None) or (
-            current_user.get("org_id") if current_user else None
+            current_user.get("org_id")
         )
         if _ocr_org_id:
             try:
@@ -253,7 +252,7 @@ async def create_invoice(
     invoice: InvoiceCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Create invoice manually (without OCR)
@@ -269,9 +268,7 @@ async def create_invoice(
     gross_amount = net_amount + tax_amount
 
     # Auto-set organization_id from JWT token (tenant isolation)
-    org_id = None
-    if current_user and current_user.get("org_id"):
-        org_id = current_user["org_id"]
+    org_id = current_user.get("org_id")
 
     # Resolve invoice number: use provided value or generate from sequence
     resolved_invoice_number = invoice.invoice_number
@@ -344,7 +341,7 @@ async def create_invoice(
 
     # Audit log
     if org_id:
-        user_id = int(current_user["user_id"]) if current_user and current_user.get("user_id") else None
+        user_id = int(current_user["user_id"]) if current_user.get("user_id") else None
         log_action(
             db,
             org_id=int(org_id),
@@ -377,7 +374,7 @@ async def bulk_delete_invoices(
     request: Request,
     payload: dict,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Bulk-delete invoices by integer DB id.
@@ -390,7 +387,7 @@ async def bulk_delete_invoices(
     if not isinstance(ids, list) or not ids:
         raise HTTPException(status_code=422, detail="ids muss eine nicht-leere Liste sein")
 
-    org_id = current_user.get("org_id") if current_user else None
+    org_id = current_user.get("org_id")
 
     deleted = 0
     skipped = 0
@@ -427,7 +424,7 @@ async def bulk_delete_invoices(
 
     # Audit log
     if org_id and deleted > 0:
-        user_id = int(current_user["user_id"]) if current_user and current_user.get("user_id") else None
+        user_id = int(current_user["user_id"]) if current_user.get("user_id") else None
         ip = request.client.host if request.client else None
         log_action(
             db,
@@ -447,7 +444,7 @@ async def bulk_delete_invoices(
 async def bulk_validate_invoices(
     payload: dict,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Bulk-validate invoices by integer DB id.
@@ -463,7 +460,7 @@ async def bulk_validate_invoices(
     if not isinstance(ids, list) or not ids:
         raise HTTPException(status_code=422, detail="ids muss eine nicht-leere Liste sein")
 
-    org_id = current_user.get("org_id") if current_user else None
+    org_id = current_user.get("org_id")
 
     results = []
     for inv_id in ids:
@@ -595,13 +592,13 @@ async def list_invoices(
     amount_max: Optional[float] = Query(None, description="Filter by gross_amount <= amount_max"),
     payment_status: Optional[str] = Query(None, description="Filter by payment_status (unpaid, paid, partial, overdue, cancelled)"),
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """List all invoices with pagination and optional filters (filtered by org if authenticated)"""
     query = db.query(Invoice)
 
-    # Tenant isolation: filter by organization_id if authenticated
-    if current_user and current_user.get("org_id"):
+    # Tenant isolation: filter by organization_id
+    if current_user.get("org_id"):
         query = query.filter(Invoice.organization_id == current_user["org_id"])
 
     # Optional filters
@@ -628,7 +625,7 @@ async def list_invoices(
         query = query.filter(Invoice.payment_status == payment_status)
 
     # Auto-mark overdue invoices (lazy evaluation on every list request)
-    if current_user and current_user.get("org_id"):
+    if current_user.get("org_id"):
         org_id = current_user["org_id"]
         from datetime import date as date_type
         today_str = str(date_type.today())
@@ -656,7 +653,7 @@ async def export_datev_by_period(
     year: int = Query(2026),
     quarter: Optional[int] = Query(None),  # 1-4, None = full year
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Export invoices as DATEV Buchungsstapel CSV, filtered by year and optional quarter."""
     import calendar as cal_module
@@ -676,7 +673,7 @@ async def export_datev_by_period(
         Invoice.invoice_date <= date_to,
     )
 
-    org_id = current_user.get("org_id") if current_user else None
+    org_id = current_user.get("org_id")
     if org_id:
         query = query.filter(Invoice.organization_id == int(org_id))
 
@@ -728,7 +725,7 @@ async def update_payment_status(
     body: PaymentStatusUpdate,
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Update the payment status of an invoice (paid, unpaid, partial, overdue, cancelled)."""
     allowed = {"unpaid", "paid", "partial", "overdue", "cancelled"}
@@ -739,10 +736,8 @@ async def update_payment_status(
     if not invoice:
         raise HTTPException(404, detail="Rechnung nicht gefunden")
 
-    # Tenant isolation when authenticated
-    if current_user and current_user.get("org_id"):
-        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
-            raise HTTPException(404, detail="Rechnung nicht gefunden")
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     invoice.payment_status = body.status
     if body.paid_date:
@@ -776,7 +771,7 @@ async def update_payment_status(
 def autocomplete_invoices(
     q: str = Query(""),
     field: str = Query("buyer_name"),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     allowed_fields = {
@@ -787,7 +782,7 @@ def autocomplete_invoices(
     if not q or field not in allowed_fields:
         return []
     col = allowed_fields[field]
-    org_id = current_user.get("org_id") if current_user else None
+    org_id = current_user.get("org_id")
     query = db.query(col).filter(
         col.ilike(f"{q}%"),
         col.isnot(None),
@@ -807,14 +802,14 @@ def autocomplete_invoices(
 
 @router.get("/invoices/stats")
 def get_invoice_stats(
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     from sqlalchemy import func
     from datetime import date, timedelta
     import calendar as cal
 
-    org_id = int(current_user["org_id"]) if current_user and current_user.get("org_id") else None
+    org_id = int(current_user["org_id"]) if current_user.get("org_id") else None
     today = date.today()
     first_of_month = today.replace(day=1)
     prev_month_end = first_of_month - timedelta(days=1)
@@ -894,7 +889,7 @@ def get_invoice_stats(
 @router.get("/invoices/check-overdue")
 async def check_overdue_invoices(
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Mark all unpaid past-due invoices for the current org as overdue and return the count."""
     from datetime import date as date_type
@@ -905,7 +900,7 @@ async def check_overdue_invoices(
             Invoice.due_date.isnot(None),
             Invoice.due_date < today_str,
         )
-        if current_user and current_user.get("org_id"):
+        if current_user.get("org_id"):
             query = query.filter(Invoice.organization_id == current_user["org_id"])
         overdue = query.all()
         count = len(overdue)
@@ -930,7 +925,7 @@ class ShareLinkResponse(BaseModel):
 async def create_share_link(
     invoice_id: str,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Create or regenerate a shareable portal link for this invoice."""
     from app.models import InvoiceShareLink
@@ -943,10 +938,8 @@ async def create_share_link(
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    # Tenant isolation: if authenticated, enforce org scope
-    if current_user and current_user.get("org_id"):
-        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
-            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     # Delete existing link if any (regenerate)
     existing = db.query(InvoiceShareLink).filter(
@@ -958,7 +951,8 @@ async def create_share_link(
 
     token = str(uuid.uuid4())
     expires_at = datetime.now(timezone.utc) + timedelta(days=30)
-    created_by = int(current_user["user_id"]) if current_user and current_user.get("user_id") else 0
+    raw_uid = current_user.get("user_id")
+    created_by = int(raw_uid) if raw_uid and str(raw_uid).isdigit() else 0
     link = InvoiceShareLink(
         invoice_id=invoice.id,
         token=token,
@@ -980,7 +974,7 @@ async def create_share_link(
 async def delete_share_link(
     invoice_id: str,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Revoke the shareable portal link for this invoice."""
     from app.models import InvoiceShareLink
@@ -991,10 +985,8 @@ async def delete_share_link(
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    # Tenant isolation: if authenticated, enforce org scope
-    if current_user and current_user.get("org_id"):
-        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
-            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     link = db.query(InvoiceShareLink).filter(
         InvoiceShareLink.invoice_id == invoice.id
@@ -1015,7 +1007,7 @@ async def send_invoice_email(
     body: SendInvoiceEmailRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Send invoice to customer via email with portal link."""
     from app.models import InvoiceShareLink
@@ -1029,10 +1021,8 @@ async def send_invoice_email(
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    # Tenant isolation: if authenticated, enforce org scope
-    if current_user and current_user.get("org_id"):
-        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
-            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     # Create share link if it doesn't exist yet
     link = db.query(InvoiceShareLink).filter(
@@ -1040,7 +1030,8 @@ async def send_invoice_email(
     ).first()
     if not link:
         token = str(uuid.uuid4())
-        created_by = int(current_user["user_id"]) if current_user and current_user.get("user_id") else 0
+        raw_uid = current_user.get("user_id")
+        created_by = int(raw_uid) if raw_uid and str(raw_uid).isdigit() else 0
         link = InvoiceShareLink(
             invoice_id=invoice.id,
             token=token,
@@ -1075,17 +1066,15 @@ async def send_invoice_email(
 async def get_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Get single invoice by ID — returns full detail including line items."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    # Tenant isolation: if authenticated, enforce org scope
-    if current_user and current_user.get("org_id"):
-        if invoice.organization_id and invoice.organization_id != int(current_user["org_id"]):
-            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     return InvoiceDetailResponse.from_orm_with_extras(invoice)
 
@@ -1095,12 +1084,15 @@ async def delete_invoice(
     request: Request,
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Delete invoice and clean up associated files (M5)."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     # Capture audit context before deletion
     audit_org_id = invoice.organization_id
@@ -1128,7 +1120,7 @@ async def delete_invoice(
 
     # Audit log
     if audit_org_id:
-        user_id = int(current_user["user_id"]) if current_user and current_user.get("user_id") else None
+        user_id = int(current_user["user_id"]) if current_user.get("user_id") else None
         ip = request.client.host if request.client else None
         log_action(
             db,
@@ -1147,7 +1139,8 @@ async def delete_invoice(
 @router.get("/invoices/{invoice_id}/download-xrechnung")
 async def download_xrechnung(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Download XRechnung UBL XML file for an invoice.
@@ -1157,6 +1150,9 @@ async def download_xrechnung(
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     if not invoice.xrechnung_xml_path:
         raise HTTPException(
@@ -1199,6 +1195,7 @@ async def upload_batch_for_ocr(
     request: Request,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Upload multiple PDF invoices for batch OCR processing.
@@ -1343,11 +1340,15 @@ async def generate_zugferd(
     request: Request,
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Generate ZUGFeRD PDF/A-3 with embedded XRechnung XML."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     # Prepare invoice data
     invoice_data = {
@@ -1418,7 +1419,7 @@ async def generate_zugferd(
 async def download_zugferd(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
 ):
     """Download ZUGFeRD PDF/A-3 file.
 
@@ -1430,10 +1431,8 @@ async def download_zugferd(
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    # Org isolation: when authenticated, restrict to the user's org
-    if current_user and current_user.get("org_id") is not None:
-        if invoice.organization_id is not None and invoice.organization_id != current_user["org_id"]:
-            raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     # --- Try to serve from cached file first ---
     if invoice.zugferd_pdf_path:
@@ -1506,11 +1505,15 @@ async def download_zugferd(
 async def validate_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Validate an invoice's XRechnung XML against KoSIT rules."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     if not invoice.xrechnung_xml_path:
         raise HTTPException(
@@ -1597,11 +1600,15 @@ async def export_datev(
 async def check_fraud(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Run fraud and duplicate detection on an invoice."""
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     invoice_data = {
         "invoice_number": invoice.invoice_number,
@@ -1621,6 +1628,7 @@ async def check_fraud(
 async def categorize_invoice(
     invoice_id: str = Path(..., pattern=r"^INV-\d{8}-[a-f0-9]{8}$"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     KI-gestützte Kategorisierung einer Rechnung mit SKR03/SKR04-Kontozuordnung.
@@ -1631,6 +1639,9 @@ async def categorize_invoice(
     invoice = db.query(Invoice).filter(Invoice.invoice_id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
     invoice_data = {
         "invoice_number": invoice.invoice_number,
@@ -1658,33 +1669,41 @@ async def categorize_invoice(
 @router.get("/analytics/summary")
 async def analytics_summary(
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Get analytics summary for dashboard."""
     from sqlalchemy import func
 
-    total = db.query(Invoice).count()
-    total_gross = db.query(func.sum(Invoice.gross_amount)).scalar() or 0
+    org_id = current_user.get("org_id")
+
+    def _base_q(query):
+        if org_id is not None:
+            return query.filter(Invoice.organization_id == int(org_id))
+        return query
+
+    total = _base_q(db.query(Invoice)).count()
+    total_gross = _base_q(db.query(func.sum(Invoice.gross_amount))).scalar() or 0
 
     # This month's invoices
     today = date.today()
     first_of_month = today.replace(day=1)
-    month_count = db.query(Invoice).filter(
+    month_count = _base_q(db.query(Invoice)).filter(
         Invoice.invoice_date >= first_of_month,
     ).count()
-    month_gross = db.query(func.sum(Invoice.gross_amount)).filter(
+    month_gross = _base_q(db.query(func.sum(Invoice.gross_amount))).filter(
         Invoice.invoice_date >= first_of_month,
     ).scalar() or 0
 
     # OCR success rate
-    ocr_total = db.query(Invoice).filter(Invoice.source_type == "ocr").count()
-    ocr_high_conf = db.query(Invoice).filter(
+    ocr_total = _base_q(db.query(Invoice)).filter(Invoice.source_type == "ocr").count()
+    ocr_high_conf = _base_q(db.query(Invoice)).filter(
         Invoice.source_type == "ocr",
         Invoice.ocr_confidence >= 80,
     ).count()
     ocr_success_rate = round((ocr_high_conf / ocr_total * 100) if ocr_total > 0 else 0, 1)
 
     # XRechnung generated count
-    xrechnung_count = db.query(Invoice).filter(
+    xrechnung_count = _base_q(db.query(Invoice)).filter(
         Invoice.xrechnung_xml_path.isnot(None),
     ).count()
 
@@ -1702,12 +1721,12 @@ async def analytics_summary(
         else:
             month_end = date(year, month + 1, 1)
 
-        vol = db.query(func.sum(Invoice.gross_amount)).filter(
+        vol = _base_q(db.query(func.sum(Invoice.gross_amount))).filter(
             Invoice.invoice_date >= month_start,
             Invoice.invoice_date < month_end,
         ).scalar() or 0
 
-        count = db.query(Invoice).filter(
+        count = _base_q(db.query(Invoice)).filter(
             Invoice.invoice_date >= month_start,
             Invoice.invoice_date < month_end,
         ).count()
@@ -1733,7 +1752,7 @@ async def analytics_summary(
 @router.get("/analytics/top-suppliers")
 async def analytics_top_suppliers(
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
 ):
@@ -1752,7 +1771,7 @@ async def analytics_top_suppliers(
     )
 
     # Tenant isolation
-    if current_user and current_user.get("org_id"):
+    if current_user.get("org_id"):
         query = query.filter(Invoice.organization_id == current_user["org_id"])
 
     # Date filters
@@ -1792,6 +1811,7 @@ async def analytics_top_suppliers(
 @router.get("/analytics/tax-summary")
 async def analytics_tax_summary(
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     year: Optional[int] = Query(None, description="Filter by invoice year (e.g. 2026)"),
 ):
     """
@@ -1808,6 +1828,11 @@ async def analytics_tax_summary(
         func.sum(Invoice.tax_amount).label("vat"),
         func.sum(Invoice.gross_amount).label("gross"),
     )
+
+    # Tenant isolation
+    org_id = current_user.get("org_id")
+    if org_id is not None:
+        query = query.filter(Invoice.organization_id == int(org_id))
 
     if year is not None:
         query = query.filter(extract("year", Invoice.invoice_date) == year)
@@ -1846,6 +1871,7 @@ async def analytics_tax_summary(
 @router.get("/analytics/cashflow")
 async def analytics_cashflow(
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     months: int = Query(default=6, ge=1, le=24, description="Number of months to look back"),
 ):
     """
@@ -1854,6 +1880,13 @@ async def analytics_cashflow(
     Groups invoices by invoice_date month and returns total amount and count.
     """
     from sqlalchemy import func
+
+    org_id = current_user.get("org_id")
+
+    def _base_q(query):
+        if org_id is not None:
+            return query.filter(Invoice.organization_id == int(org_id))
+        return query
 
     today = date.today()
     monthly_data = []
@@ -1871,12 +1904,12 @@ async def analytics_cashflow(
         else:
             month_end = date(year, month + 1, 1)
 
-        total = db.query(func.sum(Invoice.gross_amount)).filter(
+        total = _base_q(db.query(func.sum(Invoice.gross_amount))).filter(
             Invoice.invoice_date >= month_start,
             Invoice.invoice_date < month_end,
         ).scalar() or 0
 
-        count = db.query(Invoice).filter(
+        count = _base_q(db.query(Invoice)).filter(
             Invoice.invoice_date >= month_start,
             Invoice.invoice_date < month_end,
         ).count()
@@ -1894,6 +1927,7 @@ async def analytics_cashflow(
 @router.get("/analytics/overdue-aging")
 async def analytics_overdue_aging(
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Return overdue invoices grouped by aging buckets.
@@ -1903,10 +1937,14 @@ async def analytics_overdue_aging(
     """
     today = date.today()
 
-    overdue = db.query(Invoice).filter(
+    query = db.query(Invoice).filter(
         Invoice.due_date.isnot(None),
         Invoice.due_date < today,
-    ).all()
+    )
+    org_id = current_user.get("org_id")
+    if org_id is not None:
+        query = query.filter(Invoice.organization_id == int(org_id))
+    overdue = query.all()
 
     buckets = {
         "0-30": {"count": 0, "total_amount": 0.0, "invoices": []},
@@ -1952,7 +1990,7 @@ async def analytics_overdue_aging(
 @router.get("/analytics/category-breakdown")
 async def analytics_category_breakdown(
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user_optional),
+    current_user: dict = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
 ):
@@ -1970,7 +2008,7 @@ async def analytics_category_breakdown(
     )
 
     # Tenant isolation
-    if current_user and current_user.get("org_id"):
+    if current_user.get("org_id"):
         query = query.filter(Invoice.organization_id == current_user["org_id"])
 
     # Date filters

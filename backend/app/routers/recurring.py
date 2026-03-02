@@ -1,8 +1,9 @@
 """
-Wiederkehrende Rechnungen — CRUD und Auslösung.
+Wiederkehrende Rechnungen — CRUD und Ausloesung.
 
-Verwaltet Rechnungsvorlagen die periodisch (monatlich, vierteljährlich,
-halbjährlich, jährlich) neue Rechnungen generieren.
+Verwaltet Rechnungsvorlagen die periodisch (monatlich, vierteljaehrlich,
+halbjaehrlich, jaehrlich) neue Rechnungen generieren.
+Tenant-isoliert via JWT org_id.
 """
 import uuid
 import logging
@@ -16,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import RecurringInvoice, Invoice
-from app.auth import verify_api_key
+from app.auth_jwt import get_current_user
 from app.recurring.scheduler import RecurringScheduler
 
 logger = logging.getLogger(__name__)
@@ -24,10 +25,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/api/recurring",
     tags=["Recurring"],
-    dependencies=[Depends(verify_api_key)],
 )
 
 VALID_FREQUENCIES = {"monthly", "quarterly", "half-yearly", "yearly"}
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _ensure_recurring_belongs_to_org(tmpl: RecurringInvoice, org_id) -> None:
+    """Raise 403 if the template does not belong to the caller's organization."""
+    if org_id is None:
+        return
+    if tmpl.organization_id is None:
+        return
+    if tmpl.organization_id != int(org_id):
+        raise HTTPException(status_code=403, detail="Kein Zugriff")
+
+
+def _org_filter(query, org_id):
+    """Apply organization filter to a query when org_id is available."""
+    if org_id is not None:
+        return query.filter(RecurringInvoice.organization_id == int(org_id))
+    return query
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +146,7 @@ class RecurringResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Internal helpers
 # ---------------------------------------------------------------------------
 
 def _get_or_404(db: Session, template_id: str) -> RecurringInvoice:
@@ -136,7 +157,7 @@ def _get_or_404(db: Session, template_id: str) -> RecurringInvoice:
 
 
 def _template_to_dict(tmpl: RecurringInvoice) -> dict:
-    """Konvertiert ein RecurringInvoice-Objekt in ein Dict für den Scheduler."""
+    """Konvertiert ein RecurringInvoice-Objekt in ein Dict fuer den Scheduler."""
     return {
         "template_id": tmpl.template_id,
         "number_prefix": tmpl.number_prefix,
@@ -168,11 +189,15 @@ def list_recurring(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Alle Vorlagen auflisten."""
-    total = db.query(RecurringInvoice).count()
+    org_id = current_user.get("org_id")
+    base_query = db.query(RecurringInvoice)
+    base_query = _org_filter(base_query, org_id)
+    total = base_query.count()
     items = (
-        db.query(RecurringInvoice)
+        base_query
         .order_by(RecurringInvoice.name)
         .offset(skip)
         .limit(limit)
@@ -187,8 +212,13 @@ def list_recurring(
 
 
 @router.post("", response_model=RecurringResponse, status_code=201)
-def create_recurring(data: RecurringCreate, db: Session = Depends(get_db)):
+def create_recurring(
+    data: RecurringCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     """Neue Rechnungsvorlage anlegen."""
+    org_id = current_user.get("org_id")
     tmpl = RecurringInvoice(
         template_id=f"tmpl-{uuid.uuid4().hex[:12]}",
         name=data.name,
@@ -213,6 +243,8 @@ def create_recurring(data: RecurringCreate, db: Session = Depends(get_db)):
         seller_endpoint_id=data.seller_endpoint_id,
         buyer_endpoint_id=data.buyer_endpoint_id,
     )
+    if org_id is not None:
+        tmpl.organization_id = int(org_id)
     db.add(tmpl)
     db.commit()
     db.refresh(tmpl)
@@ -224,9 +256,13 @@ def create_recurring(data: RecurringCreate, db: Session = Depends(get_db)):
 def get_recurring(
     template_id: str = Path(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Einzelne Vorlage abrufen."""
-    return RecurringResponse.from_orm_with_net(_get_or_404(db, template_id))
+    tmpl = _get_or_404(db, template_id)
+    org_id = current_user.get("org_id")
+    _ensure_recurring_belongs_to_org(tmpl, org_id)
+    return RecurringResponse.from_orm_with_net(tmpl)
 
 
 @router.put("/{template_id}", response_model=RecurringResponse)
@@ -234,9 +270,13 @@ def update_recurring(
     data: RecurringUpdate,
     template_id: str = Path(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Vorlage aktualisieren."""
     tmpl = _get_or_404(db, template_id)
+    org_id = current_user.get("org_id")
+    _ensure_recurring_belongs_to_org(tmpl, org_id)
+
     update_data = data.model_dump(exclude_unset=True)
 
     if "line_items" in update_data and update_data["line_items"] is not None:
@@ -260,12 +300,16 @@ def update_recurring(
 def delete_recurring(
     template_id: str = Path(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Vorlage löschen."""
+    """Vorlage loeschen."""
     tmpl = _get_or_404(db, template_id)
+    org_id = current_user.get("org_id")
+    _ensure_recurring_belongs_to_org(tmpl, org_id)
+
     db.delete(tmpl)
     db.commit()
-    logger.info("Vorlage gelöscht: %s", template_id)
+    logger.info("Vorlage geloescht: %s", template_id)
     return {"message": "Vorlage gelöscht", "template_id": template_id}
 
 
@@ -273,9 +317,13 @@ def delete_recurring(
 def toggle_recurring(
     template_id: str = Path(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Vorlage aktivieren oder pausieren."""
     tmpl = _get_or_404(db, template_id)
+    org_id = current_user.get("org_id")
+    _ensure_recurring_belongs_to_org(tmpl, org_id)
+
     tmpl.active = not tmpl.active
     db.commit()
     db.refresh(tmpl)
@@ -288,20 +336,23 @@ def toggle_recurring(
 def trigger_recurring(
     template_id: str = Path(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Jetzt eine Rechnung aus der Vorlage generieren.
 
     Erstellt sofort eine neue Rechnung in der Rechnungsliste und
-    aktualisiert next_date auf das nächste Fälligkeitsdatum.
+    aktualisiert next_date auf das naechste Faelligkeitsdatum.
     """
     tmpl = _get_or_404(db, template_id)
+    org_id = current_user.get("org_id")
+    _ensure_recurring_belongs_to_org(tmpl, org_id)
 
     today = date.today()
     template_dict = _template_to_dict(tmpl)
     invoice_data = RecurringScheduler.generate_invoice_data(template_dict, today)
 
-    # Beträge aus Line Items berechnen
+    # Betraege aus Line Items berechnen
     line_items = template_dict.get("line_items", [])
     net = round(sum(float(i.get("net_amount", 0)) for i in line_items if isinstance(i, dict)), 2)
     tax_rate = float(tmpl.tax_rate)
@@ -342,6 +393,12 @@ def trigger_recurring(
         source_type="recurring",
         validation_status="pending",
     )
+    # Inherit org_id from the template
+    if tmpl.organization_id is not None:
+        inv.organization_id = tmpl.organization_id
+    elif org_id is not None:
+        inv.organization_id = int(org_id)
+
     db.add(inv)
 
     # Vorlage aktualisieren
@@ -352,7 +409,7 @@ def trigger_recurring(
     db.refresh(inv)
 
     logger.info(
-        "Rechnung generiert aus Vorlage %s: %s (nächste: %s)",
+        "Rechnung generiert aus Vorlage %s: %s (naechste: %s)",
         template_id, inv.invoice_id, tmpl.next_date,
     )
     return {

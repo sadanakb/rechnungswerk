@@ -12,8 +12,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     """FastAPI dependency to get current authenticated user from JWT."""
     # If JWT auth is not enabled, allow access (dev mode)
     if not settings.require_api_key:
-        return {"user_id": "dev-user", "email": "dev@localhost", "role": "member"}
+        return {"user_id": "0", "email": "dev@localhost", "role": "member"}
 
     if not token:
         raise HTTPException(
@@ -122,8 +123,57 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     }
 
 
+def _get_db():
+    """Lazy wrapper for app.database.get_db to avoid circular imports."""
+    from app.database import get_db
+    yield from get_db()
+
+
+async def get_org_from_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    db: Session = Depends(_get_db),
+) -> dict:
+    """Resolve org_id from a DB-backed API key. For external API use.
+
+    Returns a dict with 'org_id', 'source', and optionally 'scopes'.
+    """
+    from app.models import ApiKey
+
+    if not settings.require_api_key:
+        return {"org_id": None, "source": "dev"}
+
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API-Key fehlt")
+
+    # Try DB-backed key lookup by prefix
+    prefix = x_api_key[:12]
+    candidates = db.query(ApiKey).filter(
+        ApiKey.key_prefix == prefix,
+        ApiKey.is_active == True,  # noqa: E712
+    ).all()
+
+    for candidate in candidates:
+        if verify_password(x_api_key, candidate.key_hash):
+            # Check expiry
+            if candidate.expires_at and candidate.expires_at < datetime.now(timezone.utc):
+                raise HTTPException(status_code=403, detail="API-Key abgelaufen")
+            # Update last_used
+            candidate.last_used_at = datetime.now(timezone.utc)
+            db.commit()
+            return {
+                "org_id": candidate.org_id,
+                "source": "api_key",
+                "scopes": candidate.scopes or [],
+            }
+
+    raise HTTPException(status_code=403, detail="Ungültiger API-Key")
+
+
 def ensure_invoice_belongs_to_org(invoice, org_id: str | None) -> None:
-    """Raise 403 if the invoice does not belong to the caller's organization.
+    """Raise 404 if the invoice does not belong to the caller's organization.
+
+    Returns 404 (not 403) to avoid revealing that the resource exists to
+    unauthorized callers (security best practice).
 
     In dev mode (org_id is None) or when the invoice has no organization_id,
     the check is skipped to maintain backwards compatibility.
@@ -134,6 +184,6 @@ def ensure_invoice_belongs_to_org(invoice, org_id: str | None) -> None:
         return
     if str(invoice.organization_id) != str(org_id):
         raise HTTPException(
-            status_code=403,
-            detail="Kein Zugriff auf diese Rechnung",
+            status_code=404,
+            detail="Rechnung nicht gefunden",
         )

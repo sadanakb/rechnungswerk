@@ -51,8 +51,8 @@ def _resolve_org_id(current_user: dict, db: Session) -> int:
     Raises 404 if the user has no organisation membership.
     """
     raw_user_id = current_user.get("user_id")
-    # In dev mode get_current_user returns "dev-user" — skip org lookup
-    if raw_user_id == "dev-user":
+    # In dev mode get_current_user returns "0" — skip org lookup
+    if raw_user_id == "0":
         raise HTTPException(status_code=404, detail="Keine Organisation gefunden (dev mode)")
     try:
         user_id = int(raw_user_id)

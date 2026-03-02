@@ -128,9 +128,11 @@ class TestBulkDelete:
         app.dependency_overrides[get_db] = _override_get_db
         app.dependency_overrides[verify_api_key] = _bypass_api_key
 
-        with patch("app.routers.invoices.settings") as mock_settings:
+        with patch("app.routers.invoices.settings") as mock_settings, \
+             patch("app.auth_jwt.settings") as mock_jwt_settings:
             mock_settings.require_api_key = True
             mock_settings.max_upload_size_mb = 10
+            mock_jwt_settings.require_api_key = True
 
             with TestClient(app) as c:
                 token_a = _register_and_get_token(c, "orgA_del@test.de", "Org-A-Delete")

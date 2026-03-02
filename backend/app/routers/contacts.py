@@ -72,7 +72,7 @@ def _resolve_org_id(current_user: dict, db: Session) -> int:
     In dev mode (user_id == 'dev-user'), returns 0 as a sentinel org.
     """
     raw_user_id = current_user.get("user_id")
-    if raw_user_id == "dev-user":
+    if raw_user_id == "0":
         # Development / test mode without JWT — use sentinel org 0
         return 0
 

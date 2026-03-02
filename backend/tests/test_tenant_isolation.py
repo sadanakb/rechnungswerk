@@ -46,9 +46,11 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[verify_api_key] = _bypass_api_key
-    with patch("app.routers.invoices.settings") as mock_settings:
-        mock_settings.require_api_key = True
-        mock_settings.max_upload_size_mb = 10
+    with patch("app.routers.invoices.settings") as mock_inv_settings, \
+         patch("app.auth_jwt.settings") as mock_jwt_settings:
+        mock_inv_settings.require_api_key = True
+        mock_inv_settings.max_upload_size_mb = 10
+        mock_jwt_settings.require_api_key = True
         yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -127,32 +129,11 @@ class TestTenantIsolation:
         assert len(data["items"]) == 1
         assert data["items"][0]["invoice_number"] == "OWN-001"
 
-    def test_unauthenticated_sees_all_invoices(self, client):
-        """Without auth token, all invoices are visible (backwards-compatible)."""
-        token_a = register_and_get_token(client, "unauth@test.de", "Unauth Org")
-
-        # Create invoice with auth
-        client.post(
-            "/api/invoices",
-            json={
-                "invoice_number": "UNAUTH-001",
-                "invoice_date": "2026-02-26",
-                "seller_name": "Seller",
-                "seller_vat_id": "DE555555555",
-                "seller_address": "Addr",
-                "buyer_name": "Buyer",
-                "buyer_vat_id": "DE666666666",
-                "buyer_address": "Addr",
-                "line_items": [{"description": "Test", "quantity": 1, "unit_price": 100, "net_amount": 100, "tax_rate": 19}],
-            },
-            headers={"Authorization": f"Bearer {token_a}"},
-        )
-
-        # List without any auth header -- should see all
+    def test_unauthenticated_rejected(self, client):
+        """Without auth token, requests are rejected with 401 (auth now required)."""
+        # List without any auth header -- should get 401
         resp = client.get("/api/invoices")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["total"] >= 1
+        assert resp.status_code == 401
 
     def test_create_invoice_sets_org_id(self, client, db_session):
         """Creating an invoice with JWT should auto-set organization_id."""

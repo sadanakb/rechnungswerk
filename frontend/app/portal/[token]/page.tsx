@@ -125,7 +125,7 @@ export default function PortalPage() {
   const [intentLoading, setIntentLoading] = useState(false)
   const [intentError, setIntentError] = useState<string | null>(null)
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
 
   useEffect(() => {
     if (!token) return

@@ -224,20 +224,20 @@ class TestDownloadZugferdCrossOrgRejected:
         invoice = two_org_setup["invoice"]
         org_b_id = two_org_setup["org_b_id"]
 
-        # Simulate org_b being the authenticated user by overriding get_current_user_optional
-        from app.routers.invoices import get_current_user_optional
+        # Simulate org_b being the authenticated user by overriding get_current_user
+        from app.auth_jwt import get_current_user
 
         async def _org_b_user():
             return {"user_id": "999", "org_id": org_b_id, "role": "member"}
 
-        app.dependency_overrides[get_current_user_optional] = _org_b_user
+        app.dependency_overrides[get_current_user] = _org_b_user
         try:
             resp = client.get(
                 f"/api/invoices/{invoice.invoice_id}/download-zugferd"
             )
         finally:
             # Remove only the specific override we added; preserve the DB override
-            app.dependency_overrides.pop(get_current_user_optional, None)
+            app.dependency_overrides.pop(get_current_user, None)
 
         assert resp.status_code == 404, (
             f"Cross-org access should return 404, got {resp.status_code}"

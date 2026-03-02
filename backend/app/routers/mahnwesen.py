@@ -85,6 +85,9 @@ def list_mahnungen(
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
+    # Tenant isolation
+    ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
+
     mahnungen = (
         db.query(Mahnung)
         .filter(Mahnung.invoice_id == invoice_id)

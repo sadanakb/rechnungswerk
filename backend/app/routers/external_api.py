@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.auth import verify_api_key
+from app.auth_jwt import get_org_from_api_key
 from app.database import get_db
 from app.models import Invoice
 from app.xrechnung_generator import XRechnungGenerator
@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/api/v1",
     tags=["External API v1"],
-    dependencies=[Depends(verify_api_key)],
 )
 
 # Service-Instanzen
@@ -160,10 +159,16 @@ class ErrorResponse(BaseModel):
 async def list_invoices(
     skip: int = Query(default=0, ge=0, description="Anzahl zu überspringender Einträge"),
     limit: int = Query(default=50, ge=1, le=200, description="Maximale Anzahl (1–200)"),
-    org_id: str = Query(..., description="Organization ID zur Filterung"),
+    api_ctx: dict = Depends(get_org_from_api_key),
     db: Session = Depends(get_db),
 ):
     """Gibt eine paginierte Liste aller Rechnungen zurück."""
+    org_id = api_ctx["org_id"]
+    if org_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="API-Key ist keiner Organisation zugeordnet",
+        )
     total = db.query(Invoice).filter(Invoice.organization_id == org_id).count()
     invoices = db.query(Invoice).filter(Invoice.organization_id == org_id).offset(skip).limit(limit).all()
 
@@ -201,10 +206,16 @@ async def list_invoices(
 )
 async def get_invoice(
     invoice_id: str = Path(..., description="Eindeutige Rechnungs-ID (z. B. INV-20260223-abc12345)"),
-    org_id: str = Query(..., description="Organization ID zur Filterung"),
+    api_ctx: dict = Depends(get_org_from_api_key),
     db: Session = Depends(get_db),
 ):
     """Gibt die Daten einer einzelnen Rechnung zurück."""
+    org_id = api_ctx["org_id"]
+    if org_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="API-Key ist keiner Organisation zugeordnet",
+        )
     invoice = db.query(Invoice).filter(
         Invoice.invoice_id == invoice_id,
         Invoice.organization_id == org_id,
@@ -244,7 +255,10 @@ async def get_invoice(
         422: {"model": ErrorResponse, "description": "Validierungsfehler in den Rechnungsdaten"},
     },
 )
-async def convert_to_xrechnung(request: ConvertRequest):
+async def convert_to_xrechnung(
+    request: ConvertRequest,
+    api_ctx: dict = Depends(get_org_from_api_key),
+):
     """Nimmt Rechnungsdaten als JSON entgegen und gibt XRechnung-konformes UBL-XML zurück.
 
     Die Konvertierung erfolgt nach EN 16931 / XRechnung 3.0.2.
@@ -308,7 +322,10 @@ async def convert_to_xrechnung(request: ConvertRequest):
         500: {"model": ErrorResponse, "description": "Validierung fehlgeschlagen"},
     },
 )
-async def validate_xrechnung(request: ValidateRequest):
+async def validate_xrechnung(
+    request: ValidateRequest,
+    api_ctx: dict = Depends(get_org_from_api_key),
+):
     """Validiert ein XRechnung-XML gegen die KoSIT-Regeln.
 
     Nutzt bevorzugt den Docker-basierten KoSIT-Validator.

@@ -7,8 +7,9 @@ GET  /api/email/status         — last inbox scan result
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from app.auth_jwt import get_current_user
 from app.email.inbox_processor import InboxProcessor
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ def _run_ocr(file_path: str) -> dict:
 
 
 @router.post("/process-inbox", response_model=InboxProcessResult)
-def process_inbox(config: EmailConfig):
+def process_inbox(config: EmailConfig, current_user: dict = Depends(get_current_user)):
     """
     Fetch PDF invoice attachments from an IMAP inbox.
 
@@ -124,7 +125,7 @@ def process_inbox(config: EmailConfig):
 
 
 @router.get("/status")
-def inbox_status():
+def inbox_status(current_user: dict = Depends(get_current_user)):
     """Return the result of the last inbox scan."""
     if not _last_result:
         return {"message": "Noch kein Inbox-Scan durchgeführt"}

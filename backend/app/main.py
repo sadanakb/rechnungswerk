@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     logger.info("[Startup] Database initialized")
     if settings.require_api_key:
         logger.info("[Auth] API-Key Authentifizierung AKTIV")
-        logger.info("[Auth] API-Key: %s...%s", ACTIVE_API_KEY[:4], ACTIVE_API_KEY[-4:])
+        logger.info("[Auth] API-Key: ****")
     else:
         logger.warning("[Auth] API-Key Authentifizierung DEAKTIVIERT (Entwicklungsmodus)")
 
@@ -123,9 +123,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
     from app.database import SessionLocal
     from app.models import OrganizationMember
 
-    # Validate JWT token
+    # Validate JWT token (must be access token, not refresh)
     try:
         payload = decode_token(token)
+        if payload.get("type") != "access":
+            await websocket.close(code=1008)
+            return
         user_id = int(payload.get("sub", 0))
     except Exception:
         await websocket.close(code=1008)  # Policy Violation

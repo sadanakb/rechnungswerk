@@ -1,6 +1,7 @@
 'use client'
 
 import { Command } from 'cmdk'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -56,6 +57,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       overlayClassName="cmdk-overlay"
       contentClassName="cmdk-content"
     >
+      <DialogPrimitive.Title className="sr-only">Befehlspalette</DialogPrimitive.Title>
+      <DialogPrimitive.Description className="sr-only">
+        Schnellnavigation und Aktionen durchsuchen
+      </DialogPrimitive.Description>
       <div
         style={{
           backgroundColor: 'rgb(var(--card))',

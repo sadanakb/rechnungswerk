@@ -57,9 +57,11 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[verify_api_key] = _bypass_api_key
-    with patch("app.routers.invoices.settings") as mock_settings:
-        mock_settings.require_api_key = True
-        mock_settings.max_upload_size_mb = 10
+    with patch("app.routers.invoices.settings") as mock_inv_settings, \
+         patch("app.auth_jwt.settings") as mock_jwt_settings:
+        mock_inv_settings.require_api_key = True
+        mock_inv_settings.max_upload_size_mb = 10
+        mock_jwt_settings.require_api_key = True
         yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -120,12 +122,15 @@ class TestGetInvoiceById:
 
     def test_get_invoice_by_id(self, client):
         """Create an invoice, then GET it by ID and verify all detail fields."""
+        token = _register_and_login(client, "detail_test@test.de", "Detail Test Org")
+        headers = {"Authorization": f"Bearer {token}"}
+
         payload = _make_invoice_payload()
-        create_resp = client.post("/api/invoices", json=payload)
+        create_resp = client.post("/api/invoices", json=payload, headers=headers)
         assert create_resp.status_code == 200, create_resp.text
         invoice_id = create_resp.json()["invoice_id"]
 
-        resp = client.get(f"/api/invoices/{invoice_id}")
+        resp = client.get(f"/api/invoices/{invoice_id}", headers=headers)
         assert resp.status_code == 200, resp.text
 
         data = resp.json()
@@ -169,9 +174,16 @@ class TestGetInvoiceById:
         assert data["source_type"] == "manual"
 
     def test_get_invoice_by_id_not_found(self, client):
-        """Non-existent invoice returns 404."""
-        resp = client.get("/api/invoices/INV-20260227-00000000")
+        """Non-existent invoice returns 404 (with valid auth)."""
+        token = _register_and_login(client, "notfound_test@test.de", "NotFound Test Org")
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = client.get("/api/invoices/INV-20260227-00000000", headers=headers)
         assert resp.status_code == 404
+
+    def test_get_invoice_by_id_unauthenticated(self, client):
+        """Unauthenticated request returns 401."""
+        resp = client.get("/api/invoices/INV-20260227-00000000")
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------

@@ -240,6 +240,7 @@ class Supplier(Base):
     notes = Column(Text)
     invoice_count = Column(Integer, default=0)
     total_volume = Column(Numeric(12, 2), default=0)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
 
@@ -275,6 +276,7 @@ class RecurringInvoice(Base):
     seller_endpoint_id = Column(String(200))
     buyer_endpoint_id = Column(String(200))
 
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)
     updated_at = Column(DateTime(timezone=True), default=_utc_now, onupdate=_utc_now)
 

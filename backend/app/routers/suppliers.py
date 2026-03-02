@@ -2,6 +2,7 @@
 Lieferanten-Verwaltung (Supplier Management) Endpoints
 
 CRUD-Operationen und Suche fuer bekannte Lieferanten.
+Tenant-isoliert via JWT org_id.
 """
 import logging
 from datetime import datetime
@@ -13,11 +14,36 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.auth import verify_api_key
+from app.auth_jwt import get_current_user
 from app.database import get_db
 from app.models import Supplier
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _ensure_supplier_belongs_to_org(supplier: Supplier, org_id) -> None:
+    """Raise 403 if the supplier does not belong to the caller's organization.
+
+    In dev mode (org_id is None) or when the supplier has no organization_id,
+    the check is skipped for backwards compatibility.
+    """
+    if org_id is None:
+        return
+    if supplier.organization_id is None:
+        return
+    if supplier.organization_id != int(org_id):
+        raise HTTPException(status_code=403, detail="Kein Zugriff")
+
+
+def _org_filter(query, org_id):
+    """Apply organization filter to a query when org_id is available."""
+    if org_id is not None:
+        return query.filter(Supplier.organization_id == int(org_id))
+    return query
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +108,6 @@ class SupplierListResponse(BaseModel):
 router = APIRouter(
     prefix="/api/suppliers",
     tags=["Suppliers"],
-    dependencies=[Depends(verify_api_key)],
 )
 
 
@@ -94,25 +119,23 @@ async def search_suppliers(
     q: str = Query(..., min_length=1, description="Suchbegriff (Name oder USt-IdNr)"),
     limit: int = Query(default=20, ge=1, le=100, description="Max. Ergebnisse"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Lieferanten nach Name oder USt-IdNr durchsuchen.
 
     Der Suchbegriff wird als Teilstring-Match (ILIKE) angewendet.
     """
+    org_id = current_user.get("org_id")
     search_term = f"%{q}%"
-    results = (
-        db.query(Supplier)
-        .filter(
-            or_(
-                Supplier.name.ilike(search_term),
-                Supplier.vat_id.ilike(search_term),
-            )
+    query = db.query(Supplier).filter(
+        or_(
+            Supplier.name.ilike(search_term),
+            Supplier.vat_id.ilike(search_term),
         )
-        .order_by(Supplier.name)
-        .limit(limit)
-        .all()
     )
+    query = _org_filter(query, org_id)
+    results = query.order_by(Supplier.name).limit(limit).all()
     return results
 
 
@@ -121,11 +144,15 @@ async def list_suppliers(
     skip: int = Query(default=0, ge=0, description="Anzahl zu ueberspringender Eintraege"),
     limit: int = Query(default=50, ge=1, le=200, description="Max. Eintraege (1-200)"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Alle Lieferanten mit Paginierung auflisten."""
-    total = db.query(Supplier).count()
+    org_id = current_user.get("org_id")
+    base_query = db.query(Supplier)
+    base_query = _org_filter(base_query, org_id)
+    total = base_query.count()
     suppliers = (
-        db.query(Supplier)
+        base_query
         .order_by(Supplier.name)
         .offset(skip)
         .limit(limit)
@@ -138,10 +165,15 @@ async def list_suppliers(
 async def create_supplier(
     payload: SupplierCreate,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Neuen Lieferanten anlegen."""
-    # Eindeutigkeit der USt-IdNr pruefen
-    existing = db.query(Supplier).filter(Supplier.vat_id == payload.vat_id).first()
+    org_id = current_user.get("org_id")
+
+    # Eindeutigkeit der USt-IdNr pruefen (innerhalb der Org)
+    dup_query = db.query(Supplier).filter(Supplier.vat_id == payload.vat_id)
+    dup_query = _org_filter(dup_query, org_id)
+    existing = dup_query.first()
     if existing:
         raise HTTPException(
             status_code=409,
@@ -149,6 +181,8 @@ async def create_supplier(
         )
 
     supplier = Supplier(**payload.model_dump())
+    if org_id is not None:
+        supplier.organization_id = int(org_id)
     db.add(supplier)
     db.commit()
     db.refresh(supplier)
@@ -161,11 +195,14 @@ async def create_supplier(
 async def get_supplier(
     supplier_id: int = Path(..., ge=1, description="Lieferanten-ID"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Einzelnen Lieferanten abrufen."""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Lieferant nicht gefunden")
+    org_id = current_user.get("org_id")
+    _ensure_supplier_belongs_to_org(supplier, org_id)
     return supplier
 
 
@@ -174,21 +211,26 @@ async def update_supplier(
     payload: SupplierUpdate,
     supplier_id: int = Path(..., ge=1, description="Lieferanten-ID"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Lieferanten aktualisieren. Nur uebergebene Felder werden geaendert."""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Lieferant nicht gefunden")
 
+    org_id = current_user.get("org_id")
+    _ensure_supplier_belongs_to_org(supplier, org_id)
+
     update_data = payload.model_dump(exclude_unset=True)
 
     # Falls USt-IdNr geaendert wird, Eindeutigkeit pruefen
     if "vat_id" in update_data and update_data["vat_id"] != supplier.vat_id:
-        conflict = (
+        dup_query = (
             db.query(Supplier)
             .filter(Supplier.vat_id == update_data["vat_id"], Supplier.id != supplier_id)
-            .first()
         )
+        dup_query = _org_filter(dup_query, org_id)
+        conflict = dup_query.first()
         if conflict:
             raise HTTPException(
                 status_code=409,
@@ -209,11 +251,15 @@ async def update_supplier(
 async def delete_supplier(
     supplier_id: int = Path(..., ge=1, description="Lieferanten-ID"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """Lieferanten loeschen."""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Lieferant nicht gefunden")
+
+    org_id = current_user.get("org_id")
+    _ensure_supplier_belongs_to_org(supplier, org_id)
 
     supplier_name = supplier.name
     db.delete(supplier)

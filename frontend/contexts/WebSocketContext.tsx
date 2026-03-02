@@ -26,10 +26,10 @@ export function useWebSocket() {
 
 function getToken(): string {
   if (typeof window === 'undefined') return ''
-  return localStorage.getItem('rw-token') || ''
+  return localStorage.getItem('rw-access-token') || ''
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {

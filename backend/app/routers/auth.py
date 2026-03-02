@@ -203,7 +203,8 @@ async def forgot_password(request: Request, req: ForgotPasswordRequest, db: Sess
 
 
 @router.post("/reset-password", status_code=200)
-def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def reset_password(request: Request, req: ResetPasswordRequest, db: Session = Depends(get_db)):
     """Reset password using a valid token."""
     now = datetime.now(timezone.utc)
 
@@ -217,23 +218,6 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
         )
         .first()
     )
-
-    # Backward compatibility: fall back to bcrypt iteration for old tokens
-    if not matched_user:
-        candidates = (
-            db.query(User)
-            .filter(
-                User.password_reset_token.isnot(None),
-                User.password_reset_expires > now,
-            )
-            .all()
-        )
-        for candidate in candidates:
-            # SHA256 hashes are 64-char hex; bcrypt hashes start with '$'
-            if candidate.password_reset_token.startswith("$"):
-                if verify_password(req.token, candidate.password_reset_token):
-                    matched_user = candidate
-                    break
 
     if not matched_user:
         raise HTTPException(
@@ -284,7 +268,8 @@ def send_verification_email(
 
 
 @router.post("/verify-email", status_code=200)
-def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def verify_email(request: Request, req: VerifyEmailRequest, db: Session = Depends(get_db)):
     """Verify email address using token from verification link."""
     # O(1) direct lookup via SHA256 hash
     token_hash = hashlib.sha256(req.token.encode()).hexdigest()
@@ -293,20 +278,6 @@ def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
         .filter(User.email_verification_token == token_hash)
         .first()
     )
-
-    # Backward compatibility: fall back to bcrypt iteration for old tokens
-    if not matched_user:
-        candidates = (
-            db.query(User)
-            .filter(User.email_verification_token.isnot(None))
-            .all()
-        )
-        for candidate in candidates:
-            # SHA256 hashes are 64-char hex; bcrypt hashes start with '$'
-            if candidate.email_verification_token.startswith("$"):
-                if verify_password(req.token, candidate.email_verification_token):
-                    matched_user = candidate
-                    break
 
     if not matched_user:
         raise HTTPException(
