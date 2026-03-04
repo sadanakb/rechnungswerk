@@ -93,16 +93,16 @@ function fieldsFromOCR(ocr: OCRResult): EditableFields {
 const FIELD_LABELS: Record<keyof EditableFields, string> = {
   invoice_number: 'Rechnungsnummer (BT-1)',
   invoice_date: 'Rechnungsdatum (BT-2)',
-  due_date: 'Fälligkeitsdatum (BT-9)',
-  seller_name: 'Verkäufer Name (BT-27)',
-  seller_vat_id: 'Verkäufer USt-IdNr. (BT-31)',
-  seller_address: 'Verkäufer Adresse (BT-35)',
-  seller_endpoint_id: 'Verkäufer E-Mail (BT-34)',
-  buyer_name: 'Käufer Name (BT-44)',
-  buyer_vat_id: 'Käufer USt-IdNr. (BT-48)',
-  buyer_address: 'Käufer Adresse (BT-50)',
+  due_date: 'Faelligkeitsdatum (BT-9)',
+  seller_name: 'Verkaeufer Name (BT-27)',
+  seller_vat_id: 'Verkaeufer USt-IdNr. (BT-31)',
+  seller_address: 'Verkaeufer Adresse (BT-35)',
+  seller_endpoint_id: 'Verkaeufer E-Mail (BT-34)',
+  buyer_name: 'Kaeufer Name (BT-44)',
+  buyer_vat_id: 'Kaeufer USt-IdNr. (BT-48)',
+  buyer_address: 'Kaeufer Adresse (BT-50)',
   buyer_reference: 'Leitweg-ID / Referenz (BT-10)',
-  buyer_endpoint_id: 'Käufer E-Mail (BT-49)',
+  buyer_endpoint_id: 'Kaeufer E-Mail (BT-49)',
   iban: 'IBAN (BT-84)',
   bic: 'BIC/SWIFT (BT-86)',
   payment_account_name: 'Kontoinhaber (BT-85)',
@@ -111,6 +111,11 @@ const FIELD_LABELS: Record<keyof EditableFields, string> = {
   gross_amount: 'Bruttobetrag (BT-112)',
   tax_rate: 'MwSt-Satz %',
 }
+
+const REQUIRED_FIELDS: Set<keyof EditableFields> = new Set([
+  'invoice_number', 'invoice_date', 'seller_name', 'seller_vat_id',
+  'seller_address', 'buyer_name', 'buyer_address', 'net_amount', 'gross_amount',
+])
 
 // ---------------------------------------------------------------------------
 // Processing steps for the animated progress indicator
@@ -671,11 +676,27 @@ export default function OCRPage() {
 
                 {/* Fields grid */}
                 <div className="p-5">
-                  {editMode && (
-                    <p className="text-xs mb-3" style={{ color: 'rgb(var(--primary))' }}>
-                      Felder können direkt bearbeitet werden
-                    </p>
-                  )}
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
+                    {editMode && (
+                      <p className="text-xs" style={{ color: 'rgb(var(--primary))' }}>
+                        Felder koennen direkt bearbeitet werden
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3 text-[10px]">
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                        Pflichtfeld fehlt
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: 'rgb(var(--primary))' }} />
+                        Pflicht OK
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: 'rgb(var(--foreground-muted))' }} />
+                        Optional
+                      </span>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[460px] overflow-y-auto pr-1">
                     {(Object.keys(FIELD_LABELS) as (keyof EditableFields)[]).map((key) => {
                       if (!editedFields) return null
@@ -703,6 +724,11 @@ export default function OCRPage() {
                               style={{ color: 'rgb(var(--foreground-muted))' }}
                             >
                               {FIELD_LABELS[key]}
+                              {REQUIRED_FIELDS.has(key) && (
+                                <span className="ml-1 font-semibold" style={{ color: !hasValue ? '#ef4444' : 'rgb(var(--primary))' }}>
+                                  {!hasValue ? '* Pflicht' : '*'}
+                                </span>
+                              )}
                             </p>
                           </div>
                           {editMode ? (

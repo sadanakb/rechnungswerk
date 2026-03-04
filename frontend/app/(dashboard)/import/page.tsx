@@ -7,18 +7,18 @@ import { importCsv, downloadImportTemplate, ImportResult } from '@/lib/api'
 type Tab = 'import' | 'template'
 
 const COLUMN_DOCS = [
-  { header: 'invoice_number', description: 'Eindeutige Rechnungsnummer (Pflichtfeld)', example: 'RE-2026-0001' },
-  { header: 'invoice_date', description: 'Rechnungsdatum im Format JJJJ-MM-TT', example: '2026-01-15' },
-  { header: 'due_date', description: 'Fälligkeitsdatum im Format JJJJ-MM-TT', example: '2026-02-15' },
-  { header: 'buyer_name', description: 'Name des Käufers / Leistungsempfängers', example: 'ACME GmbH' },
-  { header: 'buyer_vat_id', description: 'USt-IdNr. des Käufers (optional)', example: 'DE123456789' },
-  { header: 'seller_name', description: 'Name des Verkäufers / Leistungserbringers', example: 'Meine Firma GmbH' },
-  { header: 'seller_vat_id', description: 'USt-IdNr. des Verkäufers (optional)', example: 'DE987654321' },
-  { header: 'net_amount', description: 'Nettobetrag in der Rechnungswährung', example: '1000.00' },
-  { header: 'tax_rate', description: 'Steuersatz in Prozent (z. B. 19 oder 7)', example: '19' },
-  { header: 'gross_amount', description: 'Bruttobetrag (Netto + Steuer)', example: '1190.00' },
-  { header: 'currency', description: 'ISO 4217 Währungscode (Standard: EUR)', example: 'EUR' },
-  { header: 'payment_status', description: 'Zahlungsstatus: unpaid, paid, partial, overdue, cancelled', example: 'unpaid' },
+  { header: 'invoice_number', description: 'Eindeutige Rechnungsnummer', example: 'RE-2026-0001', required: true },
+  { header: 'invoice_date', description: 'Rechnungsdatum im Format JJJJ-MM-TT', example: '2026-01-15', required: true },
+  { header: 'due_date', description: 'Faelligkeitsdatum im Format JJJJ-MM-TT', example: '2026-02-15', required: false },
+  { header: 'buyer_name', description: 'Name des Kaeufers / Leistungsempfaengers', example: 'ACME GmbH', required: true },
+  { header: 'buyer_vat_id', description: 'USt-IdNr. des Kaeufers', example: 'DE123456789', required: false },
+  { header: 'seller_name', description: 'Name des Verkaeufers / Leistungserbringers', example: 'Meine Firma GmbH', required: true },
+  { header: 'seller_vat_id', description: 'USt-IdNr. des Verkaeufers', example: 'DE987654321', required: false },
+  { header: 'net_amount', description: 'Nettobetrag in der Rechnungswaehrung', example: '1000.00', required: true },
+  { header: 'tax_rate', description: 'Steuersatz in Prozent (z. B. 19 oder 7)', example: '19', required: true },
+  { header: 'gross_amount', description: 'Bruttobetrag (Netto + Steuer)', example: '1190.00', required: true },
+  { header: 'currency', description: 'ISO 4217 Waehrungscode (Standard: EUR)', example: 'EUR', required: false },
+  { header: 'payment_status', description: 'Zahlungsstatus: unpaid, paid, partial, overdue, cancelled', example: 'unpaid', required: false },
 ]
 
 function formatBytes(bytes: number): string {
@@ -411,11 +411,24 @@ export default function ImportPage() {
               borderColor: 'rgb(var(--border))',
             }}
           >
-            <div className="mb-5">
+            <div className="mb-5 space-y-3">
               <p className="text-sm" style={{ color: 'rgb(var(--foreground-muted))' }}>
-                Laden Sie die CSV-Vorlage herunter und füllen Sie Ihre Rechnungsdaten ein.
-                Die Datei kann direkt mit Excel oder LibreOffice Calc geöffnet werden.
+                Laden Sie die CSV-Vorlage herunter und fuellen Sie Ihre Rechnungsdaten ein.
+                Die Datei kann direkt mit Excel oder LibreOffice Calc geoeffnet werden.
               </p>
+              <div
+                className="rounded-lg px-4 py-3 text-xs leading-relaxed"
+                style={{
+                  backgroundColor: 'rgb(var(--primary) / 0.06)',
+                  borderLeft: '3px solid rgb(var(--primary))',
+                  color: 'rgb(var(--foreground-muted))',
+                }}
+              >
+                <span className="font-semibold" style={{ color: 'rgb(var(--primary))' }}>Tipp:</span>{' '}
+                Felder mit <span className="font-semibold" style={{ color: '#ef4444' }}>Pflicht</span> muessen
+                ausgefuellt sein, sonst wird die Zeile uebersprungen.
+                Optionale Felder koennen leer bleiben.
+              </div>
             </div>
 
             {/* Column reference table */}
@@ -431,6 +444,12 @@ export default function ImportPage() {
                       style={{ color: 'rgb(var(--foreground-muted))' }}
                     >
                       Spalte
+                    </th>
+                    <th
+                      className="text-center px-2 py-3 font-semibold text-xs uppercase tracking-wider"
+                      style={{ color: 'rgb(var(--foreground-muted))' }}
+                    >
+                      Status
                     </th>
                     <th
                       className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider"
@@ -465,6 +484,17 @@ export default function ImportPage() {
                         >
                           {col.header}
                         </code>
+                      </td>
+                      <td className="px-2 py-2.5 text-center">
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                          style={{
+                            backgroundColor: col.required ? 'rgb(239 68 68 / 0.12)' : 'rgb(var(--muted))',
+                            color: col.required ? '#ef4444' : 'rgb(var(--foreground-muted))',
+                          }}
+                        >
+                          {col.required ? 'Pflicht' : 'Optional'}
+                        </span>
                       </td>
                       <td
                         className="px-4 py-2.5 text-xs"

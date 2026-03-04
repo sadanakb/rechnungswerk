@@ -26,8 +26,16 @@ export default function RegisterPage() {
     try {
       await register(form)
       router.push('/dashboard')
-    } catch {
-      setError('Registrierung fehlgeschlagen. Bitte versuche es erneut.')
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> } } }
+      const detail = apiError?.response?.data?.detail
+      if (typeof detail === 'string') {
+        setError(detail)
+      } else if (Array.isArray(detail) && detail[0]?.msg) {
+        setError(detail[0].msg.replace('Value error, ', ''))
+      } else {
+        setError('Registrierung fehlgeschlagen. Bitte versuche es erneut.')
+      }
     } finally {
       setLoading(false)
     }
@@ -43,6 +51,9 @@ export default function RegisterPage() {
     >
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
+          <Link href="/" className="inline-block mb-4 text-lg font-bold tracking-tight" style={{ color: 'rgb(var(--primary))' }}>
+            &larr; RechnungsWerk
+          </Link>
           <h1 className="text-2xl font-bold">Konto erstellen</h1>
           <p className="text-sm mt-1 opacity-60">
             Starte kostenlos mit RechnungsWerk
@@ -80,7 +91,7 @@ export default function RegisterPage() {
               value={form.password}
               onChange={update('password')}
               required
-              hint="Mindestens 8 Zeichen, 1 Grossbuchstabe, 1 Zahl"
+              hint="Mindestens 10 Zeichen, 1 Grossbuchstabe, 1 Kleinbuchstabe, 1 Zahl, 1 Sonderzeichen (!@#$...)"
             />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}

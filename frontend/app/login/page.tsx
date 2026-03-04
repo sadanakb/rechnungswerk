@@ -22,8 +22,10 @@ export default function LoginPage() {
     try {
       await login({ email, password })
       router.push('/dashboard')
-    } catch {
-      setError('Ungueltige Anmeldedaten')
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { detail?: string } } }
+      const detail = apiError?.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : 'Ungueltige Anmeldedaten')
     } finally {
       setLoading(false)
     }
@@ -36,6 +38,9 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
+          <Link href="/" className="inline-block mb-4 text-lg font-bold tracking-tight" style={{ color: 'rgb(var(--primary))' }}>
+            &larr; RechnungsWerk
+          </Link>
           <h1 className="text-2xl font-bold">Anmelden</h1>
           <p className="text-sm mt-1 opacity-60">
             Melde dich bei RechnungsWerk an

@@ -417,7 +417,30 @@ export default function ManualPage() {
           Manuelle Eingabe
         </h1>
         <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--foreground-muted))' }}>
-          Alle BT-Felder direkt eingeben und XRechnung 3.0.2 UBL XML generieren
+          Erstelle eine elektronische Rechnung im XRechnung-Format
+        </p>
+      </motion.div>
+
+      {/* Intro info box */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-6 rounded-xl border p-4"
+        style={{
+          backgroundColor: 'rgb(var(--primary) / 0.06)',
+          borderColor: 'rgb(var(--primary) / 0.2)',
+        }}
+      >
+        <p className="text-sm font-medium mb-1.5" style={{ color: 'rgb(var(--primary))' }}>
+          So funktioniert&apos;s
+        </p>
+        <p className="text-xs leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+          Fuellen Sie die Felder aus, um eine XRechnung (elektronische Rechnung) zu erstellen.
+          Felder mit <span style={{ color: 'rgb(var(--destructive))' }}>*</span> sind Pflichtfelder.
+          Am Ende wird automatisch eine XML-Datei im XRechnung 3.0.2 Format erzeugt,
+          die Sie an Behoerden oder Unternehmen senden koennen.
+          Die BT-Nummern (z.B. BT-1) sind offizielle Feldbezeichnungen des XRechnung-Standards.
         </p>
       </motion.div>
 
@@ -510,7 +533,7 @@ export default function ManualPage() {
           initial="hidden"
           animate="visible"
         >
-          <Section title="Rechnungsinformationen" icon={<FileText size={16} />}>
+          <Section title="Rechnungsinformationen" icon={<FileText size={16} />} info="Grunddaten Ihrer Rechnung: Nummer, Datum und Steuersatz. Die Rechnungsnummer muss eindeutig sein (z.B. RE-2026-001). Das Faelligkeitsdatum ist optional — wenn leer, gilt die gesetzliche Frist.">
             <div className="grid grid-cols-2 gap-4">
               <div data-has-error={hasFieldError('invoice_number')}>
                 <label className="block text-sm font-medium mb-1" style={labelStyle}>
@@ -567,7 +590,7 @@ export default function ManualPage() {
           initial="hidden"
           animate="visible"
         >
-          <Section title="Verkäufer (Seller)" badge="BT-27 bis BT-40">
+          <Section title="Verkäufer (Seller)" badge="BT-27 bis BT-40" info="Das sind Ihre eigenen Firmendaten — Name, USt-IdNr. und Adresse. Diese Angaben erscheinen auf der Rechnung als Absender.">
             <div className="space-y-3">
               <div data-has-error={hasFieldError('seller_name')}>
                 <label className="block text-sm font-medium mb-1" style={labelStyle}>
@@ -622,7 +645,7 @@ export default function ManualPage() {
           initial="hidden"
           animate="visible"
         >
-          <Section title="Käufer (Buyer)" badge="BT-44 bis BT-55">
+          <Section title="Käufer (Buyer)" badge="BT-44 bis BT-55" info="Die Daten Ihres Kunden — an wen geht die Rechnung? USt-IdNr. des Kaeufers ist nur bei innergemeinschaftlichen Lieferungen (EU) noetig.">
             <div className="space-y-3">
               <div data-has-error={hasFieldError('buyer_name')}>
                 <label className="block text-sm font-medium mb-1" style={labelStyle}>
@@ -676,10 +699,7 @@ export default function ManualPage() {
           initial="hidden"
           animate="visible"
         >
-          <Section title="Zahlungsinformationen" icon={<CreditCard size={16} />} badge="BG-16">
-            <p className="text-xs mb-4" style={labelMutedStyle}>
-              Bankverbindung für SEPA-Zahlung (empfohlen)
-            </p>
+          <Section title="Zahlungsinformationen" icon={<CreditCard size={16} />} badge="BG-16" info="Ihre Bankverbindung fuer die Zahlung. Optional, aber empfohlen — damit kann der Empfaenger direkt ueberweisen. IBAN und BIC finden Sie auf Ihrem Kontoauszug oder im Online-Banking.">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" style={labelStyle}>
@@ -726,10 +746,7 @@ export default function ManualPage() {
           initial="hidden"
           animate="visible"
         >
-          <Section title="Routing & Referenz" icon={<Network size={16} />}>
-            <p className="text-xs mb-4" style={labelMutedStyle}>
-              Elektronische Adressen und Referenzen
-            </p>
+          <Section title="Routing & Referenz" icon={<Network size={16} />} info="Nur relevant, wenn Sie an Behoerden (B2G) liefern. Die Leitweg-ID erhalten Sie von Ihrem oeffentlichen Auftraggeber. Fuer normale B2B-Rechnungen koennen Sie diesen Abschnitt leer lassen.">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" style={labelStyle}>
@@ -998,11 +1015,13 @@ function Section({
   title,
   badge,
   icon,
+  info,
   children,
 }: {
   title: string
   badge?: string
   icon?: React.ReactNode
+  info?: string
   children: React.ReactNode
 }) {
   return (
@@ -1013,7 +1032,7 @@ function Section({
         borderColor: 'rgb(var(--border))',
       }}
     >
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-2">
         {icon && (
           <span style={{ color: 'rgb(var(--foreground-muted))' }}>{icon}</span>
         )}
@@ -1032,6 +1051,11 @@ function Section({
           </span>
         )}
       </div>
+      {info && (
+        <p className="text-xs mb-4 leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+          {info}
+        </p>
+      )}
       {children}
     </div>
   )

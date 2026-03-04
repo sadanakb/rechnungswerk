@@ -104,11 +104,10 @@ def decode_token(token: str) -> dict:
 
 async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     """FastAPI dependency to get current authenticated user from JWT."""
-    # If JWT auth is not enabled, allow access (dev mode)
-    if not settings.require_api_key:
-        return {"user_id": "0", "email": "dev@localhost", "role": "member"}
-
+    # If no token provided: in dev mode allow access, in prod reject
     if not token:
+        if not settings.require_api_key:
+            return {"user_id": "0", "email": "dev@localhost", "role": "member"}
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentifizierung erforderlich",
