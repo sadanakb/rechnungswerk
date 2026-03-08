@@ -40,3 +40,23 @@ frontend/test-results/
 /tmp/
 *.tmp
 .worktrees/
+
+# Generated files (test artifacts)
+backend/app/generated_xml/
+backend/data/
+
+# Claude Code internal
+.claude/backups/
+.claude/session-count
+.claude/.last-checkpoint.md
+.claude/HANDOFF.md
+
+# Strategy docs (not code)
+docs/RechnungsWerk_Strategie_2026.pdf
+docs/rechnungswerk-strategie.py
+RechnungsWerk_AI_Master_Brief_Claude_Opus_4_6.md
+
+# Root-level package files (not needed, frontend has its own)
+/package.json
+/package-lock.json
+
