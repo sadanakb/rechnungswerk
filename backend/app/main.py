@@ -18,7 +18,7 @@ from app.rate_limiter import limiter
 from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router, ai as ai_router, datev as datev_router, push as push_router, gdpr as gdpr_router, quotes
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router, ai as ai_router, datev as datev_router, push as push_router, gdpr as gdpr_router, quotes, credit_notes as credit_notes_router
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,7 @@ app.include_router(datev_router.router, prefix="/api/datev", tags=["datev"])
 app.include_router(push_router.router, prefix="/api/push", tags=["push"])
 app.include_router(gdpr_router.router, prefix="/api/gdpr", tags=["gdpr"])
 app.include_router(quotes.router, prefix="/api", tags=["Quotes"])
+app.include_router(credit_notes_router.router, prefix="/api", tags=["credit-notes"])
 
 
 # WebSocket endpoint (Phase 9 — real-time events)

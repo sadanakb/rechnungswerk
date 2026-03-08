@@ -28,6 +28,7 @@ import {
   MoreHorizontal,
   X,
   ScrollText,
+  ReceiptText,
 } from 'lucide-react'
 import { useTheme } from '@/components/design-system/theme-provider'
 import { cn } from '@/lib/utils'
@@ -46,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/manual', label: 'Manuelle Eingabe', icon: FileText },
   { href: '/invoices', label: 'Rechnungen', icon: List },
   { href: '/angebote', label: 'Angebote', icon: ScrollText },
+  { href: '/gutschriften', label: 'Gutschriften', icon: ReceiptText },
   { href: '/validator', label: 'Validator', icon: CheckCircle },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/suppliers', label: 'Lieferanten', icon: Users },

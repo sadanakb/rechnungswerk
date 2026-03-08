@@ -46,6 +46,7 @@ class Organization(Base):
 
     members = relationship("OrganizationMember", back_populates="organization")
     invoices = relationship("Invoice", back_populates="organization")
+    credit_notes = relationship("CreditNote", back_populates="organization")
 
 
 class User(Base):
@@ -163,6 +164,79 @@ class Invoice(Base):
 
     __table_args__ = (
         UniqueConstraint('invoice_number', 'organization_id', name='uq_invoice_number_org'),
+    )
+
+    @property
+    def xrechnung_available(self) -> bool:
+        return bool(self.xrechnung_xml_path)
+
+    @property
+    def zugferd_available(self) -> bool:
+        return bool(self.zugferd_pdf_path)
+
+
+class CreditNote(Base):
+    """Credit note (Gutschrift) — legally required for invoice corrections in Germany (§ 14 UStG)."""
+    __tablename__ = 'credit_notes'
+
+    id = Column(Integer, primary_key=True)
+    credit_note_id = Column(String, unique=True, index=True)  # e.g., GS-20260308-abc12345
+    credit_note_number = Column(String, index=True)
+    original_invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
+    credit_note_date = Column(Date, index=True)
+    # NO due_date — UBL CreditNote schema does not allow DueDate
+
+    # Seller Info (copied from invoice)
+    seller_name = Column(String)
+    seller_vat_id = Column(String)
+    seller_address = Column(Text)
+
+    # Buyer Info (copied from invoice)
+    buyer_name = Column(String)
+    buyer_vat_id = Column(String)
+    buyer_address = Column(Text)
+
+    # Amounts — Numeric for cent-precision
+    net_amount = Column(Numeric(12, 2))
+    tax_amount = Column(Numeric(12, 2))
+    gross_amount = Column(Numeric(12, 2))
+    tax_rate = Column(Numeric(5, 2), default=19.0)
+    currency = Column(String(3), default='EUR')
+
+    # Payment details
+    iban = Column(String(34))
+    bic = Column(String(11))
+    payment_account_name = Column(String(70))
+
+    # Routing & Reference
+    buyer_reference = Column(String(200))
+    seller_endpoint_id = Column(String(200))
+    seller_endpoint_scheme = Column(String(10))
+    buyer_endpoint_id = Column(String(200))
+    buyer_endpoint_scheme = Column(String(10))
+
+    # Line Items (JSON array)
+    line_items = Column(JSON)
+
+    # Reason for credit note (required)
+    reason = Column(Text, nullable=False)
+
+    # Generated Files
+    xrechnung_xml_path = Column(String)
+    zugferd_pdf_path = Column(String)
+
+    # Multi-tenant
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+
+    # Relationships
+    original_invoice = relationship("Invoice")
+    organization = relationship("Organization", back_populates="credit_notes")
+
+    __table_args__ = (
+        UniqueConstraint('credit_note_number', 'organization_id', name='uq_credit_note_number_org'),
     )
 
     @property

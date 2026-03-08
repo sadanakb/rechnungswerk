@@ -1722,3 +1722,75 @@ export const convertQuoteToInvoice = async (quoteId: string): Promise<ConvertQuo
 export const getQuotePdfUrl = (quoteId: string): string => {
   return `${API_BASE}/api/quotes/${quoteId}/pdf`
 }
+
+// ---------------------------------------------------------------------------
+// Credit Notes (Gutschriften)
+// ---------------------------------------------------------------------------
+
+export interface CreditNote {
+  id: number
+  credit_note_id: string
+  credit_note_number: string
+  credit_note_date: string
+  original_invoice_id: number
+  buyer_name: string
+  gross_amount: number
+  reason: string
+  xrechnung_available: boolean
+  zugferd_available: boolean
+  created_at: string
+}
+
+export interface CreditNoteDetail extends CreditNote {
+  seller_name: string
+  seller_vat_id?: string
+  seller_address?: string
+  buyer_vat_id?: string
+  buyer_address?: string
+  net_amount: number
+  tax_amount: number
+  tax_rate?: number
+  currency: string
+  line_items: LineItem[]
+  iban?: string
+  bic?: string
+  payment_account_name?: string
+  buyer_reference?: string
+  original_invoice_number?: string
+}
+
+export interface CreditNoteListResponse {
+  items: CreditNote[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export const createCreditNote = async (data: { original_invoice_id: number; reason: string }): Promise<CreditNoteDetail> => {
+  const resp = await api.post<CreditNoteDetail>('/api/credit-notes/', data)
+  return resp.data
+}
+
+export const listCreditNotes = async (
+  skip = 0,
+  limit = 50,
+  filters?: { search?: string; date_from?: string; date_to?: string },
+): Promise<CreditNoteListResponse> => {
+  const params = new URLSearchParams()
+  params.set('skip', String(skip))
+  params.set('limit', String(limit))
+  if (filters?.search) params.set('search', filters.search)
+  if (filters?.date_from) params.set('date_from', filters.date_from)
+  if (filters?.date_to) params.set('date_to', filters.date_to)
+  const resp = await api.get<CreditNoteListResponse>(`/api/credit-notes/?${params.toString()}`)
+  return resp.data
+}
+
+export const getCreditNote = async (id: string): Promise<CreditNoteDetail> => {
+  const resp = await api.get<CreditNoteDetail>(`/api/credit-notes/${id}`)
+  return resp.data
+}
+
+export const getCreditNoteXmlUrl = (id: string): string => `${API_BASE}/api/credit-notes/${id}/xml`
+
+export const getCreditNotePdfUrl = (id: string): string => `${API_BASE}/api/credit-notes/${id}/pdf`

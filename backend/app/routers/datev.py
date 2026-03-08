@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.auth_jwt import get_current_user
 from app.feature_gate import require_feature
 from app.database import get_db
-from app.models import Invoice, Organization, OrganizationMember
+from app.models import CreditNote as CreditNoteModel, Invoice, Organization, OrganizationMember
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -84,15 +84,6 @@ async def export_datev(
         .all()
     )
 
-    if not invoices:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Keine kategorisierten Rechnungen im Zeitraum {from_month}–{to_month}. "
-                "Bitte zuerst KI-Kategorisierung ausführen."
-            ),
-        )
-
     # Build invoice dicts
     invoice_dicts = [
         {
@@ -109,6 +100,42 @@ async def export_datev(
         }
         for inv in invoices
     ]
+
+    # Include credit notes in the export
+    credit_notes = (
+        db.query(CreditNoteModel)
+        .filter(
+            CreditNoteModel.organization_id == org.id,
+            CreditNoteModel.credit_note_date >= date_from,
+            CreditNoteModel.credit_note_date <= date_to,
+        )
+        .order_by(CreditNoteModel.credit_note_date)
+        .all()
+    )
+
+    for cn in credit_notes:
+        invoice_dicts.append({
+            "invoice_number": cn.credit_note_number or "",
+            "invoice_date": str(cn.credit_note_date),
+            "seller_name": cn.seller_name or "",
+            "buyer_name": cn.buyer_name or "",
+            "net_amount": float(cn.net_amount or 0),
+            "tax_rate": float(cn.tax_rate or 19),
+            "tax_amount": float(cn.tax_amount or 0),
+            "gross_amount": float(cn.gross_amount or 0),
+            "currency": "EUR",
+            "is_credit_note": True,
+            "original_invoice_number": cn.original_invoice.invoice_number if cn.original_invoice else "",
+        })
+
+    if not invoice_dicts:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Keine kategorisierten Rechnungen oder Gutschriften im Zeitraum {from_month}\u2013{to_month}. "
+                "Bitte zuerst KI-Kategorisierung ausf\u00fchren."
+            ),
+        )
 
     # Build unique contacts (sellers -> Kreditoren, starting at 70001)
     seen_names: dict = {}

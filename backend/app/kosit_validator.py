@@ -62,7 +62,13 @@ class KoSITValidator:
         return result
 
     async def _validate_kosit(self, xml_content: str) -> Dict:
-        """Validate via Docker-based KoSIT validator REST API."""
+        """Validate via Docker-based KoSIT validator REST API.
+
+        # TODO: The KoSIT validator uses separate Schematron rules for CreditNotes
+        # (XRechnung-UBL-validation-CreditNote.sch). The validator auto-detects the
+        # document type from the root element. Verify this works correctly when the
+        # KoSIT Docker container is updated to support XRechnung 3.0 CreditNotes.
+        """
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.validator_url,
@@ -150,11 +156,18 @@ class KoSITValidator:
         ns = {"cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
               "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"}
 
-        # Check mandatory elements
+        # Detect document type from root element
+        is_credit_note = "CreditNote" in root.tag
+
+        # Check mandatory elements (type code differs for CreditNote vs Invoice)
+        type_code_xpath = "cbc:CreditNoteTypeCode" if is_credit_note else "cbc:InvoiceTypeCode"
+        type_code_label = "Gutschrifttyp" if is_credit_note else "Rechnungstyp"
+        doc_label = "Gutschrift" if is_credit_note else "Rechnung"
+
         mandatory_checks = [
-            ("cbc:ID", "BT-1: Rechnungsnummer fehlt"),
-            ("cbc:IssueDate", "BT-2: Rechnungsdatum fehlt"),
-            ("cbc:InvoiceTypeCode", "BT-3: Rechnungstyp fehlt"),
+            ("cbc:ID", f"BT-1: {doc_label}nummer fehlt"),
+            ("cbc:IssueDate", f"BT-2: {doc_label}datum fehlt"),
+            (type_code_xpath, f"BT-3: {type_code_label} fehlt"),
             ("cbc:DocumentCurrencyCode", "BT-5: Waehrungscode fehlt"),
             ("cbc:BuyerReference", "BT-10: Kaeuferreferenz fehlt"),
         ]
@@ -183,10 +196,11 @@ class KoSITValidator:
         if tax_total is None:
             errors.append({"code": "BG-23", "message": "Steuersumme (BG-23) fehlt", "location": "TaxTotal"})
 
-        # Check invoice lines
-        lines = root.findall(".//cac:InvoiceLine", ns)
+        # Check line items (CreditNoteLine vs InvoiceLine)
+        line_tag = "cac:CreditNoteLine" if is_credit_note else "cac:InvoiceLine"
+        lines = root.findall(f".//{line_tag}", ns)
         if not lines:
-            errors.append({"code": "BG-25", "message": "Keine Rechnungspositionen (BG-25)", "location": "InvoiceLine"})
+            errors.append({"code": "BG-25", "message": f"Keine {doc_label}positionen (BG-25)", "location": line_tag})
 
         # Check CustomizationID for XRechnung
         cust_id = root.find("cbc:CustomizationID", ns)

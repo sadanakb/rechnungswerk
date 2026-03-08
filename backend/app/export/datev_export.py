@@ -154,12 +154,18 @@ class DATEVExporter:
             revenue_account = self.accounts["revenue_0"]
             bu_key = ""
 
-        # Outgoing invoice: Debit receivables, Credit revenue
-        booking_text = f"RE {invoice_number} {buyer_name}"[:60]
+        # Credit note handling
+        is_credit_note = invoice.get("is_credit_note", False)
+        original_inv_nr = invoice.get("original_invoice_number", "")
+
+        if is_credit_note:
+            booking_text = f"Gutschrift zu {original_inv_nr} {buyer_name}"[:60]
+        else:
+            booking_text = f"RE {invoice_number} {buyer_name}"[:60]
 
         row = [""] * len(DATEV_HEADER_FIELDS)
         row[0] = self._format_amount(gross)          # Umsatz
-        row[1] = "S"                                   # Soll
+        row[1] = "H" if is_credit_note else "S"       # Haben for credit notes, Soll for invoices
         row[2] = invoice.get("currency", "EUR")        # WKZ
         # Use AI-assigned SKR03 account only when exporting in SKR03 mode
         konto = (

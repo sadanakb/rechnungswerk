@@ -243,6 +243,176 @@ class XRechnungGenerator:
         )
         return xml_bytes.decode("utf-8")
 
+    def generate_credit_note_xml(self, credit_note_data: Dict) -> str:
+        """
+        Generate EN 16931 / XRechnung 3.0 compliant UBL CreditNote XML.
+
+        Key differences from Invoice:
+        - Root element: CreditNote (not Invoice)
+        - Namespace: urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2
+        - CreditNoteTypeCode: 381 (not InvoiceTypeCode)
+        - NO DueDate element
+        - CreditNoteLine (not InvoiceLine) with CreditedQuantity (not InvoicedQuantity)
+        - BillingReference pointing to original invoice
+        """
+        # Validate mandatory fields — use credit_note_number instead of invoice_number
+        errors: List[str] = []
+        if not credit_note_data.get("credit_note_number"):
+            errors.append("BT-1: Gutschriftnummer fehlt")
+        if not credit_note_data.get("credit_note_date"):
+            errors.append("BT-2: Gutschriftdatum fehlt")
+        if not credit_note_data.get("seller_name"):
+            errors.append("BT-27: Verkäufername fehlt")
+        if not credit_note_data.get("buyer_name"):
+            errors.append("BT-44: Käufername fehlt")
+
+        net = round(float(credit_note_data.get("net_amount", 0)), 2)
+        tax = round(float(credit_note_data.get("tax_amount", 0)), 2)
+        gross = round(float(credit_note_data.get("gross_amount", 0)), 2)
+        expected_gross = round(net + tax, 2)
+        if abs(gross - expected_gross) > 0.01:
+            errors.append(f"BR-CO-15: Gesamtbetrag {gross} != Netto+MwSt {expected_gross}")
+
+        if errors:
+            raise ValueError(f"Validierungsfehler: {'; '.join(errors)}")
+
+        # Ensure defaults
+        if not credit_note_data.get("buyer_reference"):
+            credit_note_data["buyer_reference"] = "n/a"
+        if not credit_note_data.get("seller_endpoint_id"):
+            credit_note_data["seller_endpoint_id"] = credit_note_data.get("seller_vat_id") or "unknown@example.com"
+        if not credit_note_data.get("seller_endpoint_scheme"):
+            credit_note_data["seller_endpoint_scheme"] = "EM"
+        if not credit_note_data.get("buyer_endpoint_id"):
+            credit_note_data["buyer_endpoint_id"] = credit_note_data.get("buyer_vat_id") or "unknown@example.com"
+        if not credit_note_data.get("buyer_endpoint_scheme"):
+            credit_note_data["buyer_endpoint_scheme"] = "EM"
+
+        # CreditNote uses different root namespace
+        cn_ns = "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"
+        nsmap = {
+            None: cn_ns,  # default namespace
+            "cac": self.NAMESPACES["cac"],
+            "cbc": self.NAMESPACES["cbc"],
+        }
+
+        root = etree.Element(f"{{{cn_ns}}}CreditNote", nsmap=nsmap)
+
+        # === HEADER (order is mandatory per UBL 2.1 schema!) ===
+        self._add(root, "cbc", "UBLVersionID", "2.1")
+        self._add(root, "cbc", "CustomizationID", self.CUSTOMIZATION_ID)
+        self._add(root, "cbc", "ProfileID", self.PROFILE_ID)
+
+        # BT-1: Credit Note Number
+        self._add(root, "cbc", "ID", credit_note_data.get("credit_note_number", ""))
+
+        # BT-2: Issue Date
+        self._add(root, "cbc", "IssueDate", str(credit_note_data.get("credit_note_date", str(date.today()))))
+
+        # NO DueDate — UBL CreditNote schema does not allow DueDate!
+
+        # BT-3: Credit Note Type Code (381 = Credit Note)
+        self._add(root, "cbc", "CreditNoteTypeCode", "381")
+
+        # BT-5: Currency Code
+        currency = credit_note_data.get("currency", "EUR")
+        self._add(root, "cbc", "DocumentCurrencyCode", currency)
+
+        # BT-10: Buyer Reference
+        self._add(root, "cbc", "BuyerReference", credit_note_data["buyer_reference"])
+
+        # BG-3: Billing Reference — link to original invoice
+        if credit_note_data.get("original_invoice_number"):
+            billing_ref = self._sub(root, "cac", "BillingReference")
+            inv_doc_ref = self._sub(billing_ref, "cac", "InvoiceDocumentReference")
+            self._add(inv_doc_ref, "cbc", "ID", credit_note_data["original_invoice_number"])
+
+        # === PARTIES (reuse existing builders) ===
+        root.append(self._build_supplier_party(credit_note_data))
+        root.append(self._build_customer_party(credit_note_data))
+
+        # === PAYMENT MEANS (BG-16) ===
+        # Build payment means without DueDate for credit notes
+        pm = etree.Element(f"{{{self.NAMESPACES['cac']}}}PaymentMeans")
+        iban = credit_note_data.get("iban")
+        code = "58" if iban else "1"
+        self._add(pm, "cbc", "PaymentMeansCode", code)
+        # NO PaymentDueDate for credit notes
+        if iban:
+            pfa = self._sub(pm, "cac", "PayeeFinancialAccount")
+            self._add(pfa, "cbc", "ID", iban)
+            if credit_note_data.get("payment_account_name"):
+                self._add(pfa, "cbc", "Name", credit_note_data["payment_account_name"])
+            if credit_note_data.get("bic"):
+                fib = self._sub(pfa, "cac", "FinancialInstitutionBranch")
+                self._add(fib, "cbc", "ID", credit_note_data["bic"])
+        root.append(pm)
+
+        # === TAX TOTAL (BG-23) — reuse existing builder ===
+        root.append(self._build_tax_total(credit_note_data, currency))
+
+        # === DOCUMENT TOTALS (BG-22) — reuse existing builder ===
+        root.append(self._build_legal_monetary_total(credit_note_data, currency))
+
+        # === CREDIT NOTE LINES ===
+        line_items = credit_note_data.get("line_items") or []
+        if not line_items:
+            line_items = [{
+                "description": credit_note_data.get("description", "Gutschrift"),
+                "quantity": 1.0,
+                "unit_price": credit_note_data.get("net_amount", 0.0),
+                "net_amount": credit_note_data.get("net_amount", 0.0),
+                "tax_rate": credit_note_data.get("tax_rate", 19.0),
+            }]
+        for i, item in enumerate(line_items, start=1):
+            root.append(self._build_credit_note_line(item, i, credit_note_data, currency))
+
+        xml_bytes = etree.tostring(root, pretty_print=True, xml_declaration=True, encoding="UTF-8")
+        return xml_bytes.decode("utf-8")
+
+    def _build_credit_note_line(
+        self, item: Dict, idx: int, credit_note_data: Dict, currency: str = "EUR"
+    ) -> etree._Element:
+        """One credit note line item — uses CreditNoteLine and CreditedQuantity."""
+        line = etree.Element(f"{{{self.NAMESPACES['cac']}}}CreditNoteLine")
+        self._add(line, "cbc", "ID", str(idx))
+        self._add(
+            line, "cbc", "CreditedQuantity",
+            str(item.get("quantity", 1)),
+            unitCode=item.get("unit_code", "C62"),
+        )
+        self._add(
+            line, "cbc", "LineExtensionAmount",
+            _fmt(item.get("net_amount", 0)),
+            currencyID=currency,
+        )
+
+        # Item description
+        item_elem = self._sub(line, "cac", "Item")
+        desc = item.get("description", "Gutschrift") or "Gutschrift"
+        self._add(item_elem, "cbc", "Name", desc)
+
+        # Item tax category
+        classified = self._sub(item_elem, "cac", "ClassifiedTaxCategory")
+        self._add(classified, "cbc", "ID", "S")
+        _item_rate = float(item.get("tax_rate", credit_note_data.get("tax_rate", 19)))
+        self._add(
+            classified, "cbc", "Percent",
+            str(int(_item_rate)) if _item_rate == int(_item_rate) else str(_item_rate),
+        )
+        ts = self._sub(classified, "cac", "TaxScheme")
+        self._add(ts, "cbc", "ID", "VAT")
+
+        # Unit price
+        price = self._sub(line, "cac", "Price")
+        self._add(
+            price, "cbc", "PriceAmount",
+            _fmt(item.get("unit_price", 0)),
+            currencyID=currency,
+        )
+
+        return line
+
     # ------------------------------------------------------------------
     # Private builders
     # ------------------------------------------------------------------

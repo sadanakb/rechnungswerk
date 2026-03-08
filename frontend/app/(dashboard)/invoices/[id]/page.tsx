@@ -13,8 +13,9 @@ import {
   XCircle,
   Clock,
   Printer,
+  FileText,
 } from 'lucide-react'
-import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, updatePaymentStatus, createShareLink, sendInvoiceEmail, type InvoiceDetail } from '@/lib/api'
+import { getInvoice, deleteInvoice, getXRechnungDownloadUrl, updatePaymentStatus, createShareLink, sendInvoiceEmail, createCreditNote, type InvoiceDetail } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -482,6 +483,9 @@ export default function InvoiceDetailPage() {
   const [emailSending, setEmailSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [showCreditNoteModal, setShowCreditNoteModal] = useState(false)
+  const [creditNoteReason, setCreditNoteReason] = useState('')
+  const [creditNoteCreating, setCreditNoteCreating] = useState(false)
 
   const handlePaymentUpdated = (newStatus: string) => {
     setInvoice((prev) => prev ? { ...prev, payment_status: newStatus } : prev)
@@ -534,6 +538,18 @@ export default function InvoiceDetailPage() {
       if (process.env.NODE_ENV === 'development') console.error('Send email error:', err)
     } finally {
       setEmailSending(false)
+    }
+  }
+
+  const handleCreateCreditNote = async () => {
+    if (!invoice || !creditNoteReason.trim()) return
+    setCreditNoteCreating(true)
+    try {
+      const result = await createCreditNote({ original_invoice_id: invoice.id, reason: creditNoteReason.trim() })
+      router.push(`/gutschriften/${result.credit_note_id}`)
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Credit note error:', err)
+      setCreditNoteCreating(false)
     }
   }
 
@@ -675,6 +691,19 @@ export default function InvoiceDetailPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             Per E-Mail senden
+          </button>
+
+          <button
+            onClick={() => setShowCreditNoteModal(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border transition-colors"
+            style={{
+              borderColor: 'rgb(var(--border))',
+              color: 'rgb(var(--foreground))',
+              backgroundColor: 'rgb(var(--card))',
+            }}
+          >
+            <FileText size={14} />
+            Gutschrift erstellen
           </button>
 
           <button
@@ -947,6 +976,61 @@ export default function InvoiceDetailPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Credit Note Modal */}
+      {showCreditNoteModal && invoice && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="rounded-xl shadow-xl p-6 max-w-md w-full mx-4" style={{ backgroundColor: 'rgb(var(--card))' }}>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'rgb(var(--foreground))' }}>Gutschrift erstellen</h3>
+            <p className="text-sm mb-4" style={{ color: 'rgb(var(--foreground-muted))' }}>
+              Vollgutschrift für Rechnung <strong>{invoice.invoice_number}</strong>
+            </p>
+            <div className="rounded-lg border p-3 mb-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--muted))' }}>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: 'rgb(var(--foreground-muted))' }}>Kunde</span>
+                <span style={{ color: 'rgb(var(--foreground))' }}>{invoice.buyer_name}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span style={{ color: 'rgb(var(--foreground-muted))' }}>Bruttobetrag</span>
+                <span className="font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
+                  {formatCurrency(invoice.gross_amount, invoice.currency)}
+                </span>
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                Grund der Gutschrift *
+              </label>
+              <input
+                type="text"
+                placeholder="z. B. Fehllieferung, Teilstorno, Kulanz"
+                value={creditNoteReason}
+                onChange={(e) => setCreditNoteReason(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                style={{ backgroundColor: 'rgb(var(--input))', borderColor: 'rgb(var(--input-border))', color: 'rgb(var(--foreground))' }}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowCreditNoteModal(false); setCreditNoteReason('') }}
+                disabled={creditNoteCreating}
+                className="flex-1 py-2 text-sm rounded-lg border disabled:opacity-50"
+                style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground-muted))' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleCreateCreditNote}
+                disabled={!creditNoteReason.trim() || creditNoteCreating}
+                className="flex-1 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50"
+                style={{ backgroundColor: 'rgb(var(--primary))' }}
+              >
+                {creditNoteCreating ? 'Wird erstellt…' : 'Gutschrift erstellen'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
