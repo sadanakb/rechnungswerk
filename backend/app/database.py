@@ -47,11 +47,13 @@ def get_db():
 
 
 def init_db():
-    """Initialize database — create all tables.
+    """Initialize database tables.
 
-    NOTE: For production, use Alembic migrations instead of create_all().
-    Run: cd backend && alembic upgrade head
+    SQLite (dev/test): Uses create_all() for convenience.
+    PostgreSQL (production): Alembic migrations only — entrypoint.sh runs them.
     """
-    Base.metadata.create_all(bind=engine)
-    db_type = "SQLite" if settings.database_url.startswith("sqlite") else "PostgreSQL"
-    logger.info("[Database] Tables created (%s)", db_type)
+    if settings.database_url.startswith("sqlite"):
+        Base.metadata.create_all(bind=engine)
+        logger.info("[Database] Tables created (SQLite dev mode)")
+    else:
+        logger.info("[Database] PostgreSQL — using Alembic migrations only")
