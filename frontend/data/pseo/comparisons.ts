@@ -8,6 +8,7 @@ export interface ComparisonPage {
   features: Record<string, { rw: boolean | string; competitor: boolean | string }>
 }
 
+/** Stand: Maerz 2026 — Angaben zu Wettbewerbern ohne Gewaehr. */
 export const comparisons: ComparisonPage[] = [
   {
     slug: 'sevdesk',
@@ -27,8 +28,8 @@ export const comparisons: ComparisonPage[] = [
       'Direkte ELSTER-Schnittstelle fuer Steuermeldungen',
     ],
     features: {
-      xrechnung: { rw: 'Komplett (3.0.2)', competitor: 'Basis' },
-      zugferd: { rw: 'Komplett (2.3.3)', competitor: 'Basis' },
+      xrechnung: { rw: 'Komplett (3.0.2)', competitor: 'Unterstuetzt' },
+      zugferd: { rw: 'Komplett (2.3.3)', competitor: 'Unterstuetzt' },
       ocr: { rw: true, competitor: true },
       datev_export: { rw: true, competitor: true },
       open_source: { rw: true, competitor: false },
@@ -57,8 +58,8 @@ export const comparisons: ComparisonPage[] = [
       'Breites Schulungs- und Zertifizierungsangebot fuer Steuerberater',
     ],
     features: {
-      xrechnung: { rw: 'Komplett (3.0.2)', competitor: 'Basis' },
-      zugferd: { rw: 'Komplett (2.3.3)', competitor: 'Basis' },
+      xrechnung: { rw: 'Komplett (3.0.2)', competitor: 'Unterstuetzt' },
+      zugferd: { rw: 'Komplett (2.3.3)', competitor: 'Unterstuetzt' },
       ocr: { rw: true, competitor: false },
       datev_export: { rw: true, competitor: true },
       open_source: { rw: true, competitor: false },

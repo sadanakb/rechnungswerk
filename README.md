@@ -6,7 +6,6 @@
 
 ![Tests](https://github.com/sadanakb/rechnungswerk/actions/workflows/tests.yml/badge.svg)
 ![License](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue)
-![Tests](https://img.shields.io/badge/Tests-580%2B%20bestanden-brightgreen)
 ![Build](https://img.shields.io/badge/Build-passing-brightgreen)
 ![XRechnung](https://img.shields.io/badge/XRechnung-3.0.2-blue)
 ![EN 16931](https://img.shields.io/badge/EN_16931-konform-green)
@@ -18,9 +17,11 @@
 
 ---
 
-RechnungsWerk wandelt Papierrechnungen per KI-OCR in normkonforme XRechnung-XML um, generiert ZUGFeRD-PDFs und validiert gegen den offiziellen KoSIT-Validator. Gedacht als Open-Source-Alternative zu sevDesk, lexoffice & Co.
+RechnungsWerk wandelt Papierrechnungen per OCR in normkonforme XRechnung-XML um, generiert ZUGFeRD-PDFs und validiert gegen den offiziellen KoSIT-Validator. Gedacht als Open-Source-Alternative zu sevDesk, lexoffice & Co.
 
-Die E-Rechnungspflicht betrifft ab 2025 jedes Unternehmen in Deutschland -- und die bestehenden Loesungen kosten 500-2.000 EUR/Monat. RechnungsWerk macht das kostenlos und selbst gehostet.
+> **Status: Aktive Entwicklung (Beta)** -- Kernfunktionen sind nutzbar, aber die Software befindet sich noch in aktiver Entwicklung. Self-Hosting ist der aktuelle Hauptmodus; eine gehostete SaaS-Version ist geplant.
+
+Die E-Rechnungspflicht betrifft ab 2025 jedes Unternehmen in Deutschland. Die meisten bestehenden Loesungen wie sevDesk oder lexoffice kosten ab ca. 8-15 EUR/Monat, bieten aber oft nur eingeschraenkte E-Rechnungs-Unterstuetzung. RechnungsWerk ist Open Source und kann selbst gehostet werden (SaaS-Version in Planung).
 
 ---
 
@@ -53,7 +54,7 @@ docker compose up -d
 
 | Modul | Beschreibung |
 |-------|-------------|
-| **KI-OCR** | PDF-Upload -- Surya OCR (97.7% Genauigkeit) + PaddleOCR Fallback mit Per-Feld-Confidence |
+| **KI-OCR** | PDF-Upload -- Surya OCR + PaddleOCR Fallback mit Per-Feld-Confidence |
 | **XRechnung 3.0.2** | EN 16931-konformes UBL-XML, alle Pflichtfelder (BT-1 bis BT-112) |
 | **ZUGFeRD 2.3.3** | XML wird in PDF/A-3 eingebettet (factur-x, Profil EXTENDED) |
 | **KoSIT-Validator** | Validierung gegen offizielle Schematron-Regeln (Docker + lokaler Fallback) |
@@ -247,7 +248,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8001/api/invoices
 make test
 
 # Einzeln
-make test-backend    # 500+ Backend-Tests (pytest)
+make test-backend    # Backend-Tests (pytest)
 make test-frontend   # 77+ Frontend-Tests (vitest)
 
 # Mit Coverage
@@ -275,7 +276,7 @@ rechnungswerk/
 │   │   ├── export/                 # DATEV-Export
 │   │   ├── archive/                # GoBD-Archivierung
 │   │   └── routers/                # 24+ API-Router
-│   ├── tests/                      # 500+ pytest Tests
+│   ├── tests/                      # pytest Tests
 │   └── Dockerfile
 ├── frontend/
 │   ├── app/                        # Next.js App Router

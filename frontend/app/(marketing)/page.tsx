@@ -33,7 +33,7 @@ const timelineSteps = [
 const features = [
   {
     title: 'OCR-Erkennung',
-    description: 'PDF-Rechnungen per Tesseract OCR einlesen und automatisch in strukturierte Daten umwandeln.',
+    description: 'PDF-Rechnungen einlesen und Daten automatisch in strukturierte Felder extrahieren.',
     icon: FileText,
   },
   {
@@ -73,7 +73,7 @@ const pricingPreview = [
     price: '19,90',
     unit: 'EUR / Monat',
     highlight: false,
-    features: ['Alles aus Starter', 'Banking-Integration', 'Team-Verwaltung', 'Prioritaets-Support'],
+    features: ['Alles aus Starter', 'Team-Verwaltung', 'Prioritaets-Support'],
   },
 ]
 

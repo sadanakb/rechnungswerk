@@ -86,15 +86,15 @@ interface PlanFeature {
 }
 
 const PLAN_FEATURES: PlanFeature[] = [
-  { label: 'Rechnungen pro Monat', free: '10', starter: '100', professional: 'Unbegrenzt' },
+  { label: 'Rechnungen pro Monat', free: '5', starter: 'Unbegrenzt', professional: 'Unbegrenzt' },
   { label: 'OCR-Erkennung', free: true, starter: true, professional: true },
   { label: 'XRechnung / ZUGFeRD Export', free: true, starter: true, professional: true },
   { label: 'Validator', free: true, starter: true, professional: true },
   { label: 'Analytics Dashboard', free: false, starter: true, professional: true },
   { label: 'Lieferanten-Verwaltung', free: false, starter: true, professional: true },
   { label: 'Wiederkehrende Rechnungen', free: false, starter: true, professional: true },
-  { label: 'Mahnwesen', free: false, starter: false, professional: true },
-  { label: 'API-Zugriff', free: false, starter: false, professional: true },
+  { label: 'Mahnwesen', free: false, starter: true, professional: true },
+  { label: 'API-Zugriff', free: false, starter: true, professional: true },
   { label: 'Prioritaets-Support', free: false, starter: false, professional: true },
 ]
 
@@ -684,13 +684,13 @@ function AbonnementTab({
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Rechnungen/Monat</p>
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {currentPlan === 'professional' ? 'Unbegrenzt' : currentPlan === 'starter' ? '100' : '10'}
+                  {currentPlan === 'free' ? '5' : 'Unbegrenzt'}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Preis</p>
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {currentPlan === 'professional' ? '49 EUR/Monat' : currentPlan === 'starter' ? '19 EUR/Monat' : 'Kostenlos'}
+                  {currentPlan === 'professional' ? '19,90 EUR/Monat' : currentPlan === 'starter' ? '9,90 EUR/Monat' : 'Kostenlos'}
                 </p>
               </div>
               <div>
@@ -730,13 +730,13 @@ function AbonnementTab({
                   Starter
                 </CardTitle>
                 <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  19 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                  9,90 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
                 </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> 100 Rechnungen/Monat</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Unbegrenzte Rechnungen</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Analytics Dashboard</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Lieferanten-Verwaltung</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Wiederkehrende Rechnungen</li>
@@ -764,7 +764,7 @@ function AbonnementTab({
                   Professional
                 </CardTitle>
                 <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  49 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                  19,90 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
                 </span>
               </div>
             </CardHeader>
