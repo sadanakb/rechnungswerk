@@ -90,6 +90,8 @@ async def create_credit_note(
     if invoice.organization_id != int(org_id):
         raise HTTPException(status_code=403, detail="Zugriff verweigert")
 
+    org = db.query(Organization).filter(Organization.id == invoice.organization_id).first()
+
     # Generate IDs
     credit_note_id = f"GS-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
     credit_note_number = _next_credit_note_number(db, int(org_id))
@@ -160,6 +162,7 @@ async def create_credit_note(
         "buyer_endpoint_id": invoice.buyer_endpoint_id,
         "buyer_endpoint_scheme": invoice.buyer_endpoint_scheme,
         "reason": body.reason,
+        "logo_url": org.logo_url if org else None,
     }
 
     # Generate XRechnung XML (credit note variant)

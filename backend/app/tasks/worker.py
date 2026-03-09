@@ -42,6 +42,9 @@ async def generate_zugferd_task(ctx: Dict, invoice_id: str):
         if not invoice:
             return {"error": f"Invoice {invoice_id} not found"}
 
+        from app.models import Organization
+        org = db.query(Organization).filter(Organization.id == invoice.organization_id).first()
+
         invoice_data = {
             "invoice_number": invoice.invoice_number,
             "invoice_date": str(invoice.invoice_date),
@@ -60,6 +63,7 @@ async def generate_zugferd_task(ctx: Dict, invoice_id: str):
             "iban": invoice.iban,
             "bic": invoice.bic,
             "payment_account_name": invoice.payment_account_name,
+            "logo_url": org.logo_url if org else None,
         }
 
         xml_content = XRechnungGenerator().generate_xml(invoice_data)

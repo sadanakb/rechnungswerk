@@ -177,6 +177,7 @@ async def download_pdf(
         "iban": invoice.iban or "",
         "bic": invoice.bic or "",
         "payment_account_name": invoice.payment_account_name or "",
+        "logo_url": _org.logo_url if _org else None,
     }
 
     xml_content = XRechnungGenerator().generate_xml(invoice_data)

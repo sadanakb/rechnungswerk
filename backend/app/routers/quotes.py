@@ -17,7 +17,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Quote, Invoice
+from app.models import Quote, Invoice, Organization
 from app.schemas_quotes import (
     QuoteCreate,
     QuoteUpdate,
@@ -461,6 +461,8 @@ async def get_quote_pdf(
 
     _ensure_quote_belongs_to_org(quote, current_user.get("org_id"))
 
+    org = db.query(Organization).filter(Organization.id == quote.organization_id).first()
+
     # Build quote data dict
     quote_data = {
         'quote_number': quote.quote_number or quote.quote_id,
@@ -483,6 +485,7 @@ async def get_quote_pdf(
         'iban': quote.iban,
         'bic': quote.bic,
         'payment_account_name': quote.payment_account_name,
+        'logo_url': org.logo_url if org else None,
     }
 
     # Generate PDF

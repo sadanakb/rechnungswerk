@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Invoice, UploadLog
+from app.models import Invoice, Organization, UploadLog
 from app.schemas import (
     InvoiceCreate, InvoiceResponse, InvoiceDetailResponse, InvoiceListResponse, OCRResult,
     BatchJobResponse, BatchFileResult,
@@ -1468,6 +1468,8 @@ async def generate_zugferd(
     # Tenant isolation
     ensure_invoice_belongs_to_org(invoice, current_user.get("org_id"))
 
+    org = db.query(Organization).filter(Organization.id == invoice.organization_id).first()
+
     # Prepare invoice data
     invoice_data = {
         "invoice_number": invoice.invoice_number,
@@ -1491,6 +1493,7 @@ async def generate_zugferd(
         "buyer_reference": invoice.buyer_reference,
         "seller_endpoint_id": invoice.seller_endpoint_id,
         "buyer_endpoint_id": invoice.buyer_endpoint_id,
+        "logo_url": org.logo_url if org else None,
     }
 
     try:

@@ -4,12 +4,46 @@ Quote (Angebot) PDF Generator — Generates a professional PDF for quotes.
 Uses weasyprint for HTML-to-PDF conversion, same pattern as zugferd_generator.
 No XML embedding (quotes don't need ZUGFeRD/XRechnung compliance).
 """
+import base64
 import html
 import logging
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_logo_quote(logo_url: Optional[str]) -> Optional[str]:
+    """Resolve logo to a data URI for use in quote PDFs.
+
+    Always converts to data: URI to stay compatible with the SSRF-safe URL fetcher.
+    Returns None if logo cannot be loaded — PDF generation continues without logo.
+    """
+    if not logo_url:
+        return None
+    try:
+        if logo_url.startswith(('http://', 'https://')):
+            import urllib.request
+            req = urllib.request.Request(logo_url, headers={'User-Agent': 'RechnungsKern-PDF/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = resp.read()
+                content_type = resp.headers.get('Content-Type', 'image/png')
+                mime = content_type.split(';')[0].strip() or 'image/png'
+        else:
+            from app.storage import get_storage
+            storage = get_storage()
+            data = storage.read(logo_url)
+            ext = logo_url.rsplit('.', 1)[-1].lower()
+            mime = {
+                'png': 'image/png',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'svg': 'image/svg+xml',
+            }.get(ext, 'image/png')
+        return f"data:{mime};base64,{base64.b64encode(data).decode()}"
+    except Exception as e:
+        logger.warning("Logo (Quote) konnte nicht geladen werden: %s — PDF wird ohne Logo generiert", e)
+        return None
 
 
 _QUOTE_HTML_TEMPLATE = """\
@@ -19,56 +53,91 @@ _QUOTE_HTML_TEMPLATE = """\
 <meta charset="UTF-8">
 <style>
   @page {{ size: A4; margin: 2cm; }}
-  body {{ font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10pt; color: #1a1a2e; line-height: 1.5; }}
-  .header {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
-  .brand {{ font-size: 18pt; font-weight: bold; color: #0d9488; }}
-  .meta {{ text-align: right; font-size: 9pt; color: #64748b; }}
-  .parties {{ display: flex; gap: 40px; margin-bottom: 25px; }}
-  .party {{ flex: 1; }}
-  .party h3 {{ font-size: 8pt; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 5px; }}
-  .party p {{ margin: 2px 0; }}
-  .quote-info {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 25px; }}
-  .quote-info table {{ width: 100%; }}
-  .quote-info td {{ padding: 3px 10px; }}
-  .quote-info td:first-child {{ font-weight: 600; color: #334155; width: 180px; }}
-  .intro-text {{ margin-bottom: 20px; padding: 10px; background: #f0fdfa; border-left: 3px solid #0d9488; }}
-  table.items {{ width: 100%; border-collapse: collapse; margin-bottom: 25px; }}
-  table.items th {{ background: #0d9488; color: white; padding: 8px 12px; text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; }}
-  table.items th:last-child, table.items td:last-child {{ text-align: right; }}
-  table.items td {{ padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }}
-  table.items tr:nth-child(even) {{ background: #f8fafc; }}
-  .totals {{ float: right; width: 250px; }}
-  .totals table {{ width: 100%; }}
-  .totals td {{ padding: 4px 8px; }}
+  * {{ box-sizing: border-box; }}
+  body {{ font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10pt; color: #1c1917; line-height: 1.5; margin: 0; }}
+
+  /* ── Header ── */
+  .header {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }}
+  .header-left {{ display: flex; flex-direction: column; gap: 6px; max-width: 55%; }}
+  .header-left img {{ max-height: 48px; max-width: 180px; object-fit: contain; display: block; }}
+  .seller-compact {{ font-size: 10pt; color: #78716c; margin-top: 2px; }}
+  .seller-name-only {{ font-size: 16pt; font-weight: bold; color: #1c1917; }}
+  .header-right {{ text-align: right; }}
+  .doc-type {{ font-size: 22pt; font-weight: bold; color: #4d7c0f; letter-spacing: -0.3px; line-height: 1.1; }}
+  .doc-number {{ font-size: 11pt; font-weight: 600; color: #1c1917; margin-top: 4px; }}
+  .doc-meta {{ font-size: 9pt; color: #78716c; margin-top: 3px; }}
+
+  /* ── Parties ── */
+  .parties {{ display: flex; gap: 20px; margin-bottom: 35px; }}
+  .party {{ flex: 1; background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 8px; padding: 18px 20px; }}
+  .party-label {{ font-size: 7.5pt; text-transform: uppercase; color: #a8a29e; letter-spacing: 1.5px; margin-bottom: 8px; font-weight: 600; }}
+  .party p {{ margin: 2px 0; color: #44403c; }}
+  .party strong {{ color: #1c1917; font-size: 10.5pt; }}
+
+  /* ── Intro text ── */
+  .intro-text {{ margin-bottom: 25px; padding: 14px 16px; background: #f7fee7; border-left: 3px solid #84CC16; border-radius: 0 6px 6px 0; color: #44403c; }}
+
+  /* ── Items table ── */
+  table.items {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; page-break-inside: auto; }}
+  table.items thead {{ display: table-header-group; }}
+  table.items tr {{ page-break-inside: avoid; }}
+  table.items th {{ background: #4d7c0f; color: white; padding: 9px 10px; text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }}
+  table.items th.num {{ text-align: right; }}
+  table.items td {{ padding: 8px 10px; border-bottom: 1px solid #e7e5e4; vertical-align: top; color: #44403c; }}
+  table.items td.desc {{ word-wrap: break-word; word-break: break-word; }}
+  table.items td.num {{ text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }}
+  table.items tr:nth-child(even) {{ background: #fafaf9; }}
+  .col-pos {{ width: 8%; }}
+  .col-qty {{ width: 10%; }}
+  .col-price {{ width: 16%; }}
+  .col-net {{ width: 16%; }}
+
+  /* ── Totals ── */
+  .totals-wrap {{ display: flex; justify-content: flex-end; margin-bottom: 30px; page-break-inside: avoid; }}
+  .totals {{ width: 270px; }}
+  .totals table {{ width: 100%; border-collapse: collapse; }}
+  .totals td {{ padding: 5px 8px; color: #44403c; }}
   .totals td:last-child {{ text-align: right; font-variant-numeric: tabular-nums; }}
-  .totals tr.total {{ font-weight: bold; font-size: 12pt; border-top: 2px solid #0d9488; }}
-  .closing-text {{ clear: both; margin-top: 40px; padding: 10px; background: #f0fdfa; border-left: 3px solid #0d9488; }}
-  .payment {{ clear: both; margin-top: 20px; padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; }}
-  .payment h3 {{ font-size: 9pt; color: #047857; margin-bottom: 5px; }}
-  .footer {{ margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #94a3b8; text-align: center; }}
+  .totals tr.vat td {{ border-top: 1px solid #e7e5e4; color: #78716c; font-size: 9.5pt; }}
+  .totals tr.total td {{ border-top: 2px solid #84CC16; font-weight: bold; font-size: 12pt; color: #1c1917; padding-top: 8px; }}
+
+  /* ── Closing text ── */
+  .closing-text {{ margin-top: 30px; padding: 14px 16px; background: #f7fee7; border-left: 3px solid #84CC16; border-radius: 0 6px 6px 0; color: #44403c; }}
+
+  /* ── Payment ── */
+  .payment {{ margin-top: 25px; padding: 18px 20px; background: #f7fee7; border: 1px solid #bef264; border-radius: 8px; page-break-inside: avoid; }}
+  .payment h3 {{ font-size: 8pt; text-transform: uppercase; letter-spacing: 1px; color: #4d7c0f; margin: 0 0 10px 0; font-weight: 700; }}
+  .payment p {{ margin: 3px 0; color: #44403c; font-size: 9.5pt; }}
+
+  /* ── Footer ── */
+  .footer {{ margin-top: 40px; padding-top: 14px; border-top: 1px solid #e7e5e4; font-size: 7.5pt; color: #a8a29e; text-align: center; }}
 </style>
 </head>
 <body>
+
   <div class="header">
-    <div>
-      <div class="brand">ANGEBOT</div>
+    <div class="header-left">
+      {logo_html}
     </div>
-    <div class="meta">
-      <strong>{quote_number}</strong><br>
-      Datum: {quote_date}<br>
-      {valid_until_line}
+    <div class="header-right">
+      <div class="doc-type">ANGEBOT</div>
+      <div class="doc-number">{quote_number}</div>
+      <div class="doc-meta">
+        Datum: {quote_date}<br>
+        {valid_until_line}
+      </div>
     </div>
   </div>
 
   <div class="parties">
     <div class="party">
-      <h3>Anbieter</h3>
+      <div class="party-label">Anbieter</div>
       <p><strong>{seller_name}</strong></p>
       <p>{seller_address_html}</p>
       {seller_vat_line}
     </div>
     <div class="party">
-      <h3>Empfaenger</h3>
+      <div class="party-label">Empf&auml;nger</div>
       <p><strong>{buyer_name}</strong></p>
       <p>{buyer_address_html}</p>
       {buyer_vat_line}
@@ -80,11 +149,11 @@ _QUOTE_HTML_TEMPLATE = """\
   <table class="items">
     <thead>
       <tr>
-        <th>Pos.</th>
+        <th class="col-pos">Pos.</th>
         <th>Beschreibung</th>
-        <th>Menge</th>
-        <th>Einzelpreis</th>
-        <th>Netto</th>
+        <th class="num col-qty">Menge</th>
+        <th class="num col-price">Einzelpreis</th>
+        <th class="num col-net">Netto</th>
       </tr>
     </thead>
     <tbody>
@@ -92,12 +161,14 @@ _QUOTE_HTML_TEMPLATE = """\
     </tbody>
   </table>
 
-  <div class="totals">
-    <table>
-      <tr><td>Nettobetrag</td><td>{net_amount} {currency}</td></tr>
-      <tr><td>MwSt {tax_rate}%</td><td>{tax_amount} {currency}</td></tr>
-      <tr class="total"><td>Gesamtbetrag</td><td>{gross_amount} {currency}</td></tr>
-    </table>
+  <div class="totals-wrap">
+    <div class="totals">
+      <table>
+        <tr><td>Nettobetrag</td><td>{net_amount} {currency}</td></tr>
+        <tr class="vat"><td>MwSt. {tax_rate}&#160;%</td><td>{tax_amount} {currency}</td></tr>
+        <tr class="total"><td>Gesamtbetrag</td><td>{gross_amount} {currency}</td></tr>
+      </table>
+    </div>
   </div>
 
   {closing_text_html}
@@ -107,6 +178,7 @@ _QUOTE_HTML_TEMPLATE = """\
   <div class="footer">
     Erstellt mit RechnungsKern &middot; Dieses Angebot ist freibleibend.
   </div>
+
 </body>
 </html>
 """
@@ -117,7 +189,7 @@ def generate_quote_pdf(quote_data: Dict, output_path: str) -> str:
     Generate a PDF for a quote (Angebot).
 
     Args:
-        quote_data: Quote field dictionary
+        quote_data: Quote field dictionary (may include logo_url)
         output_path: Where to save the PDF
 
     Returns:
@@ -138,6 +210,16 @@ def _render_quote_html(data: Dict) -> str:
     """Render quote data to HTML template."""
     currency = html.escape(data.get("currency", "EUR"))
 
+    # Logo
+    resolved = _resolve_logo_quote(data.get("logo_url"))
+    if resolved:
+        logo_html = (
+            f'<img src="{resolved}" style="max-height:48px;max-width:180px;object-fit:contain;">'
+            f'<div class="seller-compact">{html.escape(data.get("seller_name", ""))}</div>'
+        )
+    else:
+        logo_html = f'<div class="seller-name-only">{html.escape(data.get("seller_name", ""))}</div>'
+
     # Line items HTML — escape all user-provided descriptions
     line_items = data.get("line_items") or []
     items_html = ""
@@ -147,23 +229,28 @@ def _render_quote_html(data: Dict) -> str:
         net = item.get("net_amount", float(qty) * float(price))
         desc = html.escape(item.get("description", "Leistung"))
         items_html += (
-            f'<tr><td>{i}</td>'
-            f'<td>{desc}</td>'
-            f'<td>{qty}</td>'
-            f'<td>{float(price):.2f} {currency}</td>'
-            f'<td>{float(net):.2f} {currency}</td></tr>\n'
+            f'<tr>'
+            f'<td>{i}</td>'
+            f'<td class="desc">{desc}</td>'
+            f'<td class="num">{qty}</td>'
+            f'<td class="num">{float(price):.2f}&#160;{currency}</td>'
+            f'<td class="num">{float(net):.2f}&#160;{currency}</td>'
+            f'</tr>\n'
         )
 
     if not items_html:
+        net_amt = float(data.get("net_amount", 0))
         items_html = (
-            f'<tr><td>1</td><td>Leistung</td><td>1</td>'
-            f'<td>{float(data.get("net_amount", 0)):.2f} {currency}</td>'
-            f'<td>{float(data.get("net_amount", 0)):.2f} {currency}</td></tr>'
+            f'<tr>'
+            f'<td>1</td><td class="desc">Leistung</td><td class="num">1</td>'
+            f'<td class="num">{net_amt:.2f}&#160;{currency}</td>'
+            f'<td class="num">{net_amt:.2f}&#160;{currency}</td>'
+            f'</tr>'
         )
 
     # Valid until date
     valid_until = data.get("valid_until")
-    valid_until_line = f"Gueltig bis: {html.escape(str(valid_until))}" if valid_until else ""
+    valid_until_line = f"G&uuml;ltig bis: {html.escape(str(valid_until))}" if valid_until else ""
 
     # Seller VAT
     seller_vat = data.get("seller_vat_id")
@@ -188,14 +275,13 @@ def _render_quote_html(data: Dict) -> str:
         iban = html.escape(iban_raw)
         bic = html.escape(data.get("bic", ""))
         account_name = html.escape(data.get("payment_account_name", ""))
-        payment_html = f"""
-        <div class="payment">
-          <h3>Zahlungsinformationen</h3>
-          <p>IBAN: <strong>{iban}</strong></p>
-          {"<p>BIC: " + bic + "</p>" if bic else ""}
-          {"<p>Kontoinhaber: " + account_name + "</p>" if account_name else ""}
-        </div>
-        """
+        payment_html = '<div class="payment"><h3>Zahlungsinformationen</h3>'
+        payment_html += f'<p>IBAN: <strong>{iban}</strong></p>'
+        if bic:
+            payment_html += f'<p>BIC: {bic}</p>'
+        if account_name:
+            payment_html += f'<p>Kontoinhaber: {account_name}</p>'
+        payment_html += '</div>'
 
     # Addresses — escape FIRST, then replace newlines
     seller_addr = html.escape(data.get("seller_address") or "").replace("\n", "<br>")
@@ -203,14 +289,14 @@ def _render_quote_html(data: Dict) -> str:
 
     # Escape remaining user-provided fields
     quote_number = html.escape(data.get("quote_number", ""))
-    seller_name = html.escape(data.get("seller_name", ""))
     buyer_name = html.escape(data.get("buyer_name", ""))
 
     return _QUOTE_HTML_TEMPLATE.format(
+        logo_html=logo_html,
         quote_number=quote_number,
         quote_date=html.escape(str(data.get("quote_date", ""))),
         valid_until_line=valid_until_line,
-        seller_name=seller_name,
+        seller_name=html.escape(data.get("seller_name", "")),
         seller_address_html=seller_addr,
         seller_vat_line=seller_vat_line,
         buyer_name=buyer_name,
@@ -231,7 +317,8 @@ def _render_quote_html(data: Dict) -> str:
 def _deny_external_fetcher(url, **kwargs):
     """Block external URL fetches to prevent SSRF via weasyprint.
 
-    Only allow data: and file: URIs (needed for embedded resources).
+    Only allow data: and file: URIs (needed for embedded resources like logos).
+    Logo URLs are pre-fetched and converted to data: URIs by _resolve_logo_quote().
     """
     if url.startswith('data:') or url.startswith('file:'):
         from weasyprint import default_url_fetcher

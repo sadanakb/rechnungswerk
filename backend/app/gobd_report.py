@@ -95,7 +95,7 @@ def generate_gobd_report(org_name: str) -> bytes:
     ]
     table = Table(access_data, colWidths=[4 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm])
     table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.059, 0.094, 0.165)),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.306, 0.294, 0.290)),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
@@ -121,7 +121,7 @@ def generate_gobd_report(org_name: str) -> bytes:
     ]
     table2 = Table(retention_data, colWidths=[5 * cm, 3 * cm, 6 * cm])
     table2.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.059, 0.094, 0.165)),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.306, 0.294, 0.290)),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
