@@ -28,7 +28,7 @@ _INVOICE_HTML_TEMPLATE = """\
   @page {{ size: A4; margin: 2cm; }}
   body {{ font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10pt; color: #1a1a2e; line-height: 1.5; }}
   .header {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
-  .brand {{ font-size: 18pt; font-weight: bold; color: #1d4ed8; }}
+  .brand {{ font-size: 18pt; font-weight: bold; color: #84CC16; }}
   .meta {{ text-align: right; font-size: 9pt; color: #64748b; }}
   .parties {{ display: flex; gap: 40px; margin-bottom: 25px; }}
   .party {{ flex: 1; }}
@@ -39,7 +39,7 @@ _INVOICE_HTML_TEMPLATE = """\
   .invoice-info td {{ padding: 3px 10px; }}
   .invoice-info td:first-child {{ font-weight: 600; color: #334155; width: 180px; }}
   table.items {{ width: 100%; border-collapse: collapse; margin-bottom: 25px; }}
-  table.items th {{ background: #1d4ed8; color: white; padding: 8px 12px; text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; }}
+  table.items th {{ background: #84CC16; color: white; padding: 8px 12px; text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; }}
   table.items th:last-child, table.items td:last-child {{ text-align: right; }}
   table.items td {{ padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }}
   table.items tr:nth-child(even) {{ background: #f8fafc; }}
@@ -47,11 +47,11 @@ _INVOICE_HTML_TEMPLATE = """\
   .totals table {{ width: 100%; }}
   .totals td {{ padding: 4px 8px; }}
   .totals td:last-child {{ text-align: right; font-variant-numeric: tabular-nums; }}
-  .totals tr.total {{ font-weight: bold; font-size: 12pt; border-top: 2px solid #1d4ed8; }}
+  .totals tr.total {{ font-weight: bold; font-size: 12pt; border-top: 2px solid #84CC16; }}
   .payment {{ clear: both; margin-top: 40px; padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; }}
   .payment h3 {{ font-size: 9pt; color: #047857; margin-bottom: 5px; }}
   .footer {{ margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #94a3b8; text-align: center; }}
-  .zugferd-badge {{ display: inline-block; background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 7pt; font-weight: 600; }}
+  .zugferd-badge {{ display: inline-block; background: #ecfccb; color: #84CC16; padding: 2px 8px; border-radius: 4px; font-size: 7pt; font-weight: 600; }}
 </style>
 </head>
 <body>

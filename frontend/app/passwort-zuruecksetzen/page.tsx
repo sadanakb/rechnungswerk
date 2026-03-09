@@ -88,19 +88,8 @@ function ResetPasswordContent() {
     return (
       <div className="auth-page">
         <div className="auth-card text-center">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 mb-6 text-xl font-bold tracking-tight"
-            style={{ color: 'rgb(var(--primary))' }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-              <path d="M14 2v6h6" />
-              <path d="M16 13H8" />
-              <path d="M16 17H8" />
-              <path d="M10 9H8" />
-            </svg>
-            RechnungsWerk
+          <Link href="/login" className="inline-block mb-6">
+            <img src="/logo-stacked.png" alt="RechnungsWerk" className="h-20 mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold mb-3" style={{ color: 'rgb(var(--foreground))' }}>
             Ungültiger Link
@@ -124,19 +113,8 @@ function ResetPasswordContent() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="text-center mb-8">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 mb-6 text-xl font-bold tracking-tight"
-            style={{ color: 'rgb(var(--primary))' }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-              <path d="M14 2v6h6" />
-              <path d="M16 13H8" />
-              <path d="M16 17H8" />
-              <path d="M10 9H8" />
-            </svg>
-            RechnungsWerk
+          <Link href="/login" className="inline-block mb-6">
+            <img src="/logo-stacked.png" alt="RechnungsWerk" className="h-20 mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--foreground))' }}>
             Neues Passwort setzen

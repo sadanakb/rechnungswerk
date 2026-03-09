@@ -7,6 +7,7 @@ export default function NotFound() {
       style={{ backgroundColor: 'rgb(var(--background))' }}
     >
       <div className="text-center max-w-md">
+        <img src="/logo-icon.png" alt="RechnungsWerk" className="h-16 w-16 mx-auto mb-4" />
         {/* Large 404 */}
         <p
           className="text-[8rem] font-extrabold leading-none select-none"

@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '32x32' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   openGraph: {
@@ -31,6 +31,7 @@ export const metadata: Metadata = {
     siteName: 'RechnungsWerk',
     locale: 'de_DE',
     type: 'website',
+    images: [{ url: '/logo-stacked.png', width: 512, height: 512, alt: 'RechnungsWerk Logo' }],
   },
   twitter: {
     card: 'summary_large_image',

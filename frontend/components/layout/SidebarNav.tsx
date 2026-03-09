@@ -171,12 +171,7 @@ export function SidebarNav() {
           className="flex items-center gap-2.5 px-4 h-14 border-b shrink-0"
           style={{ borderColor: 'rgb(var(--sidebar-border))' }}
         >
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm text-white"
-            style={{ backgroundColor: 'rgb(var(--primary))' }}
-          >
-            R
-          </div>
+          <img src="/logo-icon.png" alt="RechnungsWerk" className="w-7 h-7 rounded-lg shrink-0" />
 
           {!collapsed && (
             <span
@@ -325,12 +320,7 @@ export function SidebarNav() {
               </div>
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
                 <div className="flex items-center gap-2">
-                  <div
-                    className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 font-bold text-xs text-white"
-                    style={{ backgroundColor: 'rgb(var(--primary))' }}
-                  >
-                    R
-                  </div>
+                  <img src="/logo-icon.png" alt="RechnungsWerk" className="w-6 h-6 rounded-md shrink-0" />
                   <span className="text-sm font-semibold" style={{ color: 'rgb(var(--foreground))' }}>Navigation</span>
                 </div>
                 <button

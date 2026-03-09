@@ -250,7 +250,7 @@ export default function PortalPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
-              RechnungsWerk
+              Rechnungs<span style={{ color: '#84CC16' }}>Werk</span>
             </p>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
               Ihre Rechnung
