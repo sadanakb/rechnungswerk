@@ -407,7 +407,7 @@ export default function ManualPage() {
   const errorMessages = collectErrorMessages(errors as unknown as Record<string, unknown>)
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6 max-w-3xl mx-auto">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-28 lg:pb-6 max-w-3xl mx-auto">
       {/* Page header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -419,29 +419,6 @@ export default function ManualPage() {
         </h1>
         <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--foreground-muted))' }}>
           Erstelle eine elektronische Rechnung im XRechnung-Format
-        </p>
-      </motion.div>
-
-      {/* Intro info box */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-6 rounded-xl border p-4"
-        style={{
-          backgroundColor: 'rgb(var(--primary) / 0.06)',
-          borderColor: 'rgb(var(--primary) / 0.2)',
-        }}
-      >
-        <p className="text-sm font-medium mb-1.5" style={{ color: 'rgb(var(--primary))' }}>
-          So funktioniert&apos;s
-        </p>
-        <p className="text-xs leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
-          Fuellen Sie die Felder aus, um eine XRechnung (elektronische Rechnung) zu erstellen.
-          Felder mit <span style={{ color: 'rgb(var(--destructive))' }}>*</span> sind Pflichtfelder.
-          Am Ende wird automatisch eine XML-Datei im XRechnung 3.0.2 Format erzeugt,
-          die Sie an Behoerden oder Unternehmen senden koennen.
-          Die BT-Nummern (z.B. BT-1) sind offizielle Feldbezeichnungen des XRechnung-Standards.
         </p>
       </motion.div>
 
@@ -525,19 +502,20 @@ export default function ManualPage() {
         )}
       </AnimatePresence>
 
-      <form ref={formRef} onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-5">
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
 
-        {/* ---- Rechnungsinformationen ---- */}
+        {/* ---- Section 1: Ihre Daten ---- */}
         <motion.div
           custom={0}
           variants={sectionVariants}
           initial="hidden"
           animate="visible"
         >
-          <Section title="Rechnungsinformationen" icon={<FileText size={16} />} info="Grunddaten Ihrer Rechnung: Nummer, Datum und Steuersatz. Die Rechnungsnummer muss eindeutig sein (z.B. RE-2026-001). Das Faelligkeitsdatum ist optional — wenn leer, gilt die gesetzliche Frist.">
+          <Section step={1} title="Ihre Daten" icon={<FileText size={16} />} subtitle="Rechnungsinformationen und Verkäuferdaten">
+            {/* Invoice info sub-group */}
             <div className="grid grid-cols-2 gap-4">
               <div data-has-error={hasFieldError('invoice_number')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Rechnungsnummer <BT>BT-1</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                 </label>
                 <input
@@ -549,7 +527,7 @@ export default function ManualPage() {
                 <FieldError message={getFieldError('invoice_number')} />
               </div>
               <div data-has-error={hasFieldError('invoice_date')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Rechnungsdatum <BT>BT-2</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                 </label>
                 <input
@@ -561,13 +539,13 @@ export default function ManualPage() {
                 <FieldError message={getFieldError('invoice_date')} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Fälligkeitsdatum <BT>BT-9</BT>
                 </label>
                 <input type="date" {...register('due_date')} className={inputClass} style={inputStyle} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   MwSt-Satz % <BT>BT-119</BT>
                 </label>
                 <input
@@ -581,20 +559,14 @@ export default function ManualPage() {
                 />
               </div>
             </div>
-          </Section>
-        </motion.div>
 
-        {/* ---- Verkäufer ---- */}
-        <motion.div
-          custom={1}
-          variants={sectionVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Section title="Verkäufer (Seller)" badge="BT-27 bis BT-40" info="Das sind Ihre eigenen Firmendaten — Name, USt-IdNr. und Adresse. Diese Angaben erscheinen auf der Rechnung als Absender.">
-            <div className="space-y-3">
+            {/* Divider */}
+            <div className="border-t my-6" style={{ borderColor: 'rgb(var(--border))' }} />
+
+            {/* Seller fields */}
+            <div className="space-y-4">
               <div data-has-error={hasFieldError('seller_name')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Firmenname <BT>BT-27</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                 </label>
                 <input
@@ -606,7 +578,7 @@ export default function ManualPage() {
                 <FieldError message={getFieldError('seller_name')} />
               </div>
               <div data-has-error={hasFieldError('seller_vat_id')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   USt-IdNr. <BT>BT-31</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                   <span className="ml-1 text-xs font-normal text-amber-500">(Pflicht ab XRechnung 3.0.2)</span>
                 </label>
@@ -622,7 +594,7 @@ export default function ManualPage() {
                 <FieldError message={getFieldError('seller_vat_id')} />
               </div>
               <div data-has-error={hasFieldError('seller_address')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Adresse <BT>BT-35</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                   <span className="ml-1 text-xs font-normal" style={labelMutedStyle}>(Straße, PLZ Stadt)</span>
                 </label>
@@ -639,17 +611,17 @@ export default function ManualPage() {
           </Section>
         </motion.div>
 
-        {/* ---- Käufer ---- */}
+        {/* ---- Section 2: Empfänger ---- */}
         <motion.div
-          custom={2}
+          custom={1}
           variants={sectionVariants}
           initial="hidden"
           animate="visible"
         >
-          <Section title="Käufer (Buyer)" badge="BT-44 bis BT-55" info="Die Daten Ihres Kunden — an wen geht die Rechnung? USt-IdNr. des Kaeufers ist nur bei innergemeinschaftlichen Lieferungen (EU) noetig.">
-            <div className="space-y-3">
+          <Section step={2} title="Empfänger" subtitle="An wen geht die Rechnung?">
+            <div className="space-y-4">
               <div data-has-error={hasFieldError('buyer_name')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Firmenname <BT>BT-44</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                 </label>
                 <input
@@ -661,7 +633,7 @@ export default function ManualPage() {
                 <FieldError message={getFieldError('buyer_name')} />
               </div>
               <div data-has-error={hasFieldError('buyer_vat_id')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   USt-IdNr. <BT>BT-48</BT>
                   <span className="ml-1 text-xs font-normal" style={labelMutedStyle}>(optional)</span>
                 </label>
@@ -676,7 +648,7 @@ export default function ManualPage() {
                 <FieldError message={getFieldError('buyer_vat_id')} />
               </div>
               <div data-has-error={hasFieldError('buyer_address')}>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
                   Adresse <BT>BT-50</BT> <span style={{ color: 'rgb(var(--destructive))' }}>*</span>
                   <span className="ml-1 text-xs font-normal" style={labelMutedStyle}>(Straße, PLZ Stadt)</span>
                 </label>
@@ -693,111 +665,14 @@ export default function ManualPage() {
           </Section>
         </motion.div>
 
-        {/* ---- Zahlungsinformationen ---- */}
+        {/* ---- Section 3: Positionen ---- */}
         <motion.div
-          custom={3}
+          custom={2}
           variants={sectionVariants}
           initial="hidden"
           animate="visible"
         >
-          <Section title="Zahlungsinformationen" icon={<CreditCard size={16} />} badge="BG-16" info="Ihre Bankverbindung fuer die Zahlung. Optional, aber empfohlen — damit kann der Empfaenger direkt ueberweisen. IBAN und BIC finden Sie auf Ihrem Kontoauszug oder im Online-Banking.">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
-                  IBAN <BT>BT-84</BT>
-                  <span className="ml-1 text-xs font-normal" style={labelMutedStyle}>(empfohlen)</span>
-                </label>
-                <input
-                  {...register('iban')}
-                  className={`${inputClass} font-mono`}
-                  style={inputStyle}
-                  placeholder="DE89 3704 0044 0532 0130 00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
-                  BIC/SWIFT <BT>BT-86</BT>
-                </label>
-                <input
-                  {...register('bic')}
-                  className={`${inputClass} font-mono`}
-                  style={inputStyle}
-                  placeholder="COBADEFFXXX"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
-                  Kontoinhaber <BT>BT-85</BT>
-                </label>
-                <input
-                  {...register('payment_account_name')}
-                  className={inputClass}
-                  style={inputStyle}
-                  placeholder="Firmenname GmbH"
-                />
-              </div>
-            </div>
-          </Section>
-        </motion.div>
-
-        {/* ---- Routing & Referenz ---- */}
-        <motion.div
-          custom={4}
-          variants={sectionVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Section title="Routing & Referenz" icon={<Network size={16} />} info="Nur relevant, wenn Sie an Behoerden (B2G) liefern. Die Leitweg-ID erhalten Sie von Ihrem oeffentlichen Auftraggeber. Fuer normale B2B-Rechnungen koennen Sie diesen Abschnitt leer lassen.">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
-                  Leitweg-ID / Bestellreferenz <BT>BT-10</BT>
-                  <span className="ml-1 text-xs font-normal text-amber-500">(Pflicht bei Behörden)</span>
-                </label>
-                <input
-                  {...register('buyer_reference')}
-                  className={inputClass}
-                  style={inputStyle}
-                  placeholder="991-12345-67"
-                />
-                <p className="text-xs mt-1" style={labelMutedStyle}>
-                  Pflicht für B2G-Rechnungen (z.B. 991-12345-67)
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
-                  Elektron. Adresse Verkäufer <BT>BT-34</BT>
-                </label>
-                <input
-                  {...register('seller_endpoint_id')}
-                  className={inputClass}
-                  style={inputStyle}
-                  placeholder="rechnung@musterfirma.de"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={labelStyle}>
-                  Elektron. Adresse Käufer <BT>BT-49</BT>
-                </label>
-                <input
-                  {...register('buyer_endpoint_id')}
-                  className={inputClass}
-                  style={inputStyle}
-                  placeholder="eingangsrechnungen@kunde.de"
-                />
-              </div>
-            </div>
-          </Section>
-        </motion.div>
-
-        {/* ---- Rechnungspositionen ---- */}
-        <motion.div
-          custom={5}
-          variants={sectionVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Section title="Rechnungspositionen (BG-25)">
+          <Section step={3} title="Positionen" subtitle="Was wird berechnet?">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs" style={labelMutedStyle}>
                 Netto-Betrag = Menge x Einzelpreis (live berechnet)
@@ -944,6 +819,98 @@ export default function ManualPage() {
           </Section>
         </motion.div>
 
+        {/* ---- Section 4: Zahlung & Zustellung ---- */}
+        <motion.div
+          custom={3}
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <Section step={4} title="Zahlung & Zustellung" icon={<CreditCard size={16} />} subtitle="Bankverbindung und elektronische Adressierung">
+            {/* Payment fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
+                  IBAN <BT>BT-84</BT>
+                  <span className="ml-1 text-xs font-normal" style={labelMutedStyle}>(empfohlen)</span>
+                </label>
+                <input
+                  {...register('iban')}
+                  className={`${inputClass} font-mono`}
+                  style={inputStyle}
+                  placeholder="DE89 3704 0044 0532 0130 00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
+                  BIC/SWIFT <BT>BT-86</BT>
+                </label>
+                <input
+                  {...register('bic')}
+                  className={`${inputClass} font-mono`}
+                  style={inputStyle}
+                  placeholder="COBADEFFXXX"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
+                  Kontoinhaber <BT>BT-85</BT>
+                </label>
+                <input
+                  {...register('payment_account_name')}
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="Firmenname GmbH"
+                />
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t my-6" style={{ borderColor: 'rgb(var(--border))' }} />
+
+            {/* Routing fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
+                  Leitweg-ID / Bestellreferenz <BT>BT-10</BT>
+                  <span className="ml-1 text-xs font-normal text-amber-500">(Pflicht bei Behörden)</span>
+                </label>
+                <input
+                  {...register('buyer_reference')}
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="991-12345-67"
+                />
+                <p className="text-xs mt-1" style={labelMutedStyle}>
+                  Pflicht für B2G-Rechnungen (z.B. 991-12345-67)
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
+                  Elektron. Adresse Verkäufer <BT>BT-34</BT>
+                </label>
+                <input
+                  {...register('seller_endpoint_id')}
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="rechnung@musterfirma.de"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={labelStyle}>
+                  Elektron. Adresse Käufer <BT>BT-49</BT>
+                </label>
+                <input
+                  {...register('buyer_endpoint_id')}
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="eingangsrechnungen@kunde.de"
+                />
+              </div>
+            </div>
+          </Section>
+        </motion.div>
+
         {/* API Error */}
         <AnimatePresence>
           {apiError && (
@@ -963,31 +930,62 @@ export default function ManualPage() {
           )}
         </AnimatePresence>
 
+        {/* Submit — desktop inline */}
         <motion.div
-          custom={6}
+          custom={4}
           variants={sectionVariants}
           initial="hidden"
           animate="visible"
+          className="hidden lg:block"
         >
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl font-bold text-base text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
             style={{ backgroundColor: 'rgb(var(--primary))' }}
           >
             {loading ? (
               <>
-                <Loader2 className="animate-spin" size={18} />
+                <Loader2 className="animate-spin" size={20} />
                 Rechnung wird erstellt...
               </>
             ) : (
               <>
-                Rechnung erstellen und XRechnung 3.0.2 generieren
-                <ArrowRight size={16} />
+                Rechnung erstellen
+                <ArrowRight size={18} />
               </>
             )}
           </button>
         </motion.div>
+
+        {/* Submit — mobile fixed bottom */}
+        <div
+          className="fixed bottom-0 left-0 right-0 p-4 lg:hidden z-40"
+          style={{
+            backgroundColor: 'rgb(var(--background))',
+            borderTop: '1px solid rgb(var(--border))',
+            boxShadow: '0 -4px 12px rgb(0 0 0 / 0.08)',
+          }}
+        >
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl font-bold text-base text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ backgroundColor: 'rgb(var(--primary))' }}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={20} />
+                Wird erstellt...
+              </>
+            ) : (
+              <>
+                Rechnung erstellen
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </div>
       </form>
     </div>
   )
@@ -1013,13 +1011,17 @@ function FieldError({ message }: { message: string | null | undefined }) {
 }
 
 function Section({
+  step,
   title,
+  subtitle,
   badge,
   icon,
   info,
   children,
 }: {
+  step?: number
   title: string
+  subtitle?: string
   badge?: string
   icon?: React.ReactNode
   info?: string
@@ -1027,33 +1029,50 @@ function Section({
 }) {
   return (
     <div
-      className="rounded-xl border p-5 sm:p-6"
+      className="rounded-2xl border p-6 sm:p-8"
       style={{
         backgroundColor: 'rgb(var(--card))',
         borderColor: 'rgb(var(--border))',
       }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        {icon && (
-          <span style={{ color: 'rgb(var(--foreground-muted))' }}>{icon}</span>
-        )}
-        <h3 className="font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
-          {title}
-        </h3>
-        {badge && (
-          <span
-            className="text-[11px] font-medium px-1.5 py-0.5 rounded"
-            style={{
-              backgroundColor: 'rgb(var(--muted))',
-              color: 'rgb(var(--foreground-muted))',
-            }}
+      <div className="flex items-start gap-3 mb-4">
+        {step && (
+          <div
+            className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+            style={{ backgroundColor: 'rgb(var(--primary))' }}
           >
-            {badge}
-          </span>
+            {step}
+          </div>
         )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {icon && (
+              <span style={{ color: 'rgb(var(--foreground-muted))' }}>{icon}</span>
+            )}
+            <h3 className="text-lg font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
+              {title}
+            </h3>
+            {badge && (
+              <span
+                className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: 'rgb(var(--muted))',
+                  color: 'rgb(var(--foreground-muted))',
+                }}
+              >
+                {badge}
+              </span>
+            )}
+          </div>
+          {subtitle && (
+            <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--foreground-muted))' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
       {info && (
-        <p className="text-xs mb-4 leading-relaxed" style={{ color: 'rgb(var(--foreground-muted))' }}>
+        <p className="text-xs mb-5 leading-relaxed pl-11" style={{ color: 'rgb(var(--foreground-muted))' }}>
           {info}
         </p>
       )}
