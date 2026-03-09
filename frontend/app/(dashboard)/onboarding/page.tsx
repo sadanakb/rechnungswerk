@@ -15,7 +15,7 @@ import {
   PenLine,
   Check,
 } from 'lucide-react'
-import { updateCompanyInfo, uploadLogo } from '@/lib/api'
+import { updateCompanyInfo, uploadLogo, completeOnboarding } from '@/lib/api'
 import { FieldHelp } from '@/components/ui/FieldHelp'
 import { FIELD_HELP } from '@/lib/field-help'
 
@@ -627,7 +627,12 @@ export default function OnboardingPage() {
     setCurrentStep(3)
   }
 
-  const handleNextFromStep3 = () => {
+  const handleNextFromStep3 = async () => {
+    try {
+      await completeOnboarding()
+    } catch {
+      // Non-blocking — proceed to done screen regardless
+    }
     setCurrentStep(4)
   }
 

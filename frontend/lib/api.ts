@@ -1002,6 +1002,7 @@ export interface OnboardingStatus {
   has_address: boolean
   vat_id: string | null
   address: string | null
+  logo_url?: string | null
 }
 
 export interface CompanyUpdateData {
@@ -1356,6 +1357,16 @@ export async function uploadLogo(file: File): Promise<{ logo_url: string }> {
   const res = await api.post('/api/onboarding/logo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+  return res.data
+}
+
+export async function completeOnboarding(): Promise<{ completed: boolean }> {
+  const res = await api.post('/api/onboarding/complete')
+  return res.data
+}
+
+export async function removeLogo(): Promise<OnboardingStatus> {
+  const res = await api.delete<OnboardingStatus>('/api/onboarding/logo')
   return res.data
 }
 

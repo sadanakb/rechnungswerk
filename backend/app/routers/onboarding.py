@@ -22,6 +22,7 @@ class OnboardingStatus(BaseModel):
     has_address: bool
     vat_id: str | None = None
     address: str | None = None
+    logo_url: str | None = None
 
 
 class CompanyUpdate(BaseModel):
@@ -43,6 +44,7 @@ CONTENT_TYPE_TO_EXT = {
     "image/png": "png",
     "image/jpeg": "jpg",
     "image/webp": "webp",
+    "image/svg+xml": "svg",
 }
 
 
@@ -54,6 +56,10 @@ def _validate_image_magic(content: bytes, content_type: str) -> bool:
         return content[:3] == b'\xff\xd8\xff'
     elif content_type == "image/webp":
         return content[:4] == b'RIFF' and b'WEBP' in content[:12]
+    elif content_type == "image/svg+xml":
+        # SVG is XML/text — look for <svg or <?xml markers
+        sample = content[:512].lower()
+        return b'<svg' in sample or b'<?xml' in sample
     return False
 
 
@@ -96,6 +102,7 @@ def get_onboarding_status(
         has_address=bool(org.address),
         vat_id=org.vat_id,
         address=org.address,
+        logo_url=org.logo_url,
     )
 
 
@@ -127,6 +134,7 @@ def update_company_info(
         has_address=bool(org.address),
         vat_id=org.vat_id,
         address=org.address,
+        logo_url=org.logo_url,
     )
 
 
@@ -137,11 +145,11 @@ async def upload_logo(
     db: Session = Depends(get_db),
 ):
     """Upload a company logo and save it to disk; update the organization record."""
-    allowed_types = {"image/png", "image/jpeg", "image/webp"}
+    allowed_types = {"image/png", "image/jpeg", "image/webp", "image/svg+xml"}
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail="Ungültiges Dateiformat. Erlaubt: PNG, JPG, WebP",
+            detail="Ungültiges Dateiformat. Erlaubt: PNG, JPG, SVG, WebP",
         )
 
     contents = await file.read()
@@ -168,6 +176,27 @@ async def upload_logo(
     db.commit()
 
     return {"logo_url": logo_url}
+
+
+@router.delete("/logo", response_model=OnboardingStatus)
+def remove_logo(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove the organization logo."""
+    org = _get_org(current_user, db)
+    org.logo_url = None
+    db.commit()
+    db.refresh(org)
+    return OnboardingStatus(
+        completed=bool(org.onboarding_completed),
+        org_name=org.name,
+        has_vat_id=bool(org.vat_id),
+        has_address=bool(org.address),
+        vat_id=org.vat_id,
+        address=org.address,
+        logo_url=None,
+    )
 
 
 @router.post("/complete", response_model=OnboardingCompleteResponse)

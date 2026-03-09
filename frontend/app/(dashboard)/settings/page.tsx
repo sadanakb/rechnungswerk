@@ -1,7 +1,7 @@
 // TODO: Split into tab components (CompanyTab, BillingTab, SecurityTab, etc.)
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   User,
@@ -51,6 +51,8 @@ import {
   updateUserProfile,
   getOnboardingStatus,
   updateCompanyInfo,
+  uploadLogo,
+  removeLogo,
   getSubscription,
   createCheckoutSession,
   createPortalSession,
@@ -113,7 +115,7 @@ const PLAN_FEATURES: PlanFeature[] = [
   { label: 'Wiederkehrende Rechnungen', free: false, starter: true, professional: true },
   { label: 'Mahnwesen', free: false, starter: true, professional: true },
   { label: 'API-Zugriff', free: false, starter: true, professional: true },
-  { label: 'Prioritaets-Support', free: false, starter: false, professional: true },
+  { label: 'Prioritäts-Support', free: false, starter: false, professional: true },
 ]
 
 const PLAN_BADGE_VARIANT: Record<string, 'secondary' | 'default' | 'success'> = {
@@ -209,7 +211,7 @@ function KontoTab() {
         return
       }
       if (newPassword !== confirmPassword) {
-        setFeedback({ type: 'error', message: 'Die Passwoerter stimmen nicht ueberein.' })
+        setFeedback({ type: 'error', message: 'Die Passwörter stimmen nicht überein.' })
         return
       }
     }
@@ -240,7 +242,7 @@ function KontoTab() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setFeedback({ type: 'success', message: 'Aenderungen wurden erfolgreich gespeichert.' })
+      setFeedback({ type: 'success', message: 'Änderungen wurden erfolgreich gespeichert.' })
       setTimeout(() => setFeedback(null), 4000)
     } catch (err) {
       setFeedback({ type: 'error', message: getErrorMessage(err, 'Speichern fehlgeschlagen.') })
@@ -263,7 +265,7 @@ function KontoTab() {
     <Card>
       <CardHeader>
         <CardTitle>Konto-Einstellungen</CardTitle>
-        <CardDescription>Verwalten Sie Ihre persoenlichen Daten und Ihr Passwort.</CardDescription>
+        <CardDescription>Verwalten Sie Ihre persönlichen Daten und Ihr Passwort.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Feedback */}
@@ -274,12 +276,12 @@ function KontoTab() {
           label="E-Mail-Adresse"
           value={profile?.email ?? ''}
           disabled
-          hint="Die E-Mail-Adresse kann nicht geaendert werden."
+          hint="Die E-Mail-Adresse kann nicht geändert werden."
         />
 
         {/* Full name */}
         <Input
-          label="Vollstaendiger Name"
+          label="Vollständiger Name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="Max Mustermann"
@@ -291,7 +293,7 @@ function KontoTab() {
         {/* Password change */}
         <div>
           <h4 className="text-sm font-semibold text-[rgb(var(--foreground))] mb-4">
-            Passwort aendern
+            Passwort ändern
           </h4>
           <div className="space-y-4">
             <Input
@@ -330,12 +332,12 @@ function KontoTab() {
               }
             />
             <Input
-              label="Passwort bestaetigen"
+              label="Passwort bestätigen"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Neues Passwort wiederholen"
-              error={passwordMismatch ? 'Passwoerter stimmen nicht ueberein.' : undefined}
+              error={passwordMismatch ? 'Passwörter stimmen nicht überein.' : undefined}
             />
           </div>
         </div>
@@ -351,7 +353,7 @@ function KontoTab() {
             ) : (
               <>
                 <Save size={16} />
-                Aenderungen speichern
+                Änderungen speichern
               </>
             )}
           </Button>
@@ -372,6 +374,9 @@ function OrganisationTab() {
   const [address, setAddress] = useState('')
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoRemoving, setLogoRemoving] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch org data on mount
   const fetchOrgData = useCallback(async () => {
@@ -426,6 +431,45 @@ function OrganisationTab() {
     }
   }
 
+  const handleLogoFile = async (file: File) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      setFeedback({ type: 'error', message: 'Ungültiges Format. Erlaubt: PNG, JPG, SVG, WebP' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setFeedback({ type: 'error', message: 'Datei zu groß. Maximum: 2 MB' })
+      return
+    }
+    setLogoUploading(true)
+    setFeedback(null)
+    try {
+      const result = await uploadLogo(file)
+      setOrgStatus((prev) => prev ? { ...prev, logo_url: result.logo_url } : prev)
+      setFeedback({ type: 'success', message: 'Logo erfolgreich hochgeladen.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Logo-Upload fehlgeschlagen.') })
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
+  const handleLogoRemove = async () => {
+    setLogoRemoving(true)
+    setFeedback(null)
+    try {
+      await removeLogo()
+      setOrgStatus((prev) => prev ? { ...prev, logo_url: null } : prev)
+      setFeedback({ type: 'success', message: 'Logo entfernt.' })
+      setTimeout(() => setFeedback(null), 4000)
+    } catch (err) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Logo konnte nicht entfernt werden.') })
+    } finally {
+      setLogoRemoving(false)
+    }
+  }
+
   if (loadingOrg) {
     return (
       <Card>
@@ -440,7 +484,7 @@ function OrganisationTab() {
     <Card>
       <CardHeader>
         <CardTitle>Organisation</CardTitle>
-        <CardDescription>Firmendaten und Steuernummer fuer Ihre Rechnungen.</CardDescription>
+        <CardDescription>Firmendaten und Steuernummer für Ihre Rechnungen.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Feedback */}
@@ -488,6 +532,66 @@ function OrganisationTab() {
           </p>
         </div>
 
+        {/* Logo */}
+        <div className="flex flex-col gap-2 w-full">
+          <label className="text-sm font-medium leading-none text-[rgb(var(--foreground))]">
+            Firmenlogo
+          </label>
+          <div className="flex items-center gap-4 flex-wrap">
+            {orgStatus?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={orgStatus.logo_url}
+                alt="Firmenlogo"
+                className="h-16 max-w-[160px] object-contain rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--secondary))] p-2"
+              />
+            ) : (
+              <div className="h-16 w-32 rounded-lg border border-dashed border-[rgb(var(--border))] bg-[rgb(var(--secondary))] flex items-center justify-center">
+                <Building2 size={20} className="text-stone-400" />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+              >
+                {logoUploading ? (
+                  <><RefreshCw size={14} className="animate-spin" /> Hochladen...</>
+                ) : (
+                  <><Upload size={14} /> Logo {orgStatus?.logo_url ? 'ändern' : 'hochladen'}</>
+                )}
+              </Button>
+              {orgStatus?.logo_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogoRemove}
+                  disabled={logoRemoving}
+                  className="text-red-600 hover:text-red-700 hover:border-red-300"
+                >
+                  {logoRemoving ? <RefreshCw size={14} className="animate-spin" /> : 'Entfernen'}
+                </Button>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-[rgb(var(--foreground-muted))]">
+            PNG, JPG, SVG oder WebP · max. 2 MB · Erscheint auf Ihren Rechnungen
+          </p>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleLogoFile(file)
+              e.target.value = ''
+            }}
+          />
+        </div>
+
         {/* Save */}
         <div className="flex items-center gap-3 pt-2">
           <Button onClick={handleSave} disabled={saving}>
@@ -499,7 +603,7 @@ function OrganisationTab() {
             ) : (
               <>
                 <Save size={16} />
-                Aenderungen speichern
+                Änderungen speichern
               </>
             )}
           </Button>
@@ -518,7 +622,7 @@ const STATUS_CONFIG: Record<string, { color: string; darkColor: string; bgColor:
   active:    { color: 'text-emerald-700', darkColor: 'dark:text-emerald-400', bgColor: 'bg-emerald-50', darkBgColor: 'dark:bg-emerald-900/20', label: 'Aktiv' },
   trialing:  { color: 'text-lime-700',    darkColor: 'dark:text-lime-400',    bgColor: 'bg-lime-50',    darkBgColor: 'dark:bg-lime-900/20',    label: 'Testphase' },
   past_due:  { color: 'text-amber-700',   darkColor: 'dark:text-amber-400',   bgColor: 'bg-amber-50',   darkBgColor: 'dark:bg-amber-900/20',   label: 'Zahlung ausstehend' },
-  cancelled: { color: 'text-red-700',     darkColor: 'dark:text-red-400',     bgColor: 'bg-red-50',     darkBgColor: 'dark:bg-red-900/20',     label: 'Gekuendigt' },
+  cancelled: { color: 'text-red-700',     darkColor: 'dark:text-red-400',     bgColor: 'bg-red-50',     darkBgColor: 'dark:bg-red-900/20',     label: 'Gekündigt' },
 }
 
 function formatBillingDate(unixTimestamp: number | null): string {
@@ -580,7 +684,7 @@ function AbonnementTab({
       const { url } = await createPortalSession()
       window.location.href = url
     } catch (err) {
-      setFeedback({ type: 'error', message: getErrorMessage(err, 'Portal konnte nicht geoeffnet werden.') })
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'Portal konnte nicht geöffnet werden.') })
       setActionLoading(false)
     }
   }
@@ -655,7 +759,7 @@ function AbonnementTab({
           {currentPlan === 'free' ? (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm text-stone-600 dark:text-stone-400 flex-1">
-                Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen wie
+                Sie nutzen den kostenlosen Plan. Upgraden Sie für erweiterte Funktionen wie
                 Analytics, Lieferanten-Verwaltung und wiederkehrende Rechnungen.
               </p>
               <Button onClick={() => handleUpgrade('starter')} disabled={actionLoading}>
@@ -675,7 +779,7 @@ function AbonnementTab({
           ) : (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm text-stone-600 dark:text-stone-400 flex-1">
-                Verwalten Sie Ihr Abonnement, Zahlungsmethode oder kuendigen Sie ueber das Kundenportal.
+                Verwalten Sie Ihr Abonnement, Zahlungsmethode oder kündigen Sie über das Kundenportal.
               </p>
               <Button variant="outline" onClick={handleManage} disabled={actionLoading}>
                 {actionLoading ? (
@@ -794,7 +898,7 @@ function AbonnementTab({
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Unbegrenzte Rechnungen</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Mahnwesen</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> API-Zugriff</li>
-                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Prioritaets-Support</li>
+                <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Prioritäts-Support</li>
               </ul>
               <Button className="w-full" variant="outline" onClick={() => handleUpgrade('professional')} disabled={actionLoading}>
                 {actionLoading ? (
@@ -911,7 +1015,7 @@ function NewKeyBox({ fullKey, onDismiss }: { fullKey: string; onDismiss: () => v
       <div className="flex items-start gap-2">
         <AlertCircle size={18} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
         <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-          Dieser Schluessel wird nur einmal angezeigt. Bitte jetzt kopieren und sicher speichern.
+          Dieser Schlüssel wird nur einmal angezeigt. Bitte jetzt kopieren und sicher speichern.
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -927,7 +1031,7 @@ function NewKeyBox({ fullKey, onDismiss }: { fullKey: string; onDismiss: () => v
         </Button>
       </div>
       <Button variant="outline" size="sm" onClick={onDismiss}>
-        Verstanden, Schluessel gespeichert
+        Verstanden, Schlüssel gespeichert
       </Button>
     </div>
   )
@@ -969,7 +1073,7 @@ function CreateKeyModal({
       const result = await createApiKey(name.trim(), selectedScopes, null)
       onCreated(result)
     } catch (err) {
-      setError(getErrorMessage(err, 'Schluessel konnte nicht erstellt werden.'))
+      setError(getErrorMessage(err, 'Schlüssel konnte nicht erstellt werden.'))
     } finally {
       setCreating(false)
     }
@@ -983,7 +1087,7 @@ function CreateKeyModal({
       ].join(' ')}>
         <div>
           <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-            Neuen API-Schluessel erstellen
+            Neuen API-Schlüssel erstellen
           </h3>
           <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
             Vergeben Sie einen Namen und waehlen Sie die gewuenschten Berechtigungen.
@@ -1046,7 +1150,7 @@ function CreateKeyModal({
             ) : (
               <>
                 <Key size={16} />
-                Schluessel erstellen
+                Schlüssel erstellen
               </>
             )}
           </Button>
@@ -1057,7 +1161,7 @@ function CreateKeyModal({
 }
 
 // ---------------------------------------------------------------------------
-// Tab: API-Schluessel (API Keys)
+// Tab: API-Schlüssel (API Keys)
 // ---------------------------------------------------------------------------
 function ApiKeysTab({ plan }: { plan: string }) {
   const currentPlan = plan?.toLowerCase() ?? 'free'
@@ -1079,7 +1183,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
       const data = await listApiKeys()
       setKeys(data)
     } catch (err) {
-      setFeedback({ type: 'error', message: getErrorMessage(err, 'API-Schluessel konnten nicht geladen werden.') })
+      setFeedback({ type: 'error', message: getErrorMessage(err, 'API-Schlüssel konnten nicht geladen werden.') })
     } finally {
       setLoading(false)
     }
@@ -1100,7 +1204,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
     try {
       await revokeApiKey(id)
       setKeys((prev) => prev.filter((k) => k.id !== id))
-      setFeedback({ type: 'success', message: 'API-Schluessel wurde widerrufen.' })
+      setFeedback({ type: 'success', message: 'API-Schlüssel wurde widerrufen.' })
       setTimeout(() => setFeedback(null), 4000)
       setRevokeConfirm({ open: false, id: null })
     } catch (err) {
@@ -1121,7 +1225,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>API-Schluessel</CardTitle>
+          <CardTitle>API-Schlüssel</CardTitle>
           <CardDescription>Programmatischer Zugriff auf die RechnungsKern API.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -1131,7 +1235,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
               API-Zugriff ist im Professional-Plan verfuegbar
             </h3>
             <p className="text-sm text-stone-500 dark:text-stone-400 mb-4 max-w-md mx-auto">
-              Mit dem Professional-Plan erhalten Sie API-Schluessel fuer die programmatische
+              Mit dem Professional-Plan erhalten Sie API-Schlüssel für die programmatische
               Erstellung und Verwaltung von E-Rechnungen.
             </p>
             <Button asChild>
@@ -1159,14 +1263,14 @@ function ApiKeysTab({ plan }: { plan: string }) {
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <CardTitle>API-Schluessel</CardTitle>
+              <CardTitle>API-Schlüssel</CardTitle>
               <CardDescription>
-                Verwenden Sie API-Schluessel fuer den programmatischen Zugriff auf die RechnungsKern API.
+                Verwenden Sie API-Schlüssel für den programmatischen Zugriff auf die RechnungsKern API.
               </CardDescription>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
               <Key size={16} />
-              Neuen API-Schluessel erstellen
+              Neuen API-Schlüssel erstellen
             </Button>
           </div>
         </CardHeader>
@@ -1191,7 +1295,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
             <div className="rounded-lg border border-dashed border-stone-200 dark:border-stone-700 p-8 text-center">
               <Key size={32} className="mx-auto mb-3 text-stone-300 dark:text-stone-600" />
               <p className="text-sm text-stone-500 dark:text-stone-400">
-                Noch keine API-Schluessel erstellt.
+                Noch keine API-Schlüssel erstellt.
               </p>
             </div>
           ) : (
@@ -1272,7 +1376,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
               <div className="text-xs text-stone-500 dark:text-stone-400 space-y-1">
                 <p>
                   <strong className="text-stone-700 dark:text-stone-300">Hinweis:</strong>{' '}
-                  Geben Sie Ihre API-Schluessel niemals weiter und speichern Sie sie nicht
+                  Geben Sie Ihre API-Schlüssel niemals weiter und speichern Sie sie nicht
                   in oeffentlichen Repositories.
                 </p>
                 <p>
@@ -1359,7 +1463,7 @@ function NummernkreisTab() {
   const handleSave = async () => {
     setFeedback(null)
     if (!prefix.trim()) {
-      setFeedback({ type: 'error', message: 'Praefix darf nicht leer sein.' })
+      setFeedback({ type: 'error', message: 'Präfix darf nicht leer sein.' })
       return
     }
     setSaving(true)
@@ -1403,7 +1507,7 @@ function NummernkreisTab() {
       <CardHeader>
         <CardTitle>Rechnungsnummern-Kreise</CardTitle>
         <CardDescription>
-          Konfigurieren Sie das Format Ihrer Rechnungsnummern. Aenderungen wirken sich nur auf neue Rechnungen aus.
+          Konfigurieren Sie das Format Ihrer Rechnungsnummern. Änderungen wirken sich nur auf neue Rechnungen aus.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -1433,7 +1537,7 @@ function NummernkreisTab() {
 
         {/* Prefix */}
         <Input
-          label="Praefix"
+          label="Präfix"
           value={prefix}
           onChange={(e) => setPrefix(e.target.value.slice(0, 10))}
           placeholder="RE"
@@ -1492,10 +1596,10 @@ function NummernkreisTab() {
         <div className="flex items-center justify-between rounded-lg border border-[rgb(var(--border))] px-4 py-3">
           <div>
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-              Jaehrlicher Zaehler-Reset
+              Jaehrlicher Zähler-Reset
             </p>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-              Setzt den Zaehler am 1. Januar jeden Jahres auf 1 zurueck.
+              Setzt den Zähler am 1. Januar jeden Jahres auf 1 zurück.
             </p>
           </div>
           <button
@@ -1581,7 +1685,7 @@ function DatevKonfigurationTab() {
       <CardHeader>
         <CardTitle>DATEV-Konfiguration</CardTitle>
         <CardDescription>
-          Pflichtfelder fuer den DATEV EXTF Buchungsstapel-Export (v700).
+          Pflichtfelder für den DATEV EXTF Buchungsstapel-Export (v700).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -1657,7 +1761,7 @@ function DatevKonfigurationTab() {
             }}
           />
           <p className="text-xs mt-1" style={{ color: 'rgb(var(--foreground-muted))' }}>
-            Wird fuer &bdquo;An Steuerberater senden&ldquo; in den Berichten verwendet.
+            Wird für &bdquo;An Steuerberater senden&ldquo; in den Berichten verwendet.
           </p>
         </div>
 
@@ -2112,7 +2216,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div>
+      <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
           Einstellungen
         </h1>
@@ -2153,7 +2257,7 @@ export default function SettingsPage() {
         </div>
 
         {/* ─── Tab: Allgemein ─── */}
-        <TabsContent value="allgemein">
+        <TabsContent value="allgemein" className="mt-8">
           <div className="space-y-6">
             <KontoTab />
             <OrganisationTab />
@@ -2163,7 +2267,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ─── Tab: Abo & Zahlung ─── */}
-        <TabsContent value="abo">
+        <TabsContent value="abo" className="mt-8">
           <div className="space-y-6">
             <AbonnementTab plan={plan} />
             <PaymentSettingsTab />
@@ -2171,8 +2275,8 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ─── Tab: Team ─── */}
-        <TabsContent value="team">
-          <div className="space-y-4">
+        <TabsContent value="team" className="mt-8">
+          <div className="space-y-6">
             <FeatureLinkCard
               href="/team"
               icon={Users}
@@ -2183,19 +2287,19 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ─── Tab: Vorlagen ─── */}
-        <TabsContent value="vorlagen">
-          <div className="space-y-4">
+        <TabsContent value="vorlagen" className="mt-8">
+          <div className="space-y-6">
             <FeatureLinkCard
               href="/templates"
               icon={FileText}
               title="Rechnungsvorlagen"
-              description="Erstellen und verwalten Sie individuelle Vorlagen fuer Ihre Rechnungen."
+              description="Erstellen und verwalten Sie individuelle Vorlagen für Ihre Rechnungen."
             />
           </div>
         </TabsContent>
 
         {/* ─── Tab: Import & Export ─── */}
-        <TabsContent value="import-export">
+        <TabsContent value="import-export" className="mt-8">
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FeatureLinkCard
@@ -2245,7 +2349,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ─── Tab: Erweitert ─── */}
-        <TabsContent value="erweitert">
+        <TabsContent value="erweitert" className="mt-8">
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <FeatureLinkCard
@@ -2258,7 +2362,7 @@ export default function SettingsPage() {
                 href="/mahnwesen"
                 icon={AlertTriangle}
                 title="Mahnwesen"
-                description="Zahlungserinnerungen fuer ueberfaellige Rechnungen versenden."
+                description="Zahlungserinnerungen fuer überfällige Rechnungen versenden."
               />
               <FeatureLinkCard
                 href="/webhooks"
@@ -2270,7 +2374,7 @@ export default function SettingsPage() {
                 href="/audit"
                 icon={ClipboardList}
                 title="Aktivitaetsprotokoll"
-                description="Alle Aenderungen und Aktionen nachvollziehen."
+                description="Alle Änderungen und Aktionen nachvollziehen."
               />
               <FeatureLinkCard
                 href="/analytics"
