@@ -26,7 +26,7 @@ function relativeTime(dateStr: string): string {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  invoice_created: '#14b8a6',   // teal
+  invoice_created: '#84CC16',   // lime
   mahnung_sent: '#f97316',      // orange
   payment_failed: '#ef4444',    // red
 }
