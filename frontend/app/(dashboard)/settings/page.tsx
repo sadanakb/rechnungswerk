@@ -26,7 +26,23 @@ import {
   Hash,
   Bell,
   DollarSign,
+  Settings,
+  Users,
+  FileText,
+  Upload,
+  Download,
+  RotateCcw,
+  AlertTriangle,
+  Globe,
+  ClipboardList,
+  BarChart3,
+  Truck,
+  CheckCircle2,
+  ScanLine,
+  Layers,
+  ChevronRight,
 } from 'lucide-react'
+import DATEVExportDialog from '@/components/DATEVExportDialog'
 import { useAuth } from '@/lib/auth'
 import {
   getUserProfile,
@@ -2036,12 +2052,49 @@ function PaymentSettingsTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Feature Link Card — used in hub tabs for relocated pages
+// ---------------------------------------------------------------------------
+function FeatureLinkCard({
+  href,
+  icon: Icon,
+  title,
+  description,
+}: {
+  href: string
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  title: string
+  description: string
+}) {
+  return (
+    <Link href={href}>
+      <Card className="group hover:border-lime-300 hover:shadow-md transition-all duration-200 cursor-pointer h-full">
+        <CardContent className="flex items-start gap-4 p-5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-lime-50 text-lime-700 dark:bg-lime-900/20 dark:text-lime-400 group-hover:bg-lime-100 dark:group-hover:bg-lime-900/30 transition-colors">
+            <Icon size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50 group-hover:text-lime-700 dark:group-hover:text-lime-400 transition-colors">
+              {title}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+              {description}
+            </p>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-lime-500 transition-colors mt-0.5" />
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Settings Page
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
   useEffect(() => { document.title = 'Einstellungen | RechnungsWerk' }, [])
   const { user, loading } = useAuth()
   const plan = user?.organization?.plan ?? 'free'
+  const [datevOpen, setDatevOpen] = useState(false)
 
   if (loading) {
     return (
@@ -2059,87 +2112,198 @@ export default function SettingsPage() {
           Einstellungen
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Verwalten Sie Ihr Konto, Ihre Organisation und Ihr Abonnement.
+          Verwalten Sie Ihr Konto, Ihre Organisation und alle Features von RechnungsWerk.
         </p>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="konto" className="w-full">
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="konto" className="gap-1.5">
-            <User size={14} />
-            <span className="hidden sm:inline">Konto</span>
-          </TabsTrigger>
-          <TabsTrigger value="organisation" className="gap-1.5">
-            <Building2 size={14} />
-            <span className="hidden sm:inline">Organisation</span>
-          </TabsTrigger>
-          <TabsTrigger value="abonnement" className="gap-1.5">
-            <CreditCard size={14} />
-            <span className="hidden sm:inline">Abonnement</span>
-          </TabsTrigger>
-          <TabsTrigger value="api" className="gap-1.5">
-            <Key size={14} />
-            <span className="hidden sm:inline">API-Schluessel</span>
-          </TabsTrigger>
-          <TabsTrigger value="rechnungen" className="gap-1.5">
-            <Hash size={14} />
-            <span className="hidden sm:inline">Rechnungen</span>
-          </TabsTrigger>
-          <TabsTrigger value="datev" className="gap-1.5">
-            <ArrowRight size={14} />
-            <span className="hidden sm:inline">DATEV</span>
-          </TabsTrigger>
-          <TabsTrigger value="benachrichtigungen" className="gap-1.5">
-            <Bell size={14} />
-            <span className="hidden sm:inline">Benachrichtigungen</span>
-          </TabsTrigger>
-          <TabsTrigger value="datenschutz" className="gap-1.5">
-            <Shield size={14} />
-            <span className="hidden sm:inline">Datenschutz</span>
-          </TabsTrigger>
-          <TabsTrigger value="zahlungen" className="flex items-center gap-1.5">
-            <DollarSign className="h-4 w-4" />
-            <span className="hidden sm:inline">Zahlungen</span>
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="allgemein" className="w-full">
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="w-full sm:w-auto flex-wrap sm:flex-nowrap h-auto sm:h-10 gap-1 p-1">
+            <TabsTrigger value="allgemein" className="gap-1.5">
+              <Settings size={14} />
+              <span>Allgemein</span>
+            </TabsTrigger>
+            <TabsTrigger value="abo" className="gap-1.5">
+              <CreditCard size={14} />
+              <span>Abo & Zahlung</span>
+            </TabsTrigger>
+            <TabsTrigger value="team" className="gap-1.5">
+              <Users size={14} />
+              <span>Team</span>
+            </TabsTrigger>
+            <TabsTrigger value="vorlagen" className="gap-1.5">
+              <Layers size={14} />
+              <span>Vorlagen</span>
+            </TabsTrigger>
+            <TabsTrigger value="import-export" className="gap-1.5">
+              <Download size={14} />
+              <span>Import & Export</span>
+            </TabsTrigger>
+            <TabsTrigger value="erweitert" className="gap-1.5">
+              <Zap size={14} />
+              <span>Erweitert</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="konto">
-          <KontoTab />
+        {/* ─── Tab: Allgemein ─── */}
+        <TabsContent value="allgemein">
+          <div className="space-y-6">
+            <KontoTab />
+            <OrganisationTab />
+            <NummernkreisTab />
+            <PushSettingsTab />
+          </div>
         </TabsContent>
 
-        <TabsContent value="organisation">
-          <OrganisationTab />
+        {/* ─── Tab: Abo & Zahlung ─── */}
+        <TabsContent value="abo">
+          <div className="space-y-6">
+            <AbonnementTab plan={plan} />
+            <PaymentSettingsTab />
+          </div>
         </TabsContent>
 
-        <TabsContent value="abonnement">
-          <AbonnementTab plan={plan} />
+        {/* ─── Tab: Team ─── */}
+        <TabsContent value="team">
+          <div className="space-y-4">
+            <FeatureLinkCard
+              href="/team"
+              icon={Users}
+              title="Team-Mitglieder"
+              description="Laden Sie Teammitglieder ein, weisen Sie Rollen zu und verwalten Sie den Zugriff."
+            />
+          </div>
         </TabsContent>
 
-        <TabsContent value="api">
-          <ApiKeysTab plan={plan} />
+        {/* ─── Tab: Vorlagen ─── */}
+        <TabsContent value="vorlagen">
+          <div className="space-y-4">
+            <FeatureLinkCard
+              href="/templates"
+              icon={FileText}
+              title="Rechnungsvorlagen"
+              description="Erstellen und verwalten Sie individuelle Vorlagen fuer Ihre Rechnungen."
+            />
+          </div>
         </TabsContent>
 
-        <TabsContent value="rechnungen">
-          <NummernkreisTab />
+        {/* ─── Tab: Import & Export ─── */}
+        <TabsContent value="import-export">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FeatureLinkCard
+                href="/import"
+                icon={Upload}
+                title="CSV-Import"
+                description="Importieren Sie Rechnungen und Kontakte aus CSV-Dateien."
+              />
+              <FeatureLinkCard
+                href="/ocr"
+                icon={ScanLine}
+                title="OCR-Upload"
+                description="Rechnungen per PDF hochladen und automatisch erkennen lassen."
+              />
+            </div>
+
+            {/* DATEV Export Button */}
+            <Card>
+              <CardContent className="flex items-center justify-between p-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-lime-50 text-lime-700 dark:bg-lime-900/20 dark:text-lime-400">
+                    <Download size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                      DATEV-Export
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Buchungsstapel im DATEV-Format exportieren.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDatevOpen(true)}
+                  className="shrink-0"
+                >
+                  Exportieren
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* DATEV Configuration */}
+            <DatevKonfigurationTab />
+          </div>
         </TabsContent>
 
-        <TabsContent value="datev">
-          <DatevKonfigurationTab />
-        </TabsContent>
+        {/* ─── Tab: Erweitert ─── */}
+        <TabsContent value="erweitert">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <FeatureLinkCard
+                href="/recurring"
+                icon={RotateCcw}
+                title="Wiederkehrende Rechnungen"
+                description="Automatisch wiederkehrende Rechnungen erstellen und verwalten."
+              />
+              <FeatureLinkCard
+                href="/mahnwesen"
+                icon={AlertTriangle}
+                title="Mahnwesen"
+                description="Zahlungserinnerungen fuer ueberfaellige Rechnungen versenden."
+              />
+              <FeatureLinkCard
+                href="/webhooks"
+                icon={Globe}
+                title="Webhooks"
+                description="Ereignisse an externe Systeme weiterleiten."
+              />
+              <FeatureLinkCard
+                href="/audit"
+                icon={ClipboardList}
+                title="Aktivitaetsprotokoll"
+                description="Alle Aenderungen und Aktionen nachvollziehen."
+              />
+              <FeatureLinkCard
+                href="/analytics"
+                icon={BarChart3}
+                title="Analytics"
+                description="Detaillierte Statistiken und Auswertungen Ihrer Rechnungen."
+              />
+              <FeatureLinkCard
+                href="/berichte"
+                icon={FileText}
+                title="Berichte"
+                description="Steuer- und Cashflow-Berichte generieren und exportieren."
+              />
+              <FeatureLinkCard
+                href="/suppliers"
+                icon={Truck}
+                title="Lieferanten"
+                description="Lieferantenstammdaten verwalten und SKR-Konten zuordnen."
+              />
+              <FeatureLinkCard
+                href="/validator"
+                icon={CheckCircle2}
+                title="XRechnung-Validator"
+                description="XRechnungs- und ZUGFeRD-Dateien auf Konformitaet pruefen."
+              />
+            </div>
 
-        <TabsContent value="benachrichtigungen">
-          <PushSettingsTab />
-        </TabsContent>
+            {/* API Keys */}
+            <ApiKeysTab plan={plan} />
 
-        <TabsContent value="datenschutz">
-          <GdprTab />
-        </TabsContent>
-
-        <TabsContent value="zahlungen">
-          <PaymentSettingsTab />
+            {/* GDPR / Privacy */}
+            <GdprTab />
+          </div>
         </TabsContent>
       </Tabs>
+
+      {/* DATEV Export Dialog */}
+      <DATEVExportDialog open={datevOpen} onOpenChange={setDatevOpen} />
     </div>
   )
 }
