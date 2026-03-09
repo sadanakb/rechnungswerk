@@ -85,9 +85,9 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; className: str
   },
   ocr_processed: {
     label: 'OCR',
-    dot: 'bg-blue-500',
+    dot: 'bg-lime-500',
     className:
-      'bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-800',
+      'bg-lime-50 text-lime-700 ring-lime-200 dark:bg-lime-900/20 dark:text-lime-400 dark:ring-lime-800',
   },
   error: {
     label: 'Fehler',
@@ -143,8 +143,8 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; dot: string; classN
   },
   cancelled: {
     label: 'Storniert',
-    dot: 'bg-slate-400',
-    className: 'bg-slate-50 text-slate-500 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:ring-slate-700',
+    dot: 'bg-stone-400',
+    className: 'bg-stone-50 text-stone-500 ring-stone-200 dark:bg-stone-800/40 dark:text-stone-400 dark:ring-stone-700',
   },
 }
 

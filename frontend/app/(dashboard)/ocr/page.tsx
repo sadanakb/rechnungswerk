@@ -329,10 +329,10 @@ export default function OCRPage() {
             className={cn(
               'rounded-xl border-2 border-dashed p-10 text-center cursor-pointer transition-all duration-200',
               isDragActive
-                ? 'border-blue-500 drag-active-glow'
+                ? 'border-lime-500 drag-active-glow'
                 : uploading
                 ? 'cursor-not-allowed border-opacity-50'
-                : 'hover:border-blue-400'
+                : 'hover:border-lime-400'
             )}
             style={{
               borderColor: isDragActive

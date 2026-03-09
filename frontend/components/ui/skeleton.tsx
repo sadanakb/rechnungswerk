@@ -14,7 +14,7 @@ const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
       ref={ref}
       aria-hidden="true"
       className={cn(
-        'animate-pulse bg-slate-200 dark:bg-slate-800',
+        'animate-pulse bg-stone-200 dark:bg-stone-800',
         circle ? 'rounded-full' : 'rounded-md',
         className
       )}
@@ -64,7 +64,7 @@ const SkeletonCard = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
     <div
       ref={ref}
       className={cn(
-        'rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950',
+        'rounded-xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-950',
         className
       )}
       {...props}

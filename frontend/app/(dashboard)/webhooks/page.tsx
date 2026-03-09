@@ -66,7 +66,7 @@ function formatDateTime(iso: string | null): string {
 const EVENT_COLORS: Record<string, { bg: string; text: string }> = {
   'invoice.created':   { bg: 'rgb(var(--primary-light))',  text: 'rgb(var(--primary))' },
   'invoice.validated': { bg: 'rgba(34,197,94,0.12)',        text: 'rgb(34,197,94)' },
-  'invoice.exported':  { bg: 'rgba(59,130,246,0.12)',       text: 'rgb(59,130,246)' },
+  'invoice.exported':  { bg: 'rgba(132,204,22,0.12)',       text: 'rgb(132,204,22)' },
   'mahnung.sent':      { bg: 'rgba(245,158,11,0.12)',        text: 'rgb(245,158,11)' },
   'supplier.created':  { bg: 'rgba(168,85,247,0.12)',        text: 'rgb(168,85,247)' },
 }
@@ -741,7 +741,7 @@ function WebhookRow({ webhook, onDeleted, onToast }: WebhookRowProps) {
           <DialogFooter>
             <button
               onClick={() => setDeleteConfirmOpen(false)}
-              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
               style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))' }}
             >
               Abbrechen

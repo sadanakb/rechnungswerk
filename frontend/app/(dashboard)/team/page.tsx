@@ -171,7 +171,7 @@ function InviteDialog({
           />
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            <label className="text-sm font-medium text-stone-700 dark:text-stone-200">
               Rolle
             </label>
             <select
@@ -179,15 +179,15 @@ function InviteDialog({
               onChange={(e) => setRole(e.target.value as 'member' | 'admin')}
               className={[
                 'flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm',
-                'text-slate-900 border-slate-300',
-                'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-blue-500',
-                'dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:focus:ring-blue-400',
+                'text-stone-900 border-stone-300',
+                'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
+                'dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700 dark:focus:ring-lime-400',
               ].join(' ')}
             >
               <option value="member">Mitglied</option>
               <option value="admin">Admin</option>
             </select>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-stone-500 dark:text-stone-400">
               Admins koennen weitere Mitglieder einladen.
             </p>
           </div>
@@ -223,10 +223,10 @@ function UpgradePrompt() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
           Team
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
           Verwalten Sie Ihr Team und laden Sie Mitglieder ein.
         </p>
       </div>
@@ -234,11 +234,11 @@ function UpgradePrompt() {
       <Card>
         <CardContent className="py-12">
           <div className="text-center">
-            <Lock size={48} className="mx-auto mb-4 text-slate-400 dark:text-slate-500" />
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            <Lock size={48} className="mx-auto mb-4 text-stone-400 dark:text-stone-500" />
+            <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-2">
               Team-Verwaltung ist im Professional-Plan verfuegbar
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
+            <p className="text-sm text-stone-500 dark:text-stone-400 mb-6 max-w-md mx-auto">
               Mit dem Professional-Plan koennen Sie Teammitglieder einladen, Rollen verwalten
               und gemeinsam an Rechnungen arbeiten.
             </p>
@@ -339,7 +339,7 @@ export default function TeamPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <RefreshCw size={24} className="animate-spin text-slate-400" />
+        <RefreshCw size={24} className="animate-spin text-stone-400" />
       </div>
     )
   }
@@ -354,10 +354,10 @@ export default function TeamPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
             Team
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
             Verwalten Sie Ihr Team und laden Sie neue Mitglieder ein.
           </p>
         </div>
@@ -378,10 +378,10 @@ export default function TeamPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw size={20} className="animate-spin text-slate-400" />
+              <RefreshCw size={20} className="animate-spin text-stone-400" />
             </div>
           ) : members.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+            <div className="text-center py-12 text-stone-500 dark:text-stone-400">
               <UsersRound size={40} className="mx-auto mb-3 opacity-40" />
               <p className="text-sm">Keine Mitglieder gefunden.</p>
             </div>
@@ -389,21 +389,21 @@ export default function TeamPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-3 pr-4 font-medium text-slate-600 dark:text-slate-400">
+                  <tr className="border-b border-stone-200 dark:border-stone-700">
+                    <th className="text-left py-3 pr-4 font-medium text-stone-600 dark:text-stone-400">
                       Name
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
+                    <th className="text-left py-3 px-4 font-medium text-stone-600 dark:text-stone-400">
                       E-Mail
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
+                    <th className="text-left py-3 px-4 font-medium text-stone-600 dark:text-stone-400">
                       Rolle
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">
+                    <th className="text-left py-3 px-4 font-medium text-stone-600 dark:text-stone-400">
                       Beigetreten
                     </th>
                     {isOwner && (
-                      <th className="text-right py-3 pl-4 font-medium text-slate-600 dark:text-slate-400">
+                      <th className="text-right py-3 pl-4 font-medium text-stone-600 dark:text-stone-400">
                         Aktionen
                       </th>
                     )}
@@ -413,9 +413,9 @@ export default function TeamPage() {
                   {members.map((member) => (
                     <tr
                       key={member.id}
-                      className="border-b border-slate-100 dark:border-slate-800 last:border-0"
+                      className="border-b border-stone-100 dark:border-stone-800 last:border-0"
                     >
-                      <td className="py-3 pr-4 text-slate-900 dark:text-slate-100">
+                      <td className="py-3 pr-4 text-stone-900 dark:text-stone-100">
                         <div className="flex items-center gap-3">
                           <div
                             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0"
@@ -428,13 +428,13 @@ export default function TeamPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                      <td className="py-3 px-4 text-stone-600 dark:text-stone-400">
                         {member.email}
                       </td>
                       <td className="py-3 px-4">
                         <RoleBadge role={member.role} />
                       </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                      <td className="py-3 px-4 text-stone-600 dark:text-stone-400">
                         {member.joined_at
                           ? new Date(member.joined_at).toLocaleDateString('de-DE', {
                               day: '2-digit',

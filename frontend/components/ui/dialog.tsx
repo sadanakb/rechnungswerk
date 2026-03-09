@@ -40,8 +40,8 @@ const DialogContent = React.forwardRef<
       className={cn(
         'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
         'w-full max-w-lg',
-        'rounded-xl border border-slate-200 bg-white shadow-xl',
-        'dark:border-slate-800 dark:bg-slate-950',
+        'rounded-xl border border-stone-200 bg-white shadow-xl',
+        'dark:border-stone-800 dark:bg-stone-950',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -57,11 +57,11 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Close
           className={cn(
             'absolute right-4 top-4 rounded-sm opacity-70',
-            'text-slate-500 dark:text-slate-400',
+            'text-stone-500 dark:text-stone-400',
             'ring-offset-white transition-opacity',
-            'hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+            'hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2',
             'disabled:pointer-events-none',
-            'dark:ring-offset-slate-950',
+            'dark:ring-offset-stone-950',
           )}
         >
           <X className="h-4 w-4" />
@@ -100,7 +100,7 @@ const DialogTitle = React.forwardRef<
     ref={ref}
     className={cn(
       'text-lg font-semibold leading-none tracking-tight',
-      'text-slate-900 dark:text-slate-50',
+      'text-stone-900 dark:text-stone-50',
       className
     )}
     {...props}
@@ -114,7 +114,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('px-6 py-3 text-sm text-slate-500 dark:text-slate-400', className)}
+    className={cn('px-6 py-3 text-sm text-stone-500 dark:text-stone-400', className)}
     {...props}
   />
 ))

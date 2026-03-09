@@ -7,26 +7,26 @@ const badgeVariants = cva(
     'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5',
     'text-xs font-medium leading-none',
     'transition-colors duration-150',
-    'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500',
+    'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-lime-500',
   ],
   {
     variants: {
       variant: {
         default: [
-          'bg-blue-600 text-white',
-          'dark:bg-blue-500',
+          'bg-lime-600 text-white',
+          'dark:bg-lime-500',
         ],
         secondary: [
-          'bg-slate-100 text-slate-700',
-          'dark:bg-slate-800 dark:text-slate-300',
+          'bg-stone-100 text-stone-700',
+          'dark:bg-stone-800 dark:text-stone-300',
         ],
         destructive: [
           'bg-red-100 text-red-700',
           'dark:bg-red-900/40 dark:text-red-400',
         ],
         outline: [
-          'border border-slate-300 text-slate-700 bg-transparent',
-          'dark:border-slate-600 dark:text-slate-300',
+          'border border-stone-300 text-stone-700 bg-transparent',
+          'dark:border-stone-600 dark:text-stone-300',
         ],
         success: [
           'bg-emerald-100 text-emerald-700',

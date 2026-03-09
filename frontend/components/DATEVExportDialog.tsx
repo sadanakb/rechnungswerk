@@ -98,7 +98,7 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
         <div className="px-6 py-2 space-y-5">
           {/* SKR selection */}
           <fieldset>
-            <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-slate-500 dark:text-slate-400">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-stone-500 dark:text-stone-400">
               Kontenrahmen
             </legend>
             <div className="space-y-2">
@@ -106,8 +106,8 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
                 className={`
                   flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors
                   ${kontenrahmen === 'SKR03'
-                    ? 'border-teal-500 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}
+                    ? 'border-lime-500 bg-lime-50 dark:border-lime-400 dark:bg-lime-950/30'
+                    : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'}
                 `}
               >
                 <input
@@ -116,13 +116,13 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
                   value="SKR03"
                   checked={kontenrahmen === 'SKR03'}
                   onChange={() => setKontenrahmen('SKR03')}
-                  className="mt-0.5 accent-teal-500"
+                  className="mt-0.5 accent-lime-500"
                 />
                 <div>
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
                     SKR03
                   </span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                     Standardkontenrahmen &mdash; am weitesten verbreitet
                   </p>
                 </div>
@@ -132,8 +132,8 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
                 className={`
                   flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors
                   ${kontenrahmen === 'SKR04'
-                    ? 'border-teal-500 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}
+                    ? 'border-lime-500 bg-lime-50 dark:border-lime-400 dark:bg-lime-950/30'
+                    : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'}
                 `}
               >
                 <input
@@ -142,13 +142,13 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
                   value="SKR04"
                   checked={kontenrahmen === 'SKR04'}
                   onChange={() => setKontenrahmen('SKR04')}
-                  className="mt-0.5 accent-teal-500"
+                  className="mt-0.5 accent-lime-500"
                 />
                 <div>
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
                     SKR04
                   </span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                     Erweiterter Kontenrahmen &mdash; fuer groessere Unternehmen
                   </p>
                 </div>
@@ -158,14 +158,14 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
 
           {/* Date range */}
           <fieldset>
-            <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-slate-500 dark:text-slate-400">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-stone-500 dark:text-stone-400">
               Zeitraum
             </legend>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label
                   htmlFor="datev-from"
-                  className="block text-xs font-medium mb-1 text-slate-500 dark:text-slate-400"
+                  className="block text-xs font-medium mb-1 text-stone-500 dark:text-stone-400"
                 >
                   Von
                 </label>
@@ -174,15 +174,15 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500
-                    border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950
-                    text-slate-900 dark:text-slate-100"
+                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500
+                    border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950
+                    text-stone-900 dark:text-stone-100"
                 />
               </div>
               <div>
                 <label
                   htmlFor="datev-to"
-                  className="block text-xs font-medium mb-1 text-slate-500 dark:text-slate-400"
+                  className="block text-xs font-medium mb-1 text-stone-500 dark:text-stone-400"
                 >
                   Bis
                 </label>
@@ -191,17 +191,17 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500
-                    border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950
-                    text-slate-900 dark:text-slate-100"
+                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500
+                    border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950
+                    text-stone-900 dark:text-stone-100"
                 />
               </div>
             </div>
           </fieldset>
 
           {/* Info box */}
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5">
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          <div className="rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 px-3 py-2.5">
+            <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
               Exportiert als DATEV-CSV kompatibel mit DATEV Unternehmen online
             </p>
           </div>
@@ -220,9 +220,9 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
             type="button"
             onClick={() => onOpenChange(false)}
             className="px-4 py-2 rounded-lg border text-sm font-medium transition-colors
-              border-slate-200 dark:border-slate-800
-              text-slate-700 dark:text-slate-300
-              hover:bg-slate-50 dark:hover:bg-slate-900"
+              border-stone-200 dark:border-stone-800
+              text-stone-700 dark:text-stone-300
+              hover:bg-stone-50 dark:hover:bg-stone-900"
           >
             Abbrechen
           </button>
@@ -231,7 +231,7 @@ export default function DATEVExportDialog({ open, onOpenChange }: DATEVExportDia
             onClick={handleExport}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors
-              bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              bg-lime-600 hover:bg-lime-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

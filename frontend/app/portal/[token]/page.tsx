@@ -191,9 +191,9 @@ export default function PortalPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f8fafc',
+        background: '#f5f5f4',
       }}>
-        <p style={{ color: '#64748b' }}>Rechnung wird geladen…</p>
+        <p style={{ color: '#78716c' }}>Rechnung wird geladen…</p>
       </div>
     )
   }
@@ -205,13 +205,13 @@ export default function PortalPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f8fafc',
+        background: '#f5f5f4',
       }}>
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           <p style={{ color: '#ef4444', fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem' }}>
             {error}
           </p>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <p style={{ color: '#78716c', fontSize: '0.875rem' }}>
             Der Link ist möglicherweise abgelaufen oder wurde widerrufen.
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function PortalPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f1f5f9',
+      background: '#f5f5f4',
       fontFamily: 'system-ui, sans-serif',
       padding: '2rem 1rem',
     }}>
@@ -245,14 +245,14 @@ export default function PortalPage() {
           <div>
             <p style={{
               fontSize: '0.75rem',
-              color: '#64748b',
+              color: '#78716c',
               marginBottom: '0.25rem',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}>
               Rechnungs<span style={{ color: '#84CC16' }}>Werk</span>
             </p>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1c1917', margin: 0 }}>
               Ihre Rechnung
             </h1>
           </div>
@@ -287,20 +287,20 @@ export default function PortalPage() {
             <div>
               <p style={{
                 fontSize: '0.75rem',
-                color: '#64748b',
+                color: '#78716c',
                 marginBottom: '0.25rem',
                 textTransform: 'uppercase',
               }}>
                 Rechnungssteller
               </p>
-              <p style={{ fontWeight: 600, color: '#0f172a' }}>{invoice.seller_name}</p>
+              <p style={{ fontWeight: 600, color: '#1c1917' }}>{invoice.seller_name}</p>
               {invoice.seller_address && (
-                <p style={{ fontSize: '0.875rem', color: '#475569', whiteSpace: 'pre-line' }}>
+                <p style={{ fontSize: '0.875rem', color: '#57534e', whiteSpace: 'pre-line' }}>
                   {invoice.seller_address}
                 </p>
               )}
               {invoice.seller_vat_id && (
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                <p style={{ fontSize: '0.75rem', color: '#a8a29e' }}>
                   USt-ID: {invoice.seller_vat_id}
                 </p>
               )}
@@ -308,15 +308,15 @@ export default function PortalPage() {
             <div>
               <p style={{
                 fontSize: '0.75rem',
-                color: '#64748b',
+                color: '#78716c',
                 marginBottom: '0.25rem',
                 textTransform: 'uppercase',
               }}>
                 Rechnungsempfänger
               </p>
-              <p style={{ fontWeight: 600, color: '#0f172a' }}>{invoice.buyer_name}</p>
+              <p style={{ fontWeight: 600, color: '#1c1917' }}>{invoice.buyer_name}</p>
               {invoice.buyer_address && (
-                <p style={{ fontSize: '0.875rem', color: '#475569', whiteSpace: 'pre-line' }}>
+                <p style={{ fontSize: '0.875rem', color: '#57534e', whiteSpace: 'pre-line' }}>
                   {invoice.buyer_address}
                 </p>
               )}
@@ -328,25 +328,25 @@ export default function PortalPage() {
             display: 'flex',
             gap: '2rem',
             padding: '1rem',
-            background: '#f8fafc',
+            background: '#f5f5f4',
             borderRadius: '8px',
             marginBottom: '2rem',
             flexWrap: 'wrap',
           }}>
             <div>
-              <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Rechnungsnummer</p>
-              <p style={{ fontWeight: 600, color: '#0f172a' }}>{invoice.invoice_number}</p>
+              <p style={{ fontSize: '0.75rem', color: '#78716c' }}>Rechnungsnummer</p>
+              <p style={{ fontWeight: 600, color: '#1c1917' }}>{invoice.invoice_number}</p>
             </div>
             {invoice.invoice_date && (
               <div>
-                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Datum</p>
-                <p style={{ fontWeight: 600, color: '#0f172a' }}>{invoice.invoice_date}</p>
+                <p style={{ fontSize: '0.75rem', color: '#78716c' }}>Datum</p>
+                <p style={{ fontWeight: 600, color: '#1c1917' }}>{invoice.invoice_date}</p>
               </div>
             )}
             {invoice.due_date && (
               <div>
-                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Fällig am</p>
-                <p style={{ fontWeight: 600, color: isOverdue ? '#dc2626' : '#0f172a' }}>
+                <p style={{ fontSize: '0.75rem', color: '#78716c' }}>Fällig am</p>
+                <p style={{ fontWeight: 600, color: isOverdue ? '#dc2626' : '#1c1917' }}>
                   {invoice.due_date}
                 </p>
               </div>
@@ -358,17 +358,17 @@ export default function PortalPage() {
             <div style={{ marginBottom: '2rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0', color: '#64748b', fontWeight: 500 }}>
+                  <tr style={{ borderBottom: '2px solid #d6d3d1' }}>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0', color: '#78716c', fontWeight: 500 }}>
                       Beschreibung
                     </th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0', color: '#64748b', fontWeight: 500 }}>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0', color: '#78716c', fontWeight: 500 }}>
                       Menge
                     </th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0', color: '#64748b', fontWeight: 500 }}>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0', color: '#78716c', fontWeight: 500 }}>
                       Preis
                     </th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0', color: '#64748b', fontWeight: 500 }}>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0', color: '#78716c', fontWeight: 500 }}>
                       Gesamt
                     </th>
                   </tr>
@@ -379,17 +379,17 @@ export default function PortalPage() {
                     const price = Number(item.unit_price || item.price || 0)
                     const total = Number(item.total || qty * price)
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.75rem 0', color: '#0f172a' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid #f5f5f4' }}>
+                        <td style={{ padding: '0.75rem 0', color: '#1c1917' }}>
                           {item.description}
                         </td>
-                        <td style={{ textAlign: 'right', padding: '0.75rem 0', color: '#475569' }}>
+                        <td style={{ textAlign: 'right', padding: '0.75rem 0', color: '#57534e' }}>
                           {qty}
                         </td>
-                        <td style={{ textAlign: 'right', padding: '0.75rem 0', color: '#475569' }}>
+                        <td style={{ textAlign: 'right', padding: '0.75rem 0', color: '#57534e' }}>
                           {fmt(price, invoice.currency)}
                         </td>
-                        <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: 500, color: '#0f172a' }}>
+                        <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: 500, color: '#1c1917' }}>
                           {fmt(total, invoice.currency)}
                         </td>
                       </tr>
@@ -401,7 +401,7 @@ export default function PortalPage() {
           )}
 
           {/* Totals */}
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+          <div style={{ borderTop: '1px solid #d6d3d1', paddingTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <div style={{ minWidth: '240px' }}>
                 <div style={{
@@ -409,7 +409,7 @@ export default function PortalPage() {
                   justifyContent: 'space-between',
                   marginBottom: '0.5rem',
                   fontSize: '0.875rem',
-                  color: '#475569',
+                  color: '#57534e',
                 }}>
                   <span>Nettobetrag</span>
                   <span>{fmt(invoice.net_amount, invoice.currency)}</span>
@@ -419,7 +419,7 @@ export default function PortalPage() {
                   justifyContent: 'space-between',
                   marginBottom: '0.75rem',
                   fontSize: '0.875rem',
-                  color: '#475569',
+                  color: '#57534e',
                 }}>
                   <span>MwSt. ({invoice.tax_rate}%)</span>
                   <span>{fmt(invoice.tax_amount, invoice.currency)}</span>
@@ -429,8 +429,8 @@ export default function PortalPage() {
                   justifyContent: 'space-between',
                   fontSize: '1.125rem',
                   fontWeight: 700,
-                  color: '#0f172a',
-                  borderTop: '2px solid #e2e8f0',
+                  color: '#1c1917',
+                  borderTop: '2px solid #d6d3d1',
                   paddingTop: '0.75rem',
                 }}>
                   <span>Gesamtbetrag</span>
@@ -473,7 +473,7 @@ export default function PortalPage() {
               flex: 1,
               minWidth: '160px',
               padding: '0.875rem',
-              background: '#14b8a6',
+              background: '#84cc16',
               color: 'white',
               borderRadius: '8px',
               textAlign: 'center',
@@ -492,13 +492,13 @@ export default function PortalPage() {
               minWidth: '160px',
               padding: '0.875rem',
               background: 'white',
-              color: '#0f172a',
+              color: '#1c1917',
               borderRadius: '8px',
               textAlign: 'center',
               fontWeight: 600,
               textDecoration: 'none',
               fontSize: '0.875rem',
-              border: '1px solid #e2e8f0',
+              border: '1px solid #d6d3d1',
             }}
           >
             XRechnung (XML)
@@ -579,10 +579,10 @@ export default function PortalPage() {
           textAlign: 'center',
           marginTop: '2rem',
           fontSize: '0.75rem',
-          color: '#94a3b8',
+          color: '#a8a29e',
         }}>
           Bereitgestellt von{' '}
-          <a href="https://rechnungswerk.io" style={{ color: '#14b8a6' }}>
+          <a href="https://rechnungswerk.io" style={{ color: '#84cc16' }}>
             RechnungsWerk
           </a>
           {invoice.expires_at &&

@@ -43,18 +43,18 @@ export function Toaster({
         classNames: {
           toast: [
             'group flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg',
-            'bg-white text-slate-900 border-slate-200',
-            'dark:bg-slate-900 dark:text-slate-50 dark:border-slate-800',
+            'bg-white text-stone-900 border-stone-200',
+            'dark:bg-stone-900 dark:text-stone-50 dark:border-stone-800',
             'text-sm font-medium',
           ].join(' '),
           title: 'font-semibold',
-          description: 'text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5',
+          description: 'text-xs text-stone-500 dark:text-stone-400 font-normal mt-0.5',
           actionButton:
-            'bg-blue-600 text-white hover:bg-blue-700 rounded-md px-3 py-1 text-xs font-medium',
+            'bg-lime-600 text-white hover:bg-lime-700 rounded-md px-3 py-1 text-xs font-medium',
           cancelButton:
-            'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 rounded-md px-3 py-1 text-xs font-medium',
+            'bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 rounded-md px-3 py-1 text-xs font-medium',
           closeButton:
-            'absolute right-2 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200',
+            'absolute right-2 top-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200',
         },
       }}
     />
@@ -126,7 +126,7 @@ export function useToast() {
   const info = React.useCallback(
     (message: string, opts?: ToastOptions) =>
       sonnerToast.info(message, {
-        icon: <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />,
+        icon: <Info className="h-4 w-4 text-lime-500 shrink-0 mt-0.5" />,
         ...buildOptions(opts),
       }),
     []
@@ -135,7 +135,7 @@ export function useToast() {
   const loading = React.useCallback(
     (message: string, opts?: ToastOptions) =>
       sonnerToast.loading(message, {
-        icon: <Loader2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5 animate-spin" />,
+        icon: <Loader2 className="h-4 w-4 text-stone-400 shrink-0 mt-0.5 animate-spin" />,
         ...buildOptions(opts),
       }),
     []

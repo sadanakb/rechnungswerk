@@ -27,7 +27,7 @@ import {
 
 const EMPTY_FORM: InvoiceTemplateCreate = {
   name: '',
-  primary_color: '#14b8a6',
+  primary_color: '#84cc16',
   footer_text: '',
   payment_terms_days: 14,
   bank_iban: '',
@@ -43,7 +43,7 @@ const EMPTY_FORM: InvoiceTemplateCreate = {
 // ---------------------------------------------------------------------------
 
 function TemplatePreview({ tmpl }: { tmpl: InvoiceTemplateCreate }) {
-  const color = tmpl.primary_color || '#14b8a6'
+  const color = tmpl.primary_color || '#84cc16'
   return (
     <div
       className="rounded-xl border overflow-hidden text-sm"
@@ -240,16 +240,16 @@ function FormModal({ initial, onSave, onClose, title }: FormModalProps) {
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
-                    value={form.primary_color || '#14b8a6'}
+                    value={form.primary_color || '#84cc16'}
                     onChange={(e) => set('primary_color', e.target.value)}
                     className="w-10 h-10 rounded cursor-pointer border"
                     style={{ borderColor: 'rgb(var(--border))', padding: '2px' }}
                   />
                   <input
                     type="text"
-                    value={form.primary_color || '#14b8a6'}
+                    value={form.primary_color || '#84cc16'}
                     onChange={(e) => set('primary_color', e.target.value)}
-                    placeholder="#14b8a6"
+                    placeholder="#84cc16"
                     maxLength={7}
                     className={`flex-1 ${inputCls}`}
                     style={inputStyle}
@@ -725,7 +725,7 @@ export default function TemplatesPage() {
           <DialogFooter>
             <button
               onClick={() => setDeleteConfirm({ open: false, id: null })}
-              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
               style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))' }}
             >
               Abbrechen

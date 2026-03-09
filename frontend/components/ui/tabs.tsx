@@ -13,9 +13,9 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex h-10 items-center justify-start rounded-lg bg-slate-100 p-1 gap-0.5',
-      'text-slate-500',
-      'dark:bg-slate-800/60 dark:text-slate-400',
+      'inline-flex h-10 items-center justify-start rounded-lg bg-stone-100 p-1 gap-0.5',
+      'text-stone-500',
+      'dark:bg-stone-800/60 dark:text-stone-400',
       className
     )}
     {...props}
@@ -33,17 +33,17 @@ const TabsTrigger = React.forwardRef<
       'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5',
       'text-sm font-medium',
       'ring-offset-white transition-all duration-150',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-500 focus-visible:ring-offset-2',
       'disabled:pointer-events-none disabled:opacity-50',
       // Active state
-      'data-[state=active]:bg-white data-[state=active]:text-slate-900',
+      'data-[state=active]:bg-white data-[state=active]:text-stone-900',
       'data-[state=active]:shadow-sm',
       // Hover on inactive
-      'data-[state=inactive]:hover:text-slate-700',
+      'data-[state=inactive]:hover:text-stone-700',
       // Dark mode
-      'dark:ring-offset-slate-950',
-      'dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-slate-50',
-      'dark:data-[state=inactive]:hover:text-slate-200',
+      'dark:ring-offset-stone-950',
+      'dark:data-[state=active]:bg-stone-900 dark:data-[state=active]:text-stone-50',
+      'dark:data-[state=inactive]:hover:text-stone-200',
       className
     )}
     {...props}
@@ -59,8 +59,8 @@ const TabsContent = React.forwardRef<
     ref={ref}
     className={cn(
       'mt-3 ring-offset-white',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-      'dark:ring-offset-slate-950',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-500 focus-visible:ring-offset-2',
+      'dark:ring-offset-stone-950',
       // Subtle fade-in when tab becomes active
       'data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-200',
       className
@@ -81,7 +81,7 @@ const TabsListUnderline = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex items-end border-b border-slate-200 dark:border-slate-700 gap-0',
+      'inline-flex items-end border-b border-stone-200 dark:border-stone-700 gap-0',
       className
     )}
     {...props}
@@ -97,14 +97,14 @@ const TabsTriggerUnderline = React.forwardRef<
     ref={ref}
     className={cn(
       'relative inline-flex items-center justify-center whitespace-nowrap px-4 pb-2.5 pt-1',
-      'text-sm font-medium text-slate-500 dark:text-slate-400',
+      'text-sm font-medium text-stone-500 dark:text-stone-400',
       'border-b-2 border-transparent',
       'transition-all duration-150',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-500',
       'disabled:pointer-events-none disabled:opacity-50',
-      'data-[state=active]:border-blue-600 data-[state=active]:text-blue-600',
-      'dark:data-[state=active]:border-blue-400 dark:data-[state=active]:text-blue-400',
-      'hover:text-slate-700 dark:hover:text-slate-200',
+      'data-[state=active]:border-lime-600 data-[state=active]:text-lime-600',
+      'dark:data-[state=active]:border-lime-400 dark:data-[state=active]:text-lime-400',
+      'hover:text-stone-700 dark:hover:text-stone-200',
       // Offset sits on top of the parent border-b
       '-mb-px',
       className

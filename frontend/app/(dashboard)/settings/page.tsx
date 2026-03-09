@@ -251,7 +251,7 @@ function KontoTab() {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <RefreshCw size={20} className="animate-spin text-slate-400" />
+          <RefreshCw size={20} className="animate-spin text-stone-400" />
         </CardContent>
       </Card>
     )
@@ -284,11 +284,11 @@ function KontoTab() {
         />
 
         {/* Divider */}
-        <div className="border-t border-slate-200 dark:border-slate-700" />
+        <div className="border-t border-stone-200 dark:border-stone-700" />
 
         {/* Password change */}
         <div>
-          <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">
+          <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
             Passwort aendern
           </h4>
           <div className="space-y-4">
@@ -428,7 +428,7 @@ function OrganisationTab() {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <RefreshCw size={20} className="animate-spin text-slate-400" />
+          <RefreshCw size={20} className="animate-spin text-stone-400" />
         </CardContent>
       </Card>
     )
@@ -461,24 +461,24 @@ function OrganisationTab() {
 
         {/* Address textarea */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
             Adresse
           </label>
           <textarea
             className={[
               'flex min-h-[100px] w-full rounded-md border bg-white px-3 py-2 text-sm',
-              'text-slate-900 placeholder:text-slate-400',
+              'text-stone-900 placeholder:text-stone-400',
               'transition-colors duration-150',
-              'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-blue-500',
-              'border-slate-300',
-              'dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:border-slate-700 dark:focus:ring-blue-400',
+              'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
+              'border-stone-300',
+              'dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500 dark:border-stone-700 dark:focus:ring-lime-400',
               'resize-y',
             ].join(' ')}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder={'Musterstrasse 1\n12345 Berlin\nDeutschland'}
           />
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-stone-500 dark:text-stone-400">
             Wird auf allen ausgehenden Rechnungen angezeigt.
           </p>
         </div>
@@ -511,7 +511,7 @@ function OrganisationTab() {
 /** Map plan_status to UI badge colour / label */
 const STATUS_CONFIG: Record<string, { color: string; darkColor: string; bgColor: string; darkBgColor: string; label: string }> = {
   active:    { color: 'text-emerald-700', darkColor: 'dark:text-emerald-400', bgColor: 'bg-emerald-50', darkBgColor: 'dark:bg-emerald-900/20', label: 'Aktiv' },
-  trialing:  { color: 'text-blue-700',    darkColor: 'dark:text-blue-400',    bgColor: 'bg-blue-50',    darkBgColor: 'dark:bg-blue-900/20',    label: 'Testphase' },
+  trialing:  { color: 'text-lime-700',    darkColor: 'dark:text-lime-400',    bgColor: 'bg-lime-50',    darkBgColor: 'dark:bg-lime-900/20',    label: 'Testphase' },
   past_due:  { color: 'text-amber-700',   darkColor: 'dark:text-amber-400',   bgColor: 'bg-amber-50',   darkBgColor: 'dark:bg-amber-900/20',   label: 'Zahlung ausstehend' },
   cancelled: { color: 'text-red-700',     darkColor: 'dark:text-red-400',     bgColor: 'bg-red-50',     darkBgColor: 'dark:bg-red-900/20',     label: 'Gekuendigt' },
 }
@@ -584,7 +584,7 @@ function AbonnementTab({
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <RefreshCw size={20} className="animate-spin text-slate-400" />
+          <RefreshCw size={20} className="animate-spin text-stone-400" />
         </CardContent>
       </Card>
     )
@@ -620,14 +620,14 @@ function AbonnementTab({
                   <span className={[
                     'absolute inline-flex h-full w-full rounded-full opacity-75',
                     planStatus === 'active' ? 'animate-ping bg-emerald-400' : '',
-                    planStatus === 'trialing' ? 'animate-ping bg-blue-400' : '',
+                    planStatus === 'trialing' ? 'animate-ping bg-lime-400' : '',
                     planStatus === 'past_due' ? 'bg-amber-400' : '',
                     planStatus === 'cancelled' ? 'bg-red-400' : '',
                   ].join(' ')} />
                   <span className={[
                     'relative inline-flex h-2 w-2 rounded-full',
                     planStatus === 'active' ? 'bg-emerald-500' : '',
-                    planStatus === 'trialing' ? 'bg-blue-500' : '',
+                    planStatus === 'trialing' ? 'bg-lime-500' : '',
                     planStatus === 'past_due' ? 'bg-amber-500' : '',
                     planStatus === 'cancelled' ? 'bg-red-500' : '',
                   ].join(' ')} />
@@ -649,7 +649,7 @@ function AbonnementTab({
         <CardContent>
           {currentPlan === 'free' ? (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
+              <p className="text-sm text-stone-600 dark:text-stone-400 flex-1">
                 Sie nutzen den kostenlosen Plan. Upgraden Sie fuer erweiterte Funktionen wie
                 Analytics, Lieferanten-Verwaltung und wiederkehrende Rechnungen.
               </p>
@@ -669,7 +669,7 @@ function AbonnementTab({
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
+              <p className="text-sm text-stone-600 dark:text-stone-400 flex-1">
                 Verwalten Sie Ihr Abonnement, Zahlungsmethode oder kuendigen Sie ueber das Kundenportal.
               </p>
               <Button variant="outline" onClick={handleManage} disabled={actionLoading}>
@@ -689,28 +689,28 @@ function AbonnementTab({
           )}
 
           {/* Plan info summary */}
-          <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50">
+          <div className="mt-4 rounded-lg border border-stone-200 dark:border-stone-700 p-4 bg-stone-50 dark:bg-stone-800/50">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Plan</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <p className="text-xs text-stone-500 dark:text-stone-400">Plan</p>
+                <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                   {PLAN_LABELS[currentPlan] ?? currentPlan}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Rechnungen/Monat</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <p className="text-xs text-stone-500 dark:text-stone-400">Rechnungen/Monat</p>
+                <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                   {currentPlan === 'free' ? '5' : 'Unbegrenzt'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Preis</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <p className="text-xs text-stone-500 dark:text-stone-400">Preis</p>
+                <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                   {currentPlan === 'professional' ? '19,90 EUR/Monat' : currentPlan === 'starter' ? '9,90 EUR/Monat' : 'Kostenlos'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-stone-500 dark:text-stone-400">
                   {subscription?.period_end ? 'Naechste Abrechnung' : 'Status'}
                 </p>
                 <p className={[
@@ -737,21 +737,21 @@ function AbonnementTab({
       {currentPlan === 'free' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Starter */}
-          <Card className="relative overflow-hidden border-blue-200 dark:border-blue-800">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+          <Card className="relative overflow-hidden border-lime-200 dark:border-lime-800">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-lime-500" />
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
-                  <Zap size={18} className="inline mr-1.5 text-blue-500" />
+                  <Zap size={18} className="inline mr-1.5 text-lime-500" />
                   Starter
                 </CardTitle>
-                <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  9,90 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  9,90 <span className="text-sm font-normal text-stone-500">EUR/Monat</span>
                 </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-400">
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Unbegrenzte Rechnungen</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Analytics Dashboard</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Lieferanten-Verwaltung</li>
@@ -779,13 +779,13 @@ function AbonnementTab({
                   <Crown size={18} className="inline mr-1.5 text-emerald-500" />
                   Professional
                 </CardTitle>
-                <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  19,90 <span className="text-sm font-normal text-slate-500">EUR/Monat</span>
+                <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  19,90 <span className="text-sm font-normal text-stone-500">EUR/Monat</span>
                 </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-400">
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Unbegrenzte Rechnungen</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> Mahnwesen</li>
                 <li className="flex items-center gap-2"><Check size={15} className="text-emerald-500 shrink-0" /> API-Zugriff</li>
@@ -816,8 +816,8 @@ function AbonnementTab({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left py-3 pr-4 font-medium text-slate-600 dark:text-slate-400">
+                <tr className="border-b border-stone-200 dark:border-stone-700">
+                  <th className="text-left py-3 pr-4 font-medium text-stone-600 dark:text-stone-400">
                     Funktion
                   </th>
                   {(['free', 'starter', 'professional'] as const).map((tier) => (
@@ -826,12 +826,12 @@ function AbonnementTab({
                       className={[
                         'text-center py-3 px-4 font-medium',
                         tier === currentPlan
-                          ? 'text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 rounded-t-md'
-                          : 'text-slate-600 dark:text-slate-400',
+                          ? 'text-stone-900 dark:text-stone-100 bg-stone-50 dark:bg-stone-800/50 rounded-t-md'
+                          : 'text-stone-600 dark:text-stone-400',
                       ].join(' ')}
                     >
                       {tier === currentPlan && (
-                        <span className="block text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-0.5">
+                        <span className="block text-[10px] uppercase tracking-wider text-lime-600 dark:text-lime-400 mb-0.5">
                           Ihr Plan
                         </span>
                       )}
@@ -844,9 +844,9 @@ function AbonnementTab({
                 {PLAN_FEATURES.map((feature) => (
                   <tr
                     key={feature.label}
-                    className="border-b border-slate-100 dark:border-slate-800 last:border-0"
+                    className="border-b border-stone-100 dark:border-stone-800 last:border-0"
                   >
-                    <td className="py-3 pr-4 text-slate-900 dark:text-slate-100">
+                    <td className="py-3 pr-4 text-stone-900 dark:text-stone-100">
                       {feature.label}
                     </td>
                     {(['free', 'starter', 'professional'] as const).map((tier) => (
@@ -854,17 +854,17 @@ function AbonnementTab({
                         key={tier}
                         className={[
                           'text-center py-3 px-4',
-                          tier === currentPlan ? 'bg-slate-50 dark:bg-slate-800/50' : '',
+                          tier === currentPlan ? 'bg-stone-50 dark:bg-stone-800/50' : '',
                         ].join(' ')}
                       >
                         {typeof feature[tier] === 'string' ? (
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">
+                          <span className="text-stone-700 dark:text-stone-300 font-medium">
                             {feature[tier]}
                           </span>
                         ) : feature[tier] ? (
                           <Check size={18} className="inline-block text-emerald-500" />
                         ) : (
-                          <span className="text-slate-300 dark:text-slate-600">&mdash;</span>
+                          <span className="text-stone-300 dark:text-stone-600">&mdash;</span>
                         )}
                       </td>
                     ))}
@@ -911,9 +911,9 @@ function NewKeyBox({ fullKey, onDismiss }: { fullKey: string; onDismiss: () => v
       </div>
       <div className="flex items-center gap-2">
         <code className={[
-          'flex-1 block rounded-md border bg-white dark:bg-slate-900 px-3 py-2',
-          'text-sm font-mono text-slate-800 dark:text-slate-200',
-          'border-slate-300 dark:border-slate-700 break-all',
+          'flex-1 block rounded-md border bg-white dark:bg-stone-900 px-3 py-2',
+          'text-sm font-mono text-stone-800 dark:text-stone-200',
+          'border-stone-300 dark:border-stone-700 break-all',
         ].join(' ')}>
           {fullKey}
         </code>
@@ -974,13 +974,13 @@ function CreateKeyModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className={[
         'relative w-full max-w-md rounded-xl border shadow-lg p-6 space-y-5',
-        'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700',
+        'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700',
       ].join(' ')}>
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
             Neuen API-Schluessel erstellen
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
             Vergeben Sie einen Namen und waehlen Sie die gewuenschten Berechtigungen.
           </p>
         </div>
@@ -998,7 +998,7 @@ function CreateKeyModal({
 
         {/* Scopes */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          <label className="text-sm font-medium text-stone-700 dark:text-stone-200">
             Berechtigungen (Scopes)
           </label>
           <div className="grid grid-cols-1 gap-2">
@@ -1008,18 +1008,18 @@ function CreateKeyModal({
                 className={[
                   'flex items-center gap-3 rounded-md border px-3 py-2 cursor-pointer transition-colors',
                   selectedScopes.includes(scope.value)
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
-                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800',
+                    ? 'border-lime-500 bg-lime-50 dark:bg-lime-900/20 dark:border-lime-400'
+                    : 'border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800',
                 ].join(' ')}
               >
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-stone-300 text-lime-600 focus:ring-lime-500"
                   checked={selectedScopes.includes(scope.value)}
                   onChange={() => toggleScope(scope.value)}
                 />
-                <span className="text-sm text-slate-700 dark:text-slate-200">{scope.label}</span>
-                <code className="ml-auto text-xs text-slate-400 dark:text-slate-500 font-mono">
+                <span className="text-sm text-stone-700 dark:text-stone-200">{scope.label}</span>
+                <code className="ml-auto text-xs text-stone-400 dark:text-stone-500 font-mono">
                   {scope.value}
                 </code>
               </label>
@@ -1120,12 +1120,12 @@ function ApiKeysTab({ plan }: { plan: string }) {
           <CardDescription>Programmatischer Zugriff auf die RechnungsWerk API.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border-2 border-dashed p-8 text-center border-slate-200 dark:border-slate-700">
-            <Lock size={40} className="mx-auto mb-4 text-slate-400 dark:text-slate-500" />
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-2">
+          <div className="rounded-lg border-2 border-dashed p-8 text-center border-stone-200 dark:border-stone-700">
+            <Lock size={40} className="mx-auto mb-4 text-stone-400 dark:text-stone-500" />
+            <h3 className="text-base font-semibold text-stone-900 dark:text-stone-100 mb-2">
               API-Zugriff ist im Professional-Plan verfuegbar
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">
+            <p className="text-sm text-stone-500 dark:text-stone-400 mb-4 max-w-md mx-auto">
               Mit dem Professional-Plan erhalten Sie API-Schluessel fuer die programmatische
               Erstellung und Verwaltung von E-Rechnungen.
             </p>
@@ -1180,39 +1180,39 @@ function ApiKeysTab({ plan }: { plan: string }) {
           {/* Keys table */}
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <RefreshCw size={20} className="animate-spin text-slate-400" />
+              <RefreshCw size={20} className="animate-spin text-stone-400" />
             </div>
           ) : keys.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center">
-              <Key size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="rounded-lg border border-dashed border-stone-200 dark:border-stone-700 p-8 text-center">
+              <Key size={32} className="mx-auto mb-3 text-stone-300 dark:text-stone-600" />
+              <p className="text-sm text-stone-500 dark:text-stone-400">
                 Noch keine API-Schluessel erstellt.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-700">
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <thead className="border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Name</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Prefix</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Scopes</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Erstellt</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Zuletzt genutzt</th>
-                    <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Aktionen</th>
+                    <th className="text-left px-4 py-3 font-medium text-stone-600 dark:text-stone-400">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-stone-600 dark:text-stone-400">Prefix</th>
+                    <th className="text-left px-4 py-3 font-medium text-stone-600 dark:text-stone-400">Scopes</th>
+                    <th className="text-left px-4 py-3 font-medium text-stone-600 dark:text-stone-400">Erstellt</th>
+                    <th className="text-left px-4 py-3 font-medium text-stone-600 dark:text-stone-400">Zuletzt genutzt</th>
+                    <th className="text-right px-4 py-3 font-medium text-stone-600 dark:text-stone-400">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody>
                   {keys.map((key) => (
                     <tr
                       key={key.id}
-                      className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                      className="border-b border-stone-100 dark:border-stone-800 last:border-0 hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
                     >
-                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-3 font-medium text-stone-900 dark:text-stone-100">
                         {key.name}
                       </td>
                       <td className="px-4 py-3">
-                        <code className="text-xs bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5 font-mono text-slate-700 dark:text-slate-300">
+                        <code className="text-xs bg-stone-100 dark:bg-stone-800 rounded px-1.5 py-0.5 font-mono text-stone-700 dark:text-stone-300">
                           {key.key_prefix}...
                         </code>
                       </td>
@@ -1221,19 +1221,19 @@ function ApiKeysTab({ plan }: { plan: string }) {
                           {(key.scopes ?? []).map((s) => (
                             <span
                               key={s}
-                              className="inline-block rounded-full px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-mono"
+                              className="inline-block rounded-full px-2 py-0.5 text-xs bg-lime-100 dark:bg-lime-900/30 text-lime-700 dark:text-lime-300 font-mono"
                             >
                               {s}
                             </span>
                           ))}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      <td className="px-4 py-3 text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {key.created_at
                           ? new Date(key.created_at).toLocaleDateString('de-DE')
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      <td className="px-4 py-3 text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {key.last_used_at
                           ? new Date(key.last_used_at).toLocaleDateString('de-DE')
                           : 'Noch nie'}
@@ -1261,18 +1261,18 @@ function ApiKeysTab({ plan }: { plan: string }) {
           )}
 
           {/* Security hint */}
-          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+          <div className="rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 p-4">
             <div className="flex items-start gap-3">
-              <Shield size={18} className="shrink-0 mt-0.5 text-slate-500 dark:text-slate-400" />
-              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <Shield size={18} className="shrink-0 mt-0.5 text-stone-500 dark:text-stone-400" />
+              <div className="text-xs text-stone-500 dark:text-stone-400 space-y-1">
                 <p>
-                  <strong className="text-slate-700 dark:text-slate-300">Hinweis:</strong>{' '}
+                  <strong className="text-stone-700 dark:text-stone-300">Hinweis:</strong>{' '}
                   Geben Sie Ihre API-Schluessel niemals weiter und speichern Sie sie nicht
                   in oeffentlichen Repositories.
                 </p>
                 <p>
                   Dokumentation:{' '}
-                  <Link href="/docs/api" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  <Link href="/docs/api" className="text-lime-600 dark:text-lime-400 hover:underline">
                     API-Referenz ansehen
                   </Link>
                 </p>
@@ -1380,7 +1380,7 @@ function NummernkreisTab() {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <RefreshCw size={20} className="animate-spin text-slate-400" />
+          <RefreshCw size={20} className="animate-spin text-stone-400" />
         </CardContent>
       </Card>
     )
@@ -1388,9 +1388,9 @@ function NummernkreisTab() {
 
   const selectClass = [
     'flex h-9 w-full rounded-md border bg-white px-3 py-2 text-sm',
-    'text-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-blue-500',
-    'border-slate-300 transition-colors duration-150',
-    'dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:focus:ring-blue-400',
+    'text-stone-900 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
+    'border-stone-300 transition-colors duration-150',
+    'dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700 dark:focus:ring-lime-400',
   ].join(' ')
 
   return (
@@ -1406,20 +1406,20 @@ function NummernkreisTab() {
         {feedback && <FeedbackBanner type={feedback.type} message={feedback.message} />}
 
         {/* Live Preview */}
-        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 flex items-center gap-3">
-          <Hash size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
+        <div className="rounded-lg border border-lime-200 dark:border-lime-800 bg-lime-50 dark:bg-lime-900/20 px-4 py-3 flex items-center gap-3">
+          <Hash size={18} className="shrink-0 text-lime-600 dark:text-lime-400" />
           <div>
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wider mb-0.5">
+            <p className="text-xs text-lime-600 dark:text-lime-400 font-medium uppercase tracking-wider mb-0.5">
               Vorschau
             </p>
-            <code className="text-lg font-mono font-bold text-blue-800 dark:text-blue-200">
+            <code className="text-lg font-mono font-bold text-lime-800 dark:text-lime-200">
               {livePreview}
             </code>
           </div>
           {seq?.configured && (
             <div className="ml-auto text-right">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Aktuelle Nummer</p>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <p className="text-xs text-stone-500 dark:text-stone-400">Aktuelle Nummer</p>
+              <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
                 {seq.current_counter ?? 0}
               </p>
             </div>
@@ -1437,7 +1437,7 @@ function NummernkreisTab() {
 
         {/* Separator */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
             Trennzeichen
           </label>
           <select
@@ -1453,7 +1453,7 @@ function NummernkreisTab() {
 
         {/* Year format */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
             Jahresformat
           </label>
           <select
@@ -1468,7 +1468,7 @@ function NummernkreisTab() {
 
         {/* Padding */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">
+          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
             Nummerierung
           </label>
           <select
@@ -1484,12 +1484,12 @@ function NummernkreisTab() {
         </div>
 
         {/* Reset yearly toggle */}
-        <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-stone-200 dark:border-stone-700 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
               Jaehrlicher Zaehler-Reset
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
               Setzt den Zaehler am 1. Januar jeden Jahres auf 1 zurueck.
             </p>
           </div>
@@ -1499,8 +1499,8 @@ function NummernkreisTab() {
             aria-checked={resetYearly}
             onClick={() => setResetYearly((v) => !v)}
             className={[
-              'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-              resetYearly ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600',
+              'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2',
+              resetYearly ? 'bg-lime-600' : 'bg-stone-300 dark:bg-stone-600',
             ].join(' ')}
           >
             <span
@@ -2073,14 +2073,14 @@ function FeatureLinkCard({
             <Icon size={20} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50 group-hover:text-lime-700 dark:group-hover:text-lime-400 transition-colors">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 group-hover:text-lime-700 dark:group-hover:text-lime-400 transition-colors">
               {title}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-2">
               {description}
             </p>
           </div>
-          <ChevronRight size={16} className="shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-lime-500 transition-colors mt-0.5" />
+          <ChevronRight size={16} className="shrink-0 text-stone-300 dark:text-stone-600 group-hover:text-lime-500 transition-colors mt-0.5" />
         </CardContent>
       </Card>
     </Link>
@@ -2099,7 +2099,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <RefreshCw size={24} className="animate-spin text-slate-400" />
+        <RefreshCw size={24} className="animate-spin text-stone-400" />
       </div>
     )
   }
@@ -2108,10 +2108,10 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
           Einstellungen
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
           Verwalten Sie Ihr Konto, Ihre Organisation und alle Features von RechnungsWerk.
         </p>
       </div>
@@ -2215,10 +2215,10 @@ export default function SettingsPage() {
                     <Download size={20} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                    <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
                       DATEV-Export
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                       Buchungsstapel im DATEV-Format exportieren.
                     </p>
                   </div>

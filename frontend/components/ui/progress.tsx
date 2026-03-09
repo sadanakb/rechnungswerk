@@ -5,7 +5,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const progressTrackVariants = cva(
-  'relative w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800',
+  'relative w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800',
   {
     variants: {
       size: {
@@ -25,7 +25,7 @@ const progressFillVariants = cva(
   {
     variants: {
       color: {
-        blue: 'bg-blue-600 dark:bg-blue-500',
+        blue: 'bg-lime-600 dark:bg-lime-500',
         emerald: 'bg-emerald-500 dark:bg-emerald-400',
         amber: 'bg-amber-500 dark:bg-amber-400',
         red: 'bg-red-500 dark:bg-red-400',
@@ -106,8 +106,8 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       return (
         <div className="flex flex-col gap-1 w-full">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-500 dark:text-slate-400">{displayLabel}</span>
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+            <span className="text-xs text-stone-500 dark:text-stone-400">{displayLabel}</span>
+            <span className="text-xs font-medium text-stone-700 dark:text-stone-200">
               {displayLabel}
             </span>
           </div>
@@ -120,7 +120,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
     return (
       <div className="flex items-center gap-3 w-full">
         <div className="flex-1">{bar}</div>
-        <span className="shrink-0 text-xs font-semibold text-slate-700 dark:text-slate-200 tabular-nums w-9 text-right">
+        <span className="shrink-0 text-xs font-semibold text-stone-700 dark:text-stone-200 tabular-nums w-9 text-right">
           {displayLabel}
         </span>
       </div>
@@ -157,7 +157,7 @@ const StepProgress = React.forwardRef<HTMLDivElement, StepProgressProps>(
             'h-1.5 flex-1 rounded-full transition-all duration-300',
             i < currentStep
               ? progressFillVariants({ color })
-              : 'bg-slate-200 dark:bg-slate-700'
+              : 'bg-stone-200 dark:bg-stone-700'
           )}
         />
       ))}

@@ -28,8 +28,8 @@ const TooltipContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         'z-50 max-w-xs rounded-md px-3 py-1.5',
-        'bg-slate-900 text-slate-50 text-xs leading-snug shadow-md',
-        'dark:bg-slate-100 dark:text-slate-900',
+        'bg-stone-900 text-stone-50 text-xs leading-snug shadow-md',
+        'dark:bg-stone-100 dark:text-stone-900',
         // Animations driven by Radix data attributes
         'data-[state=delayed-open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=delayed-open]:fade-in-0',

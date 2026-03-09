@@ -66,8 +66,8 @@ function TypeBadge({ type }: { type: string }) {
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
       style={{
-        backgroundColor: isCustomer ? 'rgb(13 148 136 / 0.12)' : 'rgb(59 130 246 / 0.12)',
-        color: isCustomer ? 'rgb(13 148 136)' : 'rgb(59 130 246)',
+        backgroundColor: isCustomer ? 'rgb(132 204 22 / 0.12)' : 'rgb(132 204 22 / 0.12)',
+        color: isCustomer ? 'rgb(132 204 22)' : 'rgb(132 204 22)',
       }}
     >
       {isCustomer ? 'Kunde' : 'Lieferant'}
@@ -173,7 +173,7 @@ function ContactModal({ initialData, onClose, onSave, saving }: ContactModalProp
                     value={t}
                     checked={form.type === t}
                     onChange={() => set('type', t)}
-                    className="accent-teal-500"
+                    className="accent-lime-500"
                   />
                   <span className="text-sm font-medium" style={{ color: 'rgb(var(--foreground))' }}>
                     {t === 'customer' ? 'Kunde' : 'Lieferant'}
@@ -733,7 +733,7 @@ export default function ContactsPage() {
           <DialogFooter>
             <button
               onClick={() => setDeleteConfirm({ open: false, item: null })}
-              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
               style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))' }}
             >
               Abbrechen

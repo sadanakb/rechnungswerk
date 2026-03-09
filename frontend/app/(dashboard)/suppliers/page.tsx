@@ -346,7 +346,7 @@ export default function SuppliersPage() {
           <DialogFooter>
             <button
               onClick={() => setDeleteConfirm({ open: false, item: null })}
-              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
               style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))' }}
             >
               Abbrechen

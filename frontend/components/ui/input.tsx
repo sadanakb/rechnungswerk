@@ -38,8 +38,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               'text-sm font-medium leading-none',
               disabled
-                ? 'text-slate-400 dark:text-slate-500'
-                : 'text-slate-700 dark:text-slate-200'
+                ? 'text-stone-400 dark:text-stone-500'
+                : 'text-stone-700 dark:text-stone-200'
             )}
           >
             {label}
@@ -48,7 +48,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative flex items-center">
           {leftIcon && (
-            <span className="absolute left-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+            <span className="absolute left-3 flex items-center pointer-events-none text-stone-400 dark:text-stone-500">
               {leftIcon}
             </span>
           )}
@@ -60,14 +60,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             className={cn(
               'flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm',
-              'text-slate-900 placeholder:text-slate-400',
+              'text-stone-900 placeholder:text-stone-400',
               'transition-colors duration-150',
-              'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-blue-500',
-              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50',
-              'dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500',
+              'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-stone-50',
+              'dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500',
               error
                 ? 'border-red-500 focus:ring-red-400 dark:border-red-500'
-                : 'border-slate-300 dark:border-slate-700 dark:focus:ring-blue-400',
+                : 'border-stone-300 dark:border-stone-700 dark:focus:ring-lime-400',
               leftIcon && 'pl-9',
               rightIcon && 'pr-9',
               className
@@ -80,7 +80,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightIcon && (
-            <span className="absolute right-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+            <span className="absolute right-3 flex items-center pointer-events-none text-stone-400 dark:text-stone-500">
               {rightIcon}
             </span>
           )}
@@ -99,7 +99,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {hint && !error && (
           <p
             id={`${inputId}-hint`}
-            className="text-xs text-slate-500 dark:text-slate-400"
+            className="text-xs text-stone-500 dark:text-stone-400"
           >
             {hint}
           </p>

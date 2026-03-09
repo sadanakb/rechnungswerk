@@ -9,7 +9,7 @@ const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium',
     'transition-all duration-150 ease-in-out',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-lime-500',
     'disabled:pointer-events-none disabled:opacity-50',
     'select-none',
   ],
@@ -17,14 +17,14 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: [
-          'bg-blue-600 text-white shadow-sm',
-          'hover:bg-blue-700 active:bg-blue-800',
-          'dark:bg-blue-500 dark:hover:bg-blue-600',
+          'bg-lime-600 text-white shadow-sm',
+          'hover:bg-lime-700 active:bg-lime-800',
+          'dark:bg-lime-500 dark:hover:bg-lime-600',
         ],
         secondary: [
-          'bg-slate-100 text-slate-900 shadow-sm',
-          'hover:bg-slate-200 active:bg-slate-300',
-          'dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600',
+          'bg-stone-100 text-stone-900 shadow-sm',
+          'hover:bg-stone-200 active:bg-stone-300',
+          'dark:bg-stone-700 dark:text-stone-100 dark:hover:bg-stone-600',
         ],
         destructive: [
           'bg-red-600 text-white shadow-sm',
@@ -32,14 +32,14 @@ const buttonVariants = cva(
           'dark:bg-red-500 dark:hover:bg-red-600',
         ],
         outline: [
-          'border border-slate-300 bg-transparent text-slate-900',
-          'hover:bg-slate-100 active:bg-slate-200',
-          'dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800',
+          'border border-stone-300 bg-transparent text-stone-900',
+          'hover:bg-stone-100 active:bg-stone-200',
+          'dark:border-stone-600 dark:text-stone-100 dark:hover:bg-stone-800',
         ],
         ghost: [
-          'bg-transparent text-slate-700',
-          'hover:bg-slate-100 active:bg-slate-200',
-          'dark:text-slate-300 dark:hover:bg-slate-800',
+          'bg-transparent text-stone-700',
+          'hover:bg-stone-100 active:bg-stone-200',
+          'dark:text-stone-300 dark:hover:bg-stone-800',
         ],
       },
       size: {

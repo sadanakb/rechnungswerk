@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   },
   ocr_processed: {
     label: 'OCR',
-    color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400',
+    color: 'bg-lime-100 text-lime-700 border-lime-200 dark:bg-lime-900/30 dark:text-lime-400',
     icon: <CheckCircle2 size={13} />,
   },
 }
@@ -161,7 +161,7 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
   paid: { label: 'Bezahlt', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400' },
   partial: { label: 'Teilweise bezahlt', color: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400' },
   overdue: { label: 'Ueberfaellig', color: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400' },
-  cancelled: { label: 'Storniert', color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400' },
+  cancelled: { label: 'Storniert', color: 'bg-stone-100 text-stone-500 border-stone-200 dark:bg-stone-800/40 dark:text-stone-400' },
 }
 
 function PaymentStatusBadge({ status }: { status: string }) {
