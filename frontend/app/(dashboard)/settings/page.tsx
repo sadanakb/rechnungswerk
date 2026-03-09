@@ -286,11 +286,11 @@ function KontoTab() {
         />
 
         {/* Divider */}
-        <div className="border-t border-stone-200 dark:border-stone-700" />
+        <div className="border-t border-[rgb(var(--border))]" />
 
         {/* Password change */}
         <div>
-          <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-4">
+          <h4 className="text-sm font-semibold text-[rgb(var(--foreground))] mb-4">
             Passwort aendern
           </h4>
           <div className="space-y-4">
@@ -454,7 +454,7 @@ function OrganisationTab() {
         />
 
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
+          <label className="text-sm font-medium leading-none text-[rgb(var(--foreground))]">
             USt-IdNr <FieldHelp {...FIELD_HELP.seller_vat_id} />
           </label>
           <Input
@@ -467,17 +467,16 @@ function OrganisationTab() {
 
         {/* Address textarea */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
+          <label className="text-sm font-medium leading-none text-[rgb(var(--foreground))]">
             Adresse
           </label>
           <textarea
             className={[
-              'flex min-h-[100px] w-full rounded-md border bg-white px-3 py-2 text-sm',
-              'text-stone-900 placeholder:text-stone-400',
+              'flex min-h-[100px] w-full rounded-md border px-3 py-2 text-sm',
+              'bg-[rgb(var(--input))] border-[rgb(var(--input-border))]',
+              'text-[rgb(var(--foreground))] placeholder:text-[rgb(var(--foreground-muted))]',
               'transition-colors duration-150',
               'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
-              'border-stone-300',
-              'dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500 dark:border-stone-700 dark:focus:ring-lime-400',
               'resize-y',
             ].join(' ')}
             value={address}
@@ -1126,7 +1125,7 @@ function ApiKeysTab({ plan }: { plan: string }) {
           <CardDescription>Programmatischer Zugriff auf die RechnungsKern API.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border-2 border-dashed p-8 text-center border-stone-200 dark:border-stone-700">
+          <div className="rounded-lg border-2 border-dashed p-8 text-center bg-[rgb(var(--secondary))] border-[rgb(var(--border))]">
             <Lock size={40} className="mx-auto mb-4 text-stone-400 dark:text-stone-500" />
             <h3 className="text-base font-semibold text-stone-900 dark:text-stone-100 mb-2">
               API-Zugriff ist im Professional-Plan verfuegbar
@@ -1393,10 +1392,10 @@ function NummernkreisTab() {
   }
 
   const selectClass = [
-    'flex h-9 w-full rounded-md border bg-white px-3 py-2 text-sm',
-    'text-stone-900 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
-    'border-stone-300 transition-colors duration-150',
-    'dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700 dark:focus:ring-lime-400',
+    'flex h-9 w-full rounded-md border px-3 py-2 text-sm',
+    'bg-[rgb(var(--input))] border-[rgb(var(--input-border))] text-[rgb(var(--foreground))]',
+    'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-lime-500',
+    'transition-colors duration-150',
   ].join(' ')
 
   return (
@@ -1443,7 +1442,7 @@ function NummernkreisTab() {
 
         {/* Separator */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
+          <label className="text-sm font-medium leading-none text-[rgb(var(--foreground))]">
             Trennzeichen
           </label>
           <select
@@ -1459,7 +1458,7 @@ function NummernkreisTab() {
 
         {/* Year format */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
+          <label className="text-sm font-medium leading-none text-[rgb(var(--foreground))]">
             Jahresformat
           </label>
           <select
@@ -1474,7 +1473,7 @@ function NummernkreisTab() {
 
         {/* Padding */}
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-medium leading-none text-stone-700 dark:text-stone-200">
+          <label className="text-sm font-medium leading-none text-[rgb(var(--foreground))]">
             Nummerierung
           </label>
           <select
@@ -1490,7 +1489,7 @@ function NummernkreisTab() {
         </div>
 
         {/* Reset yearly toggle */}
-        <div className="flex items-center justify-between rounded-lg border border-stone-200 dark:border-stone-700 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-[rgb(var(--border))] px-4 py-3">
           <div>
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
               Jaehrlicher Zaehler-Reset

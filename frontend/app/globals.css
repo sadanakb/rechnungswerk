@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Wire Tailwind's dark: variant to our [data-theme="dark"] attribute */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 /* ==========================================================================
    RechnungsKern — CSS Custom Properties Design System
    Light theme by default, [data-theme="dark"] for dark mode.
