@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     require_api_key: bool = True  # True für Produktion, False für lokale Entwicklung
     jwt_secret_key: str = ""
 
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     # Upload Settings
     max_upload_size_mb: int = 10
     allowed_extensions: List[str] = [".pdf", ".xml"]

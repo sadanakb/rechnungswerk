@@ -1,12 +1,16 @@
 """Auth router: register, login, me, forgot-password, reset-password."""
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 import hashlib
 import re
+import httpx
+from jose import jwt as jose_jwt, JWTError
 
 from app.database import get_db
 from app.models import User, Organization, OrganizationMember
@@ -290,3 +294,152 @@ def verify_email(request: Request, req: VerifyEmailRequest, db: Session = Depend
     db.commit()
 
     return {"message": "E-Mail erfolgreich verifiziert."}
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth
+# ---------------------------------------------------------------------------
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+
+@router.get("/google")
+def google_login(request: Request):
+    """Redirect to Google OAuth consent screen."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=404, detail="Google OAuth nicht konfiguriert")
+
+    state = secrets.token_urlsafe(32)
+    # Store state in a signed JWT (valid 10 minutes) — no Redis needed
+    state_token = jose_jwt.encode(
+        {"state": state, "exp": datetime.now(timezone.utc) + timedelta(minutes=10)},
+        settings.jwt_secret_key or "dev-secret",
+        algorithm="HS256",
+    )
+
+    redirect_uri = f"{settings.frontend_url}/auth/google/callback"
+    params = urlencode({
+        "client_id": settings.google_client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "state": state_token,
+    })
+    return {"url": f"{GOOGLE_AUTH_URL}?{params}"}
+
+
+@router.get("/google/callback")
+def google_callback(
+    code: str,
+    state: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Handle Google OAuth callback — exchange code for tokens, create/find user."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=404, detail="Google OAuth nicht konfiguriert")
+
+    # Verify state token
+    try:
+        jose_jwt.decode(
+            state,
+            settings.jwt_secret_key or "dev-secret",
+            algorithms=["HS256"],
+        )
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Ungueltiger OAuth State")
+
+    # Exchange code for tokens
+    redirect_uri = f"{settings.frontend_url}/auth/google/callback"
+    with httpx.Client() as client:
+        token_resp = client.post(GOOGLE_TOKEN_URL, data={
+            "code": code,
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        })
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Google Token-Austausch fehlgeschlagen")
+        tokens = token_resp.json()
+
+        # Get user info from Google
+        userinfo_resp = client.get(
+            GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        if userinfo_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Google Benutzerinformationen konnten nicht abgerufen werden")
+        userinfo = userinfo_resp.json()
+
+    google_email = userinfo.get("email")
+    google_name = userinfo.get("name", "")
+    if not google_email:
+        raise HTTPException(status_code=400, detail="Keine E-Mail von Google erhalten")
+
+    # Find or create user
+    user = db.query(User).filter(User.email == google_email).first()
+    if user:
+        # Existing user — account linking: mark as verified
+        if not user.is_verified:
+            user.is_verified = True
+            db.commit()
+    else:
+        # New user — create account + organization
+        user = User(
+            email=google_email,
+            hashed_password=secrets.token_urlsafe(32),  # Random — no local password
+            full_name=google_name,
+            is_verified=True,  # Google verified the email
+        )
+        db.add(user)
+        db.flush()
+
+        # Create organization
+        org_name = google_name or google_email.split("@")[0]
+        base_slug = _slugify(org_name)
+        slug = base_slug
+        counter = 1
+        while db.query(Organization).filter(Organization.slug == slug).first():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        org = Organization(name=org_name, slug=slug)
+        db.add(org)
+        db.flush()
+
+        member = OrganizationMember(
+            user_id=user.id,
+            organization_id=org.id,
+            role="owner",
+        )
+        db.add(member)
+        db.commit()
+        db.refresh(user)
+
+    # Get organization membership for token
+    member = (
+        db.query(OrganizationMember)
+        .filter(OrganizationMember.user_id == user.id)
+        .first()
+    )
+    org_id = member.organization_id if member else None
+    role = member.role if member else "member"
+
+    access_token = create_access_token(
+        data={"sub": str(user.id), "org_id": org_id, "role": role}
+    )
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+    # Redirect to frontend with tokens
+    redirect_params = urlencode({
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    })
+    return RedirectResponse(
+        url=f"{settings.frontend_url}/auth/google/callback?{redirect_params}",
+        status_code=302,
+    )
