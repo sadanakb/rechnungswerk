@@ -14,8 +14,14 @@ import {
   Clock,
   Printer,
   FileText,
+  Sparkles,
+  Loader2,
+  Check,
+  Copy,
+  Mail,
+  X,
 } from 'lucide-react'
-import { getInvoice, deleteInvoice, cancelInvoice, getXRechnungDownloadUrl, updatePaymentStatus, createShareLink, sendInvoiceEmail, createCreditNote, getOnboardingStatus, type InvoiceDetail } from '@/lib/api'
+import { getInvoice, deleteInvoice, cancelInvoice, getXRechnungDownloadUrl, updatePaymentStatus, createShareLink, sendInvoiceEmail, createCreditNote, getOnboardingStatus, API_BASE, type InvoiceDetail } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { FieldHelp } from '@/components/ui/FieldHelp'
 import { FIELD_HELP } from '@/lib/field-help'
@@ -566,6 +572,15 @@ export default function InvoiceDetailPage() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
+  // AI Reminder state
+  const [reminderOpen, setReminderOpen] = useState(false)
+  const [reminderTone, setReminderTone] = useState<'freundlich' | 'bestimmt' | 'formell'>('freundlich')
+  const [reminderLoading, setReminderLoading] = useState(false)
+  const [reminderResult, setReminderResult] = useState<{subject: string, body: string} | null>(null)
+  const [reminderError, setReminderError] = useState<string | null>(null)
+  const [reminderCopied, setReminderCopied] = useState(false)
+  const [userPlan, setUserPlan] = useState<string>('free')
+
   const handlePaymentUpdated = (newStatus: string) => {
     setInvoice((prev) => prev ? { ...prev, payment_status: newStatus } : prev)
   }
@@ -589,6 +604,33 @@ export default function InvoiceDetailPage() {
       .then((data) => setLogoUrl(data.logo_url ?? null))
       .catch(() => { /* ignore — logo is optional */ })
   }, [])
+
+  useEffect(() => {
+    import('@/lib/api').then(({ getMe }) => {
+      getMe().then(me => setUserPlan(me.organization?.plan ?? 'free')).catch(() => {})
+    })
+  }, [])
+
+  const handleGenerateReminder = async () => {
+    if (!invoice) return
+    setReminderLoading(true)
+    setReminderError(null)
+    try {
+      const token = localStorage.getItem('rw-access-token')
+      const res = await fetch(`${API_BASE}/api/ai/generate-reminder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ invoice_id: invoice.invoice_id, tone: reminderTone }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Fehler beim Generieren')
+      setReminderResult(data)
+    } catch (err: unknown) {
+      setReminderError(err instanceof Error ? err.message : 'Unbekannter Fehler')
+    } finally {
+      setReminderLoading(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!invoice) return
@@ -817,6 +859,127 @@ export default function InvoiceDetailPage() {
             <FileText size={14} />
             Gutschrift erstellen
           </button>
+
+          {['unpaid', 'overdue'].includes(invoice?.payment_status ?? '') && ['starter', 'professional'].includes(userPlan) && (
+            <div className="relative">
+              <button
+                onClick={() => setReminderOpen(!reminderOpen)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: '#84CC16', color: 'white' }}
+              >
+                <Sparkles size={15} />
+                Mahnung erstellen
+              </button>
+
+              {reminderOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setReminderOpen(false)}>
+                  <div className="w-full max-w-lg rounded-2xl border shadow-xl p-6 space-y-5" style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={18} style={{ color: '#84CC16' }} />
+                        <h3 className="font-semibold" style={{ color: 'rgb(var(--foreground))' }}>Mahnung erstellen</h3>
+                      </div>
+                      <button onClick={() => setReminderOpen(false)} style={{ color: 'rgb(var(--foreground-muted))' }}>
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    {/* Tone selection */}
+                    <div>
+                      <p className="text-xs font-medium mb-2" style={{ color: 'rgb(var(--foreground-muted))' }}>Ton</p>
+                      <div className="flex gap-2">
+                        {(['freundlich', 'bestimmt', 'formell'] as const).map(t => (
+                          <button
+                            key={t}
+                            onClick={() => { setReminderTone(t); setReminderResult(null) }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all"
+                            style={{
+                              backgroundColor: reminderTone === t ? '#84CC16' : 'rgb(var(--input))',
+                              color: reminderTone === t ? 'white' : 'rgb(var(--foreground-muted))',
+                              border: `1px solid ${reminderTone === t ? '#84CC16' : 'rgb(var(--border))'}`,
+                            }}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Generate button */}
+                    {!reminderResult && (
+                      <button
+                        onClick={handleGenerateReminder}
+                        disabled={reminderLoading}
+                        className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-opacity"
+                        style={{ backgroundColor: '#84CC16', opacity: reminderLoading ? 0.7 : 1 }}
+                      >
+                        {reminderLoading ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={15} /> Wird generiert...</span> : '✨ Mahnung generieren'}
+                      </button>
+                    )}
+
+                    {reminderError && (
+                      <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{reminderError}</p>
+                    )}
+
+                    {/* Result */}
+                    {reminderResult && (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-medium mb-1" style={{ color: 'rgb(var(--foreground-muted))' }}>Betreff</p>
+                          <input
+                            value={reminderResult.subject}
+                            onChange={e => setReminderResult(r => r ? {...r, subject: e.target.value} : r)}
+                            className="w-full rounded-lg px-3 py-2 text-sm"
+                            style={{ backgroundColor: 'rgb(var(--input))', border: '1px solid rgb(var(--border))', color: 'rgb(var(--foreground))' }}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium mb-1" style={{ color: 'rgb(var(--foreground-muted))' }}>Text</p>
+                          <textarea
+                            value={reminderResult.body}
+                            onChange={e => setReminderResult(r => r ? {...r, body: e.target.value} : r)}
+                            rows={6}
+                            className="w-full rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                            style={{ backgroundColor: 'rgb(var(--input))', border: '1px solid rgb(var(--border))', color: 'rgb(var(--foreground))' }}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${reminderResult.subject}\n\n${reminderResult.body}`)
+                              setReminderCopied(true)
+                              setTimeout(() => setReminderCopied(false), 2000)
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-colors"
+                            style={{ backgroundColor: reminderCopied ? '#f7fee7' : 'rgb(var(--input))', color: reminderCopied ? '#4d7c0f' : 'rgb(var(--foreground-muted))', border: '1px solid rgb(var(--border))' }}
+                          >
+                            {reminderCopied ? <Check size={13} /> : <Copy size={13} />}
+                            {reminderCopied ? 'Kopiert!' : 'Kopieren'}
+                          </button>
+                          <a
+                            href={`mailto:?subject=${encodeURIComponent(reminderResult.subject)}&body=${encodeURIComponent(reminderResult.body)}`}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium"
+                            style={{ backgroundColor: '#84CC16', color: 'white' }}
+                          >
+                            <Mail size={13} />
+                            Als E-Mail
+                          </a>
+                          <button
+                            onClick={() => { setReminderResult(null); setReminderTone('freundlich') }}
+                            className="px-3 py-2 rounded-lg text-xs"
+                            style={{ color: 'rgb(var(--foreground-muted))', border: '1px solid rgb(var(--border))' }}
+                          >
+                            Neu
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {invoice.payment_status !== 'cancelled' && (
             <button

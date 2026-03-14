@@ -19,6 +19,7 @@ PLAN_LIMITS = {
         "team": False,
         "api_access": False,
         "priority_support": False,
+        "ai_features": False,
     },
     "starter": {
         "max_invoices_per_month": -1,  # unlimited
@@ -30,6 +31,7 @@ PLAN_LIMITS = {
         "team": False,
         "api_access": True,
         "priority_support": False,
+        "ai_features": True,
     },
     "professional": {
         "max_invoices_per_month": -1,
@@ -41,6 +43,7 @@ PLAN_LIMITS = {
         "team": True,
         "api_access": True,
         "priority_support": True,
+        "ai_features": True,
     },
 }
 

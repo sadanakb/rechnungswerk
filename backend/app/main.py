@@ -20,7 +20,7 @@ from app.config import settings
 from app.middleware.security import SecurityHeadersMiddleware
 from app.middleware.request_id import RequestIDMiddleware
 from app.database import init_db
-from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router, ai as ai_router, datev as datev_router, push as push_router, gdpr as gdpr_router, quotes, credit_notes as credit_notes_router
+from app.routers import health, invoices, suppliers, external_api, recurring, email, auth as auth_router, billing, mahnwesen, onboarding, newsletter, gobd, users, teams, webhooks, api_keys, audit, templates, notifications, contacts, invoice_sequences, import_invoices, contact as contact_router, portal as portal_router, ai as ai_router, datev as datev_router, push as push_router, gdpr as gdpr_router, quotes, credit_notes as credit_notes_router, ai_features as ai_features_router
 
 def _setup_logging():
     """Configure structured logging: JSON for production, readable for development."""
@@ -152,6 +152,7 @@ app.include_router(import_invoices.router)
 app.include_router(contact_router.router)
 app.include_router(portal_router.router, prefix="/api/portal", tags=["portal"])
 app.include_router(ai_router.router, prefix="/api/ai", tags=["ai"])
+app.include_router(ai_features_router.router, prefix="/api/ai", tags=["AI Features"])
 app.include_router(datev_router.router, prefix="/api/datev", tags=["datev"])
 app.include_router(push_router.router, prefix="/api/push", tags=["push"])
 app.include_router(gdpr_router.router, prefix="/api/gdpr", tags=["gdpr"])

@@ -17,6 +17,7 @@ import {
   List,
   ArrowRight,
   X,
+  Sparkles,
 } from 'lucide-react'
 import { createInvoice, generateXRechnung, getOnboardingStatus, getErrorMessage, API_BASE, type InvoiceCreate } from '@/lib/api'
 import { FieldHelp } from '@/components/ui/FieldHelp'
@@ -147,6 +148,24 @@ export default function ManualPage() {
   const [successBanner, setSuccessBanner] = useState<{ invoiceId: string } | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
+  // AI Draft state
+  const [draftText, setDraftText] = useState('')
+  const [isDraftLoading, setIsDraftLoading] = useState(false)
+  const [draftBanner, setDraftBanner] = useState<string | null>(null)
+  const [userPlan, setUserPlan] = useState<string>('free')
+
+  // Line item autocomplete state
+  const [suggestions, setSuggestions] = useState<Record<number, Array<{description: string, unit_price: number, unit: string, tax_rate: number, source: string}>>>({})
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<Record<number, number>>({})
+  const [showSuggestions, setShowSuggestions] = useState<Record<number, boolean>>({})
+  const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+
+  useEffect(() => {
+    import('@/lib/api').then(({ getMe }) => {
+      getMe().then(me => setUserPlan(me.organization?.plan ?? 'free')).catch(() => {})
+    })
+  }, [])
+
   useEffect(() => {
     getOnboardingStatus()
       .then((data) => setLogoUrl(data.logo_url ?? null))
@@ -160,6 +179,7 @@ export default function ManualPage() {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitted, touchedFields },
   } = useForm<FormData>({
     mode: 'onBlur',
@@ -270,6 +290,88 @@ export default function ManualPage() {
       setLoading(false)
     }
   }
+
+  // ===== AI Draft handler =====
+  const handleDraftInvoice = async () => {
+    if (!draftText.trim() || isDraftLoading || userPlan === 'free') return
+    setIsDraftLoading(true)
+    setDraftBanner(null)
+    try {
+      const token = localStorage.getItem('rw-access-token')
+      const res = await fetch(`${API_BASE}/api/ai/draft-invoice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ text: draftText }),
+      })
+      if (res.status === 403) {
+        setDraftBanner('AI-Features sind ab dem Starter-Plan verfügbar')
+        return
+      }
+      if (res.status === 429) {
+        setDraftBanner('Zu viele Anfragen, bitte einen Moment warten')
+        return
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setDraftBanner(err.detail || 'Fehler beim Generieren des Entwurfs')
+        return
+      }
+      const data = await res.json()
+      if (data.buyer_name) setValue('buyer_name', data.buyer_name)
+      if (data.tax_rate) setValue('tax_rate', data.tax_rate)
+      if (data.notes) setValue('notes' as keyof FormData, data.notes)
+      if (data.line_items?.length > 0) {
+        setValue('line_items', data.line_items.map((li: { description: string; quantity: number; unit_price: number; unit?: string }) => ({
+          description: li.description,
+          quantity: li.quantity,
+          unit_price: li.unit_price,
+          net_amount: li.quantity * li.unit_price,
+          tax_rate: data.tax_rate ?? 19,
+        })))
+      }
+      setDraftBanner('Entwurf erstellt — bitte prüfen und ergänzen')
+      setTimeout(() => setDraftBanner(null), 5000)
+    } catch (err: unknown) {
+      setDraftBanner(err instanceof Error ? err.message : 'Unbekannter Fehler')
+    } finally {
+      setIsDraftLoading(false)
+    }
+  }
+
+  // ===== Line item autocomplete handlers =====
+  const handleDescriptionChange = useCallback((index: number, value: string) => {
+    if (debounceTimers.current[index]) clearTimeout(debounceTimers.current[index])
+    if (value.length < 3) {
+      setSuggestions(prev => ({ ...prev, [index]: [] }))
+      setShowSuggestions(prev => ({ ...prev, [index]: false }))
+      return
+    }
+    debounceTimers.current[index] = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('rw-access-token')
+        const res = await fetch(`${API_BASE}/api/ai/suggest-line-item`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ description_prefix: value }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.suggestions?.length > 0) {
+            setSuggestions(prev => ({ ...prev, [index]: data.suggestions }))
+            setShowSuggestions(prev => ({ ...prev, [index]: true }))
+          } else {
+            setShowSuggestions(prev => ({ ...prev, [index]: false }))
+          }
+        }
+      } catch { /* ignore */ }
+    }, 500)
+  }, [])
+
+  const applySuggestion = useCallback((index: number, suggestion: {description: string, unit_price: number, unit: string, tax_rate: number}) => {
+    setValue(`line_items.${index}.description`, suggestion.description)
+    setValue(`line_items.${index}.unit_price`, suggestion.unit_price)
+    setShowSuggestions(prev => ({ ...prev, [index]: false }))
+  }, [setValue])
 
   // ===== Helper: determine if a field should show error styling =====
   const hasFieldError = (fieldName: string): boolean => {
@@ -539,6 +641,42 @@ export default function ManualPage() {
       <div className="lg:w-3/5">
       <form ref={formRef} onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
 
+        {/* AI Draft — Feature 1 */}
+        <div className="mb-8 rounded-xl p-5 border" style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles size={18} style={{ color: '#84CC16' }} />
+            <h3 className="text-sm font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
+              Rechnung beschreiben
+            </h3>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#ecfccb', color: '#4d7c0f' }}>Starter</span>
+          </div>
+          {draftBanner && (
+            <div className="mb-3 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: draftBanner.includes('verfügbar') || draftBanner.includes('Anfragen') ? 'rgb(254 242 242)' : '#f7fee7', color: draftBanner.includes('verfügbar') || draftBanner.includes('Anfragen') ? 'rgb(220 38 38)' : '#4d7c0f' }}>
+              {draftBanner}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <textarea
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              placeholder={userPlan === 'free' ? 'AI-Entwurf — ab Starter-Plan verfügbar' : 'z.B. "3 Tage Webentwicklung für Müller GmbH, 800€/Tag, 19% MwSt, Zahlungsziel 14 Tage"'}
+              className="flex-1 min-h-[60px] rounded-lg p-3 text-sm resize-none"
+              style={{ backgroundColor: 'rgb(var(--input))', borderColor: 'rgb(var(--input-border))', border: '1px solid', color: 'rgb(var(--foreground))', opacity: userPlan === 'free' ? 0.6 : 1 }}
+              maxLength={2000}
+              disabled={isDraftLoading || userPlan === 'free'}
+            />
+            <button
+              type="button"
+              onClick={handleDraftInvoice}
+              disabled={!draftText.trim() || isDraftLoading || userPlan === 'free'}
+              className="px-5 py-3 rounded-lg text-sm font-medium text-white shrink-0 transition-opacity"
+              style={{ backgroundColor: '#84CC16', opacity: (!draftText.trim() || isDraftLoading || userPlan === 'free') ? 0.5 : 1 }}
+            >
+              {isDraftLoading ? <Loader2 className="animate-spin" size={16} /> : '✨ Ausfüllen'}
+            </button>
+          </div>
+        </div>
+
         {/* ---- Section 1: Ihre Daten ---- */}
         <motion.div
           custom={0}
@@ -754,12 +892,56 @@ export default function ManualPage() {
                     >
                       <div className="grid grid-cols-12 gap-2 items-center">
                         <div className="col-span-5" data-has-error={descError}>
-                          <input
-                            {...register(`line_items.${index}.description`, { required: 'Beschreibung ist erforderlich' })}
-                            className={inputClass}
-                            style={descError ? inputErrorStyle : inputStyle}
-                            placeholder="Beratungsleistung"
-                          />
+                          <div className="relative">
+                            {(() => {
+                              const registeredProps = register(`line_items.${index}.description`, { required: 'Beschreibung ist erforderlich' })
+                              return (
+                                <input
+                                  {...registeredProps}
+                                  className={inputClass}
+                                  style={descError ? inputErrorStyle : inputStyle}
+                                  placeholder="Beratungsleistung"
+                                  onChange={(e) => {
+                                    registeredProps.onChange(e)
+                                    handleDescriptionChange(index, e.target.value)
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (!showSuggestions[index]) return
+                                    const sLen = suggestions[index]?.length ?? 0
+                                    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => ({ ...prev, [index]: Math.min((prev[index] ?? -1) + 1, sLen - 1) })) }
+                                    if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => ({ ...prev, [index]: Math.max((prev[index] ?? 0) - 1, 0) })) }
+                                    if (e.key === 'Enter' && (activeSuggestionIndex[index] ?? -1) >= 0) { e.preventDefault(); applySuggestion(index, suggestions[index][activeSuggestionIndex[index]]) }
+                                    if (e.key === 'Escape') setShowSuggestions(prev => ({ ...prev, [index]: false }))
+                                  }}
+                                  onBlur={() => setTimeout(() => setShowSuggestions(prev => ({ ...prev, [index]: false })), 200)}
+                                  autoComplete="off"
+                                />
+                              )
+                            })()}
+                            {showSuggestions[index] && (suggestions[index]?.length ?? 0) > 0 && (
+                              <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border shadow-lg overflow-auto" style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))', maxHeight: '200px' }}>
+                                {suggestions[index].map((s, si) => (
+                                  <button
+                                    key={si}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-stone-100 dark:hover:bg-stone-800/50 transition-colors"
+                                    style={{ backgroundColor: activeSuggestionIndex[index] === si ? 'rgb(var(--primary) / 0.08)' : undefined }}
+                                    onMouseDown={() => applySuggestion(index, s)}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${s.source === 'history' ? 'bg-stone-200 text-stone-600' : 'bg-lime-100 text-lime-700'}`}>
+                                        {s.source === 'history' ? 'Verlauf' : 'AI'}
+                                      </span>
+                                      <span className="truncate" style={{ color: 'rgb(var(--foreground))' }}>{s.description}</span>
+                                    </div>
+                                    <span className="shrink-0 tabular-nums font-medium" style={{ color: 'rgb(var(--foreground-muted))' }}>
+                                      {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.unit_price)}/{s.unit}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="col-span-2" data-has-error={qtyError}>
                           <input
